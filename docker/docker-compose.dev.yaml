@@ -20,6 +20,47 @@ services:
       retries: 5
     networks: [nest-vue-dev]
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      TZ: ${TZ:-Asia/Seoul}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - minio-dev-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [nest-vue-dev]
+
+  # 버킷 최초 생성용 1회성 컨테이너 (완료 후 종료되는 것이 정상)
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-nest-vue}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+        echo "bucket ready: $$S3_BUCKET"
+    restart: 'no'
+    networks: [nest-vue-dev]
+
   adminer:
     image: adminer:5
     restart: unless-stopped
@@ -45,6 +86,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       NODE_ENV: development
       PORT: 3000
@@ -52,6 +95,15 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       DATABASE_URL: >-
         postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-nest_vue}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-nest-vue}
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
     ports:
       - '${SERVER_PORT:-3000}:3000'
     volumes:
@@ -66,6 +118,7 @@ services:
 
 volumes:
   postgres-dev-data:
+  minio-dev-data:
 
 networks:
   nest-vue-dev:

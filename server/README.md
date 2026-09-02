@@ -13,7 +13,7 @@ pnpm --filter @nest-vue/server build   # 프로덕션 빌드
 pnpm --filter @nest-vue/server start   # 빌드 결과 실행
 ```
 
-Postgres는 `docker/docker-compose.dev.yaml` 로 띄우는 것을 권장한다.
+Postgres와 MinIO는 `docker/docker-compose.dev.yaml` 로 띄우는 것을 권장한다.
 
 ```bash
 pnpm docker:dev
@@ -31,14 +31,50 @@ pnpm docker:dev
 | `DATABASE_POOL_MAX` | X    | `10`   | pg 커넥션 풀 최대 크기                |
 | `NODE_ENV`          | X    | -      | `development` / `production`          |
 
-예시:
+### MinIO (S3 호환 오브젝트 스토리지)
+
+`@aws-sdk/client-s3` v3 로 접근한다. MinIO 는 virtual-host 스타일 주소를 쓰지 않으므로
+`forcePathStyle: true` 가 필요하다.
+
+| 변수                   | 필수 | 기본값      | 설명                                                             |
+| ---------------------- | ---- | ----------- | ---------------------------------------------------------------- |
+| `S3_ENDPOINT`          | O    | -           | `http://localhost:9000` (compose 내부에서는 `http://minio:9000`) |
+| `S3_ACCESS_KEY_ID`     | O    | -           | MinIO access key                                                 |
+| `S3_SECRET_ACCESS_KEY` | O    | -           | MinIO secret key                                                 |
+| `S3_BUCKET`            | O    | `nest-vue`  | 버킷 이름                                                        |
+| `S3_REGION`            | X    | `us-east-1` | MinIO 는 무시하지만 SDK 가 요구한다                              |
+| `S3_FORCE_PATH_STYLE`  | X    | `true`      | MinIO 는 반드시 `true`                                           |
+| `S3_PUBLIC_URL`        | X    | -           | 외부에 노출할 객체 URL 베이스(리버스 프록시/CDN)                 |
+
+### Gemini API
+
+`@google/genai` 를 사용한다.
+
+| 변수             | 필수 | 기본값             | 설명                       |
+| ---------------- | ---- | ------------------ | -------------------------- |
+| `GEMINI_API_KEY` | O    | -                  | Google AI Studio 에서 발급 |
+| `GEMINI_MODEL`   | X    | `gemini-3.7-flash` | 사용할 모델 ID             |
+
+### 예시
 
 ```dotenv
 NODE_ENV=development
 PORT=3000
 CORS_ORIGIN=http://localhost:5173
+
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nest_vue
 DATABASE_POOL_MAX=10
+
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_BUCKET=nest-vue
+S3_REGION=us-east-1
+S3_FORCE_PATH_STYLE=true
+S3_PUBLIC_URL=http://localhost:9000/nest-vue
+
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.7-flash
 ```
 
 ## Drizzle

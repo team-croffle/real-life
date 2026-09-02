@@ -36,6 +36,17 @@ services:
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
       DATABASE_URL: >-
         postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-nest_vue}
+      # MinIO / S3 호환 스토리지 — 운영에서는 외부 MinIO 인스턴스를 가리킨다
+      S3_ENDPOINT: ${S3_ENDPOINT:?S3_ENDPOINT is required}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID is required}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY is required}
+      S3_BUCKET: ${S3_BUCKET:-nest-vue}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+      # Gemini API
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
     ports:
       - '${SERVER_PORT:-3000}:3000'
     networks: [nest-vue]
