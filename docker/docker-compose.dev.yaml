@@ -1,0 +1,72 @@
+name: nest-vue-dev
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-nest_vue}
+      TZ: ${TZ:-Asia/Seoul}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-nest_vue}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [nest-vue-dev]
+
+  adminer:
+    image: adminer:5
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - '${ADMINER_PORT:-8080}:8080'
+    networks: [nest-vue-dev]
+
+  # NestJS 를 컨테이너 안에서 watch 모드로 돌리고 싶을 때만 사용한다.
+  #   docker compose -f docker/docker-compose.dev.yaml --profile server up
+  # 호스트에서 `pnpm dev:server` 로 돌린다면 이 서비스는 띄우지 않아도 된다.
+  server:
+    profiles: [server]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      TZ: ${TZ:-Asia/Seoul}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      DATABASE_URL: >-
+        postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-nest_vue}
+    ports:
+      - '${SERVER_PORT:-3000}:3000'
+    volumes:
+      - ..:/app
+      - /app/node_modules
+      - /app/server/node_modules
+      - /app/web/node_modules
+      - /app/shared/node_modules
+      - /app/server/dist
+    command: pnpm --filter @nest-vue/server dev
+    networks: [nest-vue-dev]
+
+volumes:
+  postgres-dev-data:
+
+networks:
+  nest-vue-dev:
+    driver: bridge

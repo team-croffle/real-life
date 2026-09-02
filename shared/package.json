@@ -1,0 +1,29 @@
+{
+  "name": "@nest-vue/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "server / web 공용 타입 · 인터페이스 · 상수",
+  "files": [
+    "src"
+  ],
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./src/*.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint ."
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# generated
+web/src/typed-router.d.ts
+web/typed-router.d.ts
+
+# tests
+coverage/
+
+# env
+.env
+.env.*
+!.env.example
+
+# husky
+.husky/_/
+
+# editor / os
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

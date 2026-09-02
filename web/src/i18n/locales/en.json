@@ -1,0 +1,31 @@
+{
+  "app": {
+    "title": "nest-vue",
+    "description": "NestJS + Vue 3 monorepo starter"
+  },
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "users": "Users"
+  },
+  "home": {
+    "heading": "Hello 👋",
+    "body": "A pnpm monorepo made of three workspaces: server, web and shared."
+  },
+  "about": {
+    "heading": "About this project",
+    "body": "Types live in the shared package and are consumed as source by both server and web."
+  },
+  "health": {
+    "heading": "Server health",
+    "check": "Check",
+    "loading": "Checking...",
+    "error": "Could not reach the server.",
+    "status": "Status",
+    "database": "Database",
+    "uptime": "Uptime"
+  },
+  "locale": {
+    "label": "Language"
+  }
+}

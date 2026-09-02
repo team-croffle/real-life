@@ -1,0 +1,100 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "import", "unicorn", "oxc", "promise", "node", "vue", "jest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn",
+    "pedantic": "off",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "env": {
+    "builtin": true,
+    "node": true,
+    "browser": true
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/*.d.ts",
+    "server/drizzle/**",
+    ".husky/_/**"
+  ],
+  "rules": {
+    "no-console": "warn",
+    "no-debugger": "error",
+    "eqeqeq": "error",
+    "typescript/no-explicit-any": "warn",
+    "typescript/consistent-type-imports": "error",
+    "unicorn/prefer-node-protocol": "error",
+
+    "import/export": "error",
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-absolute-path": "error",
+    "import/no-cycle": "error",
+    "import/no-duplicates": "error",
+    "import/no-empty-named-blocks": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-named-as-default": "warn",
+    "import/no-named-as-default-member": "warn",
+    "import/no-self-import": "error",
+    "import/no-unassigned-import": "off",
+    "import/no-webpack-loader-syntax": "error",
+
+    "promise/catch-or-return": "warn",
+    "promise/no-multiple-resolved": "error",
+    "promise/no-nesting": "warn",
+    "promise/no-new-statics": "error",
+    "promise/no-return-in-finally": "error",
+    "promise/no-return-wrap": "error",
+    "promise/param-names": "error",
+    "promise/prefer-await-to-then": "error",
+    "promise/prefer-catch": "error",
+    "promise/spec-only": "error",
+    "promise/valid-params": "error"
+  },
+  "overrides": [
+    {
+      "files": ["server/**/*.ts"],
+      "env": { "browser": false },
+      "rules": {
+        "unicorn/filename-case": ["error", { "case": "kebabCase" }],
+        "typescript/consistent-type-imports": "off",
+        "typescript/no-extraneous-class": "off",
+        "typescript/no-non-null-assertion": "off"
+      }
+    },
+    {
+      "files": ["server/src/**/*.ts"],
+      "rules": {
+        "import/no-default-export": "error"
+      }
+    },
+    {
+      "files": ["web/**/*.{ts,vue}"],
+      "env": { "node": false },
+      "rules": {
+        "unicorn/filename-case": ["error", { "cases": { "camelCase": true, "pascalCase": true } }]
+      }
+    },
+    {
+      "files": ["**/*.spec.ts", "**/*.e2e-spec.ts", "**/test/**/*.ts"],
+      "rules": {
+        "no-console": "off",
+        "typescript/no-explicit-any": "off"
+      }
+    },
+    {
+      "files": ["**/*.config.ts", "**/*.config.mts", "**/vite.config.ts", "**/drizzle.config.ts"],
+      "env": { "node": true },
+      "rules": {
+        "no-console": "off",
+        "import/no-default-export": "off"
+      }
+    }
+  ]
+}

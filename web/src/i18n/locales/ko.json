@@ -1,0 +1,31 @@
+{
+  "app": {
+    "title": "nest-vue",
+    "description": "NestJS + Vue 3 모노레포 스타터"
+  },
+  "nav": {
+    "home": "홈",
+    "about": "소개",
+    "users": "사용자"
+  },
+  "home": {
+    "heading": "안녕하세요 👋",
+    "body": "server, web, shared 세 워크스페이스로 구성된 pnpm 모노레포입니다."
+  },
+  "about": {
+    "heading": "이 프로젝트에 대해",
+    "body": "타입은 shared 패키지에서 정의하고 server 와 web 이 소스 그대로 참조합니다."
+  },
+  "health": {
+    "heading": "서버 상태",
+    "check": "확인",
+    "loading": "확인 중...",
+    "error": "서버에 연결할 수 없습니다.",
+    "status": "상태",
+    "database": "데이터베이스",
+    "uptime": "가동 시간"
+  },
+  "locale": {
+    "label": "언어"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node"],
+
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "useDefineForClassFields": true,
+    "allowImportingTsExtensions": true,
+
+    "paths": {
+      "@/*": ["./src/*"],
+      "@nest-vue/shared": ["../shared/src/index.ts"],
+      "@nest-vue/shared/*": ["../shared/src/*"]
+    }
+  },
+  "include": ["env.d.ts", "vite.config.ts", "src/**/*.ts", "src/**/*.vue", "src/**/*.d.ts"]
+}
