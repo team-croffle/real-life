@@ -4,7 +4,7 @@ NestJS 12 + Vue 3 기반 pnpm 모노레포. `server`(API) / `web`(클라이언�
 
 ## 기술 스택
 
-- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), AWS SDK v3(S3 호환, MinIO), `@google/genai`(Gemini API)
+- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), `@nestjs/jwt`, bcryptjs, google-auth-library, nodemailer, AWS SDK v3(S3 호환, MinIO), `@google/genai`(Gemini API)
 - **클라이언트**: Vue 3, Vite 8, Vue Router 5(파일 기반 라우팅), vue-i18n, Tailwind CSS v4
 - **공용**: TypeScript(`shared` 워크스페이스로 타입/상수 단일 소스화)
 - **툴링**: pnpm workspace, oxlint/oxfmt, husky + lint-staged, Docker Compose(Postgres, MinIO)
@@ -55,17 +55,17 @@ pnpm dev:web
 
 ## 주요 스크립트
 
-| 명령어 | 설명 |
-| --- | --- |
-| `pnpm dev` | server + web 동시 개발 서버 실행 |
-| `pnpm build` | server + web 프로덕션 빌드 |
-| `pnpm typecheck` | 전체 워크스페이스 타입체크 |
-| `pnpm test` | 서버 단위 테스트 (Jest) |
-| `pnpm lint` / `pnpm lint:fix` | oxlint |
-| `pnpm format` / `pnpm format:check` | oxfmt |
-| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle 마이그레이션 관리 |
-| `pnpm docker:dev` / `docker:dev:down` | 개발용 Docker Compose |
-| `pnpm docker:prod` | 프로덕션 Docker Compose 빌드/기동 |
+| 명령어                                                      | 설명                              |
+| ----------------------------------------------------------- | --------------------------------- |
+| `pnpm dev`                                                  | server + web 동시 개발 서버 실행  |
+| `pnpm build`                                                | server + web 프로덕션 빌드        |
+| `pnpm typecheck`                                            | 전체 워크스페이스 타입체크        |
+| `pnpm test`                                                 | 서버 단위 테스트 (Jest)           |
+| `pnpm lint` / `pnpm lint:fix`                               | oxlint                            |
+| `pnpm format` / `pnpm format:check`                         | oxfmt                             |
+| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle 마이그레이션 관리         |
+| `pnpm docker:dev` / `docker:dev:down`                       | 개발용 Docker Compose             |
+| `pnpm docker:prod`                                          | 프로덕션 Docker Compose 빌드/기동 |
 
 ## 더 알아보기
 
