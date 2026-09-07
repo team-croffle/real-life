@@ -21,15 +21,17 @@ pnpm docker:dev
 
 ## 환경 변수
 
-`.env.example` 은 의도적으로 빈 파일이다. 아래 값을 `server/.env` 에 채운다.
+아래 값을 `server/.env` 에 채운다. 새 변수를 추가하면 `.env.example` 을 같은 커밋에서 맞춘다.
 
-| 변수                | 필수 | 기본값 | 설명                                  |
-| ------------------- | ---- | ------ | ------------------------------------- |
-| `DATABASE_URL`      | O    | -      | `postgresql://user:pass@host:5432/db` |
-| `PORT`              | X    | `3000` | HTTP 포트                             |
-| `CORS_ORIGIN`       | X    | `*`    | 허용 오리진                           |
-| `DATABASE_POOL_MAX` | X    | `10`   | pg 커넥션 풀 최대 크기                |
-| `NODE_ENV`          | X    | -      | `development` / `production`          |
+| 변수                 | 필수 | 기본값 | 설명                                  |
+| -------------------- | ---- | ------ | ------------------------------------- |
+| `DATABASE_URL`       | O    | -      | `postgresql://user:pass@host:5432/db` |
+| `PORT`               | X    | `3000` | HTTP 포트                             |
+| `CORS_ORIGIN`        | X    | `*`    | 허용 오리진                           |
+| `DATABASE_POOL_MAX`  | X    | `10`   | pg 커넥션 풀 최대 크기                |
+| `NODE_ENV`           | X    | -      | `development` / `production`          |
+| `JWT_ACCESS_SECRET`  | O    | -      | Access JWT 서명 키                    |
+| `JWT_REFRESH_SECRET` | O    | -      | Refresh JWT 서명 키                   |
 
 ### MinIO (S3 호환 오브젝트 스토리지)
 
@@ -65,6 +67,9 @@ CORS_ORIGIN=http://localhost:5173
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nest_vue
 DATABASE_POOL_MAX=10
 
+JWT_ACCESS_SECRET=change-me-access
+JWT_REFRESH_SECRET=change-me-refresh
+
 S3_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY_ID=minioadmin
 S3_SECRET_ACCESS_KEY=minioadmin
@@ -76,6 +81,8 @@ S3_PUBLIC_URL=http://localhost:9000/nest-vue
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.7-flash
 ```
+
+Access JWT 만료는 코드 상수 `ACCESS_TOKEN_EXPIRES` (**15분**)다. Access payload의 `sid`는 `refresh_tokens` 행 id다. 가드는 그 행이 폐기·만료되지 않았고 유저가 남아 있는지 확인한다. 로그아웃·탈퇴·refresh 회전 후에는 해당 access도 즉시 401이다.
 
 ## Drizzle
 
@@ -108,11 +115,12 @@ pnpm --filter @nest-vue/server test:e2e   # e2e (test/**/*.e2e-spec.ts)
 
 ## API
 
-| 메서드 | 경로                     | 설명                      |
-| ------ | ------------------------ | ------------------------- |
-| GET    | `/api/health`            | 헬스체크                  |
-| GET    | `/api/users?page=&size=` | 사용자 목록(페이지네이션) |
-| GET    | `/api/users/:id`         | 단건 조회                 |
-| POST   | `/api/users`             | 생성                      |
-| PATCH  | `/api/users/:id`         | 수정                      |
-| DELETE | `/api/users/:id`         | 삭제                      |
+| 메서드 | 경로                 | 설명                                                                          |
+| ------ | -------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/api/health`        | 헬스체크                                                                      |
+| POST   | `/api/auth/register` | 이메일 가입. 로그인 토큰 발급                                                 |
+| POST   | `/api/auth/login`    | 이메일 로그인                                                                 |
+| POST   | `/api/auth/refresh`  | Access/Refresh 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화 |
+| POST   | `/api/auth/logout`   | 해당 refresh 폐기. 그 sid의 access도 즉시 무효                                |
+| GET    | `/api/auth/me`       | 현재 유저 (Bearer access)                                                     |
+| DELETE | `/api/auth/me`       | 회원 탈퇴. password 필요                                                      |
