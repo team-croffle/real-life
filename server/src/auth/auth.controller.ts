@@ -1,4 +1,4 @@
-import type { ApiResponse, LoginResult, User } from '@nest-vue/shared';
+import type { ApiResponse, GoogleAuthResult, LoginResult, User } from '@nest-vue/shared';
 import {
   Body,
   Controller,
@@ -13,6 +13,8 @@ import {
 import { AuthService } from './auth.service';
 import type { RequestAuthUser } from './auth.types';
 import { CurrentUser } from './current-user.decorator';
+import { GoogleAuthDto } from './dto/google-auth.dto';
+import { GoogleOnboardingDto } from './dto/google-onboarding.dto';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -59,5 +61,17 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async withdraw(@CurrentUser() user: RequestAuthUser, @Body() dto: WithdrawDto): Promise<void> {
     await this.authService.withdraw(user.id, dto);
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  async google(@Body() dto: GoogleAuthDto): Promise<ApiResponse<GoogleAuthResult>> {
+    return { data: await this.authService.google(dto.idToken) };
+  }
+
+  @Post('google/onboarding')
+  @HttpCode(HttpStatus.OK)
+  async googleOnboarding(@Body() dto: GoogleOnboardingDto): Promise<ApiResponse<LoginResult>> {
+    return { data: await this.authService.googleOnboarding(dto) };
   }
 }

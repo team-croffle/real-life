@@ -1,22 +1,31 @@
 import { createHash, randomInt } from 'node:crypto';
 
-import type { JobClass, LoginResult, User } from '@nest-vue/shared';
-import { ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import type { AuthProvider, GoogleAuthResult, JobClass, LoginResult, User } from '@nest-vue/shared';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { and, eq, isNull } from 'drizzle-orm';
+import { OAuth2Client } from 'google-auth-library';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
-import { type UserRow, refreshTokens, users } from '../database/schema';
+import { type UserRow, authIdentities, refreshTokens, users } from '../database/schema';
 import {
   ACCESS_TOKEN_EXPIRES,
   ACCESS_TOKEN_TYPE,
+  ONBOARDING_TOKEN_EXPIRES,
+  ONBOARDING_TOKEN_TYPE,
   REFRESH_TOKEN_EXPIRES,
   REFRESH_TOKEN_TYPE,
 } from './auth.constants';
-import type { RefreshTokenPayload } from './auth.types';
+import type { OnboardingTokenPayload, RefreshTokenPayload } from './auth.types';
 
 const PASSWORD_ROUNDS = 10;
 const TAG_ATTEMPTS = 8;
@@ -132,18 +141,100 @@ export class AuthService {
     return toUser(await this.getUserRow(userId));
   }
 
-  async withdraw(userId: string, input: { confirm: true; password?: string }): Promise<void> {
+  async withdraw(
+    userId: string,
+    input: { confirm: true; password?: string; idToken?: string },
+  ): Promise<void> {
     const row = await this.getUserRow(userId);
 
-    if (
-      !input.password ||
-      !row.passwordHash ||
-      !(await compare(input.password, row.passwordHash))
-    ) {
-      throw new UnauthorizedException();
+    if (row.passwordHash) {
+      if (!input.password || !(await compare(input.password, row.passwordHash))) {
+        throw new UnauthorizedException();
+      }
+    } else {
+      const google = await this.findIdentity(userId, 'google');
+      if (!google || !input.idToken) {
+        throw new UnauthorizedException();
+      }
+      const profile = await this.verifyGoogleIdToken(input.idToken);
+      if (profile.sub !== google.subject) {
+        throw new UnauthorizedException();
+      }
     }
 
     await this.db.delete(users).where(eq(users.id, userId));
+  }
+
+  async google(idToken: string): Promise<GoogleAuthResult> {
+    const profile = await this.verifyGoogleIdToken(idToken);
+    const existing = await this.findUserByIdentity('google', profile.sub);
+    if (existing) {
+      const ready = existing.emailVerifiedAt
+        ? existing
+        : await this.markEmailVerified(existing.id, false);
+      const login = await this.issueLogin(ready);
+      return { needsOnboarding: false, ...login };
+    }
+
+    const byEmail = await this.findByEmail(profile.email);
+    if (byEmail) {
+      if (await this.findIdentity(byEmail.id, 'google')) {
+        throw new ConflictException('Email already registered');
+      }
+      await this.linkIdentity(byEmail.id, 'google', profile.sub);
+      const claimed = await this.markEmailVerified(byEmail.id, true);
+      const login = await this.issueLogin(claimed);
+      return { needsOnboarding: false, ...login };
+    }
+
+    const onboardingToken = await this.jwt.signAsync(
+      {
+        typ: ONBOARDING_TOKEN_TYPE,
+        provider: 'google',
+        subject: profile.sub,
+        email: profile.email,
+      } satisfies OnboardingTokenPayload,
+      {
+        secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+        expiresIn: ONBOARDING_TOKEN_EXPIRES,
+      },
+    );
+
+    return { needsOnboarding: true, onboardingToken };
+  }
+
+  async googleOnboarding(input: {
+    onboardingToken: string;
+    nickname: string;
+    jobClass: JobClass;
+  }): Promise<LoginResult> {
+    const payload = await this.verifyOnboarding(input.onboardingToken);
+    if (await this.findUserByIdentity(payload.provider, payload.subject)) {
+      throw new ConflictException('Google account already registered');
+    }
+    const existingEmail = await this.findByEmail(payload.email);
+    if (existingEmail) {
+      if (await this.findIdentity(existingEmail.id, payload.provider)) {
+        throw new ConflictException('Email already registered');
+      }
+      await this.linkIdentity(existingEmail.id, payload.provider, payload.subject);
+      const claimed = await this.markEmailVerified(existingEmail.id, true);
+      return this.issueLogin(claimed);
+    }
+
+    const created = await this.insertUser({
+      email: payload.email,
+      nickname: input.nickname,
+      jobClass: input.jobClass,
+      emailVerifiedAt: new Date(),
+    });
+    try {
+      await this.linkIdentity(created.id, payload.provider, payload.subject);
+    } catch (error) {
+      await this.db.delete(users).where(eq(users.id, created.id));
+      throw error;
+    }
+    return this.issueLogin(created);
   }
 
   private async issueLogin(row: UserRow, db: AuthDb = this.db): Promise<LoginResult> {
@@ -213,6 +304,67 @@ export class AuthService {
     throw new ConflictException('Could not allocate nickname tag');
   }
 
+  private async markEmailVerified(
+    userId: string,
+    wipeUnverifiedPassword: boolean,
+    db: AuthDb = this.db,
+  ): Promise<UserRow> {
+    const current = await this.getUserRow(userId, db);
+    const [row] = await db
+      .update(users)
+      .set({
+        emailVerifiedAt: new Date(),
+        ...(wipeUnverifiedPassword && !current.emailVerifiedAt ? { passwordHash: null } : {}),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    if (!row) {
+      throw new UnauthorizedException();
+    }
+    return row;
+  }
+
+  private async linkIdentity(
+    userId: string,
+    provider: AuthProvider,
+    subject: string,
+    db: AuthDb = this.db,
+  ): Promise<void> {
+    try {
+      await db.insert(authIdentities).values({ userId, provider, subject });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Social account already registered');
+      }
+      throw error;
+    }
+  }
+
+  private async findIdentity(
+    userId: string,
+    provider: AuthProvider,
+  ): Promise<{ subject: string } | undefined> {
+    const [row] = await this.db
+      .select({ subject: authIdentities.subject })
+      .from(authIdentities)
+      .where(and(eq(authIdentities.userId, userId), eq(authIdentities.provider, provider)))
+      .limit(1);
+    return row;
+  }
+
+  private async findUserByIdentity(
+    provider: AuthProvider,
+    subject: string,
+  ): Promise<UserRow | undefined> {
+    const [row] = await this.db
+      .select({ user: users })
+      .from(authIdentities)
+      .innerJoin(users, eq(users.id, authIdentities.userId))
+      .where(and(eq(authIdentities.provider, provider), eq(authIdentities.subject, subject)))
+      .limit(1);
+    return row?.user;
+  }
+
   private async revokeAllRefreshTokens(userId: string, db: AuthDb = this.db): Promise<void> {
     await db
       .update(refreshTokens)
@@ -231,6 +383,52 @@ export class AuthService {
       return payload;
     } catch (error) {
       if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException();
+    }
+  }
+
+  private async verifyOnboarding(token: string): Promise<OnboardingTokenPayload> {
+    try {
+      const payload = await this.jwt.verifyAsync<OnboardingTokenPayload>(token, {
+        secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      });
+      if (
+        payload.typ !== ONBOARDING_TOKEN_TYPE ||
+        !payload.provider ||
+        !payload.subject ||
+        !payload.email
+      ) {
+        throw new UnauthorizedException();
+      }
+      return payload;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException();
+    }
+  }
+
+  private async verifyGoogleIdToken(idToken: string): Promise<{ sub: string; email: string }> {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    if (!clientId) {
+      throw new ServiceUnavailableException('Google login is not configured');
+    }
+
+    try {
+      const ticket = await new OAuth2Client(clientId).verifyIdToken({
+        idToken,
+        audience: clientId,
+      });
+      const payload = ticket.getPayload();
+      if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+        throw new UnauthorizedException();
+      }
+      return { sub: payload.sub, email: payload.email.toLowerCase() };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException || error instanceof UnauthorizedException) {
         throw error;
       }
       throw new UnauthorizedException();
