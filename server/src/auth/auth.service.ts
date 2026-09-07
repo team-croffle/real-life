@@ -1,31 +1,48 @@
-import { createHash, randomInt } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 
-import type { AuthProvider, GoogleAuthResult, JobClass, LoginResult, User } from '@nest-vue/shared';
+import type {
+  AuthProvider,
+  GoogleAuthResult,
+  JobClass,
+  LoginResult,
+  RegisterResult,
+  User,
+} from '@nest-vue/shared';
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import { OAuth2Client } from 'google-auth-library';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
-import { type UserRow, authIdentities, refreshTokens, users } from '../database/schema';
+import {
+  type UserRow,
+  authIdentities,
+  emailVerificationTokens,
+  refreshTokens,
+  users,
+} from '../database/schema';
 import {
   ACCESS_TOKEN_EXPIRES,
   ACCESS_TOKEN_TYPE,
+  EMAIL_VERIFY_EXPIRES,
   ONBOARDING_TOKEN_EXPIRES,
   ONBOARDING_TOKEN_TYPE,
   REFRESH_TOKEN_EXPIRES,
   REFRESH_TOKEN_TYPE,
 } from './auth.constants';
 import type { OnboardingTokenPayload, RefreshTokenPayload } from './auth.types';
+import { MailService } from './mail.service';
 
 const PASSWORD_ROUNDS = 10;
 const TAG_ATTEMPTS = 8;
@@ -36,10 +53,13 @@ type AuthDb = Pick<DrizzleDb, 'insert' | 'update' | 'select' | 'delete'>;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {}
 
   async register(input: {
@@ -47,7 +67,14 @@ export class AuthService {
     password: string;
     nickname: string;
     jobClass: JobClass;
-  }): Promise<LoginResult> {
+  }): Promise<RegisterResult> {
+    if (
+      this.config.get<string>('NODE_ENV') === 'production' &&
+      (!this.config.get<string>('SMTP_USER') || !this.config.get<string>('SMTP_PASS'))
+    ) {
+      throw new ServiceUnavailableException('Email sending is not configured');
+    }
+
     const email = input.email.toLowerCase();
     const existing = await this.findByEmail(email);
     if (existing) {
@@ -61,10 +88,55 @@ export class AuthService {
       passwordHash,
       nickname: input.nickname,
       jobClass: input.jobClass,
-      emailVerifiedAt: new Date(),
     });
 
-    return this.issueLogin(row);
+    const { token, mailed } = await this.sendVerificationEmail(row);
+    return {
+      email: row.email,
+      needsEmailVerification: true,
+      ...(mailed === 'dev-token' ? { devVerifyToken: token } : {}),
+    };
+  }
+
+  async verifyEmail(token: string): Promise<LoginResult> {
+    const tokenHash = hashToken(token);
+    const now = new Date();
+
+    const result = await this.db.transaction(async (tx) => {
+      const [consumed] = await tx
+        .delete(emailVerificationTokens)
+        .where(
+          and(
+            eq(emailVerificationTokens.tokenHash, tokenHash),
+            gt(emailVerificationTokens.expiresAt, now),
+          ),
+        )
+        .returning({ userId: emailVerificationTokens.userId });
+
+      if (!consumed) {
+        return { ok: false as const };
+      }
+
+      const user = await this.markEmailVerified(consumed.userId, false, tx);
+      return { ok: true as const, login: await this.issueLogin(user, tx) };
+    });
+
+    if (!result.ok) {
+      throw new UnauthorizedException();
+    }
+
+    return result.login;
+  }
+
+  async resendVerification(email: string): Promise<void> {
+    const row = await this.findByEmail(email.toLowerCase());
+    if (!row?.passwordHash || row.emailVerifiedAt) {
+      return;
+    }
+    const { mailed } = await this.sendVerificationEmail(row);
+    if (mailed === 'queued') {
+      throw new ServiceUnavailableException('Email sending failed');
+    }
   }
 
   async login(input: { email: string; password: string }): Promise<LoginResult> {
@@ -238,6 +310,9 @@ export class AuthService {
   }
 
   private async issueLogin(row: UserRow, db: AuthDb = this.db): Promise<LoginResult> {
+    if (!row.emailVerifiedAt) {
+      throw new ForbiddenException('Email not verified');
+    }
     const accessSecret = this.config.getOrThrow<string>('JWT_ACCESS_SECRET');
     const refreshSecret = this.config.getOrThrow<string>('JWT_REFRESH_SECRET');
 
@@ -322,6 +397,30 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return row;
+  }
+
+  private async sendVerificationEmail(
+    row: UserRow,
+  ): Promise<{ token: string; mailed: 'sent' | 'dev-token' | 'queued' }> {
+    await this.db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, row.id));
+    const token = randomBytes(32).toString('base64url');
+    await this.db.insert(emailVerificationTokens).values({
+      userId: row.id,
+      tokenHash: hashToken(token),
+      expiresAt: expiresAtFromTtl(EMAIL_VERIFY_EXPIRES),
+    });
+    const web = (
+      this.config.get<string>('WEB_ORIGIN') ??
+      this.config.get<string>('CORS_ORIGIN', 'http://localhost:5173')
+    ).replace(/\/$/, '');
+    const verifyUrl = `${web}/verify-email?token=${encodeURIComponent(token)}`;
+    try {
+      const skipped = await this.mail.sendEmailVerification(row.email, verifyUrl);
+      return { token, mailed: skipped ? 'dev-token' : 'sent' };
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Verification email send failed');
+      return { token, mailed: 'queued' };
+    }
   }
 
   private async linkIdentity(

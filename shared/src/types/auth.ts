@@ -14,6 +14,21 @@ export interface RegisterPayload {
   jobClass: JobClass;
 }
 
+export interface RegisterResult {
+  email: string;
+  needsEmailVerification: true;
+  /** development + SMTP 없음일 때만. 로그에 링크를 남기지 않는다. */
+  devVerifyToken?: string;
+}
+
+export interface VerifyEmailPayload {
+  token: string;
+}
+
+export interface ResendVerificationPayload {
+  email: string;
+}
+
 export interface LoginPayload {
   email: string;
   password: string;
