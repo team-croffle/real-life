@@ -30,4 +30,19 @@ export interface LogoutPayload {
 export interface WithdrawPayload {
   confirm: true;
   password?: string;
+  idToken?: string;
+}
+
+export interface GoogleAuthPayload {
+  idToken: string;
+}
+
+export type GoogleAuthResult =
+  | ({ needsOnboarding: false } & LoginResult)
+  | { needsOnboarding: true; onboardingToken: string };
+
+export interface GoogleOnboardingPayload {
+  onboardingToken: string;
+  nickname: string;
+  jobClass: JobClass;
 }

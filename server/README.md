@@ -32,6 +32,7 @@ pnpm docker:dev
 | `NODE_ENV`           | X    | -      | `development` / `production`          |
 | `JWT_ACCESS_SECRET`  | O    | -      | Access JWT 서명 키                    |
 | `JWT_REFRESH_SECRET` | O    | -      | Refresh JWT 서명 키                   |
+| `GOOGLE_CLIENT_ID`   | X    | -      | 없으면 Google 로그인은 비활성         |
 
 ### MinIO (S3 호환 오브젝트 스토리지)
 
@@ -69,6 +70,7 @@ DATABASE_POOL_MAX=10
 
 JWT_ACCESS_SECRET=change-me-access
 JWT_REFRESH_SECRET=change-me-refresh
+GOOGLE_CLIENT_ID=
 
 S3_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY_ID=minioadmin
@@ -115,12 +117,14 @@ pnpm --filter @nest-vue/server test:e2e   # e2e (test/**/*.e2e-spec.ts)
 
 ## API
 
-| 메서드 | 경로                 | 설명                                                                          |
-| ------ | -------------------- | ----------------------------------------------------------------------------- |
-| GET    | `/api/health`        | 헬스체크                                                                      |
-| POST   | `/api/auth/register` | 이메일 가입. 로그인 토큰 발급                                                 |
-| POST   | `/api/auth/login`    | 이메일 로그인                                                                 |
-| POST   | `/api/auth/refresh`  | Access/Refresh 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화 |
-| POST   | `/api/auth/logout`   | 해당 refresh 폐기. 그 sid의 access도 즉시 무효                                |
-| GET    | `/api/auth/me`       | 현재 유저 (Bearer access)                                                     |
-| DELETE | `/api/auth/me`       | 회원 탈퇴. password 필요                                                      |
+| 메서드 | 경로                          | 설명                                                                                    |
+| ------ | ----------------------------- | --------------------------------------------------------------------------------------- |
+| GET    | `/api/health`                 | 헬스체크                                                                                |
+| POST   | `/api/auth/register`          | 이메일 가입. 로그인 토큰 발급                                                           |
+| POST   | `/api/auth/login`             | 이메일 로그인                                                                           |
+| POST   | `/api/auth/refresh`           | Access/Refresh 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화           |
+| POST   | `/api/auth/logout`            | 해당 refresh 폐기. 그 sid의 access도 즉시 무효                                          |
+| GET    | `/api/auth/me`                | 현재 유저 (Bearer access)                                                               |
+| DELETE | `/api/auth/me`                | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                          |
+| POST   | `/api/auth/google`            | Google ID 토큰. 같은 이메일의 기존 계정이면 identity 연결 후 로그인. 신규는 온보딩 토큰 |
+| POST   | `/api/auth/google/onboarding` | 닉네임·직업군 설정 후 로그인 토큰                                                       |

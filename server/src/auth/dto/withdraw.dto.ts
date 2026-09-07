@@ -9,4 +9,9 @@ export class WithdrawDto implements WithdrawPayload {
   @IsString()
   @MinLength(8)
   password?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  idToken?: string;
 }
