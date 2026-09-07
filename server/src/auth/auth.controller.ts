@@ -1,4 +1,10 @@
-import type { ApiResponse, GoogleAuthResult, LoginResult, User } from '@nest-vue/shared';
+import type {
+  ApiResponse,
+  GoogleAuthResult,
+  LoginResult,
+  RegisterResult,
+  User,
+} from '@nest-vue/shared';
 import {
   Body,
   Controller,
@@ -19,6 +25,8 @@ import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -27,8 +35,20 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterDto): Promise<ApiResponse<LoginResult>> {
+  async register(@Body() dto: RegisterDto): Promise<ApiResponse<RegisterResult>> {
     return { data: await this.authService.register(dto) };
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<ApiResponse<LoginResult>> {
+    return { data: await this.authService.verifyEmail(dto.token) };
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resendVerification(@Body() dto: ResendVerificationDto): Promise<void> {
+    await this.authService.resendVerification(dto.email);
   }
 
   @Post('login')

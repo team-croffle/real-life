@@ -23,16 +23,26 @@ pnpm docker:dev
 
 아래 값을 `server/.env` 에 채운다. 새 변수를 추가하면 `.env.example` 을 같은 커밋에서 맞춘다.
 
-| 변수                 | 필수 | 기본값 | 설명                                  |
-| -------------------- | ---- | ------ | ------------------------------------- |
-| `DATABASE_URL`       | O    | -      | `postgresql://user:pass@host:5432/db` |
-| `PORT`               | X    | `3000` | HTTP 포트                             |
-| `CORS_ORIGIN`        | X    | `*`    | 허용 오리진                           |
-| `DATABASE_POOL_MAX`  | X    | `10`   | pg 커넥션 풀 최대 크기                |
-| `NODE_ENV`           | X    | -      | `development` / `production`          |
-| `JWT_ACCESS_SECRET`  | O    | -      | Access JWT 서명 키                    |
-| `JWT_REFRESH_SECRET` | O    | -      | Refresh JWT 서명 키                   |
-| `GOOGLE_CLIENT_ID`   | X    | -      | 없으면 Google 로그인은 비활성         |
+| 변수                 | 필수 | 기본값           | 설명                                           |
+| -------------------- | ---- | ---------------- | ---------------------------------------------- |
+| `DATABASE_URL`       | O    | -                | `postgresql://user:pass@host:5432/db`          |
+| `PORT`               | X    | `3000`           | HTTP 포트                                      |
+| `CORS_ORIGIN`        | X    | `*`              | 허용 오리진                                    |
+| `DATABASE_POOL_MAX`  | X    | `10`             | pg 커넥션 풀 최대 크기                         |
+| `NODE_ENV`           | X    | -                | `development` / `production`                   |
+| `JWT_ACCESS_SECRET`  | O    | -                | Access JWT 서명 키                             |
+| `JWT_REFRESH_SECRET` | O    | -                | Refresh JWT 서명 키                            |
+| `GOOGLE_CLIENT_ID`   | X    | -                | 없으면 Google 로그인은 비활성                  |
+| `SMTP_HOST`          | X    | `smtp.gmail.com` | Gmail SMTP 호스트                              |
+| `SMTP_PORT`          | X    | `587`            | `587`은 STARTTLS, `465`는 SSL                  |
+| `SMTP_USER`          | X    | -                | Gmail 주소. 비밀번호 가입 메일 발송            |
+| `SMTP_PASS`          | X    | -                | Gmail **앱 비밀번호** (계정 비밀번호 아님)     |
+| `MAIL_FROM`          | X    | `SMTP_USER`      | From 헤더. 비우면 SMTP_USER                    |
+| `WEB_ORIGIN`         | X    | `CORS_ORIGIN`    | 인증 메일 링크 베이스 (`/verify-email?token=`) |
+
+Access JWT 만료는 코드 상수 `ACCESS_TOKEN_EXPIRES` (**15분**)다. Access payload의 `sid`는 `refresh_tokens` 행 id다. 가드는 그 행이 폐기·만료되지 않았고 유저가 남아 있는지 확인한다. 로그아웃·탈퇴·refresh 회전 후에는 해당 access도 즉시 401이다.
+
+Gmail SMTP: Google 계정에서 2단계 인증을 켠 뒤 [앱 비밀번호](https://myaccount.google.com/apppasswords)를 발급한다. 16자리를 공백 없이 `SMTP_PASS`에 넣고 `SMTP_USER`에 그 Gmail을 넣는다. `production`에서 SMTP가 없으면 가입 전에 503이다. SMTP가 있는데 발송만 실패하면 가입은 되고 재발송하면 된다. `development`에서 SMTP가 비어 있으면 메일 대신 가입 응답의 `devVerifyToken`으로 POST `/auth/verify-email` 한다 (로그에 링크를 안 남긴다).
 
 ### MinIO (S3 호환 오브젝트 스토리지)
 
@@ -72,6 +82,13 @@ JWT_ACCESS_SECRET=change-me-access
 JWT_REFRESH_SECRET=change-me-refresh
 GOOGLE_CLIENT_ID=
 
+SMTP_USER=
+SMTP_PASS=
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+MAIL_FROM=
+WEB_ORIGIN=http://localhost:5173
+
 S3_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY_ID=minioadmin
 S3_SECRET_ACCESS_KEY=minioadmin
@@ -83,8 +100,6 @@ S3_PUBLIC_URL=http://localhost:9000/nest-vue
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.7-flash
 ```
-
-Access JWT 만료는 코드 상수 `ACCESS_TOKEN_EXPIRES` (**15분**)다. Access payload의 `sid`는 `refresh_tokens` 행 id다. 가드는 그 행이 폐기·만료되지 않았고 유저가 남아 있는지 확인한다. 로그아웃·탈퇴·refresh 회전 후에는 해당 access도 즉시 401이다.
 
 ## Drizzle
 
@@ -117,14 +132,16 @@ pnpm --filter @nest-vue/server test:e2e   # e2e (test/**/*.e2e-spec.ts)
 
 ## API
 
-| 메서드 | 경로                          | 설명                                                                                    |
-| ------ | ----------------------------- | --------------------------------------------------------------------------------------- |
-| GET    | `/api/health`                 | 헬스체크                                                                                |
-| POST   | `/api/auth/register`          | 이메일 가입. 로그인 토큰 발급                                                           |
-| POST   | `/api/auth/login`             | 이메일 로그인                                                                           |
-| POST   | `/api/auth/refresh`           | Access/Refresh 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화           |
-| POST   | `/api/auth/logout`            | 해당 refresh 폐기. 그 sid의 access도 즉시 무효                                          |
-| GET    | `/api/auth/me`                | 현재 유저 (Bearer access)                                                               |
-| DELETE | `/api/auth/me`                | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                          |
-| POST   | `/api/auth/google`            | Google ID 토큰. 같은 이메일의 기존 계정이면 identity 연결 후 로그인. 신규는 온보딩 토큰 |
-| POST   | `/api/auth/google/onboarding` | 닉네임·직업군 설정 후 로그인 토큰                                                       |
+| 메서드 | 경로                            | 설명                                                                                    |
+| ------ | ------------------------------- | --------------------------------------------------------------------------------------- |
+| GET    | `/api/health`                   | 헬스체크                                                                                |
+| POST   | `/api/auth/register`            | 이메일 가입. 토큰 없음. 인증 메일 발송                                                  |
+| POST   | `/api/auth/verify-email`        | body `{ token }`. 인증 후 로그인 토큰. GET으로는 소비하지 않음                          |
+| POST   | `/api/auth/resend-verification` | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                                     |
+| POST   | `/api/auth/login`               | 이메일 로그인. 미인증이면 403                                                           |
+| POST   | `/api/auth/refresh`             | Access/Refresh 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화           |
+| POST   | `/api/auth/logout`              | 해당 refresh 폐기. 그 sid의 access도 즉시 무효                                          |
+| GET    | `/api/auth/me`                  | 현재 유저 (Bearer access)                                                               |
+| DELETE | `/api/auth/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                          |
+| POST   | `/api/auth/google`              | Google ID 토큰. 같은 이메일의 기존 계정이면 identity 연결 후 로그인. 신규는 온보딩 토큰 |
+| POST   | `/api/auth/google/onboarding`   | 닉네임·직업군 설정 후 로그인 토큰                                                       |
