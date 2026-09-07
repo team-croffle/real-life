@@ -1,0 +1,11 @@
+server:
+  - changed-files:
+      - any-glob-to-any-file: 'server/**'
+
+web:
+  - changed-files:
+      - any-glob-to-any-file: 'web/**'
+
+shared:
+  - changed-files:
+      - any-glob-to-any-file: 'shared/**'
