@@ -16,7 +16,7 @@ audit:
 
 # 워크스페이스 전역에서 동일 버전을 강제할 패키지
 catalog:
-  typescript: 6.0.3
+  typescript: 7.0.2
 
 minimumReleaseAgeExclude:
   - '@oxfmt/binding-android-arm-eabi@0.66.0'
