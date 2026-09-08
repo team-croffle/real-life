@@ -55,17 +55,17 @@ pnpm dev:web
 
 ## 주요 스크립트
 
-| 명령어 | 설명 |
-| --- | --- |
-| `pnpm dev` | server + web 동시 개발 서버 실행 |
-| `pnpm build` | server + web 프로덕션 빌드 |
-| `pnpm typecheck` | 전체 워크스페이스 타입체크 |
-| `pnpm test` | 서버 단위 테스트 (Jest) |
-| `pnpm lint` / `pnpm lint:fix` | oxlint |
-| `pnpm format` / `pnpm format:check` | oxfmt |
-| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle 마이그레이션 관리 |
-| `pnpm docker:dev` / `docker:dev:down` | 개발용 Docker Compose |
-| `pnpm docker:prod` | 프로덕션 Docker Compose 빌드/기동 |
+| 명령어                                                      | 설명                              |
+| ----------------------------------------------------------- | --------------------------------- |
+| `pnpm dev`                                                  | server + web 동시 개발 서버 실행  |
+| `pnpm build`                                                | server + web 프로덕션 빌드        |
+| `pnpm typecheck`                                            | 전체 워크스페이스 타입체크        |
+| `pnpm test`                                                 | 서버 단위 테스트 (Jest)           |
+| `pnpm lint` / `pnpm lint:fix`                               | oxlint                            |
+| `pnpm format` / `pnpm format:check`                         | oxfmt                             |
+| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle 마이그레이션 관리         |
+| `pnpm docker:dev` / `docker:dev:down`                       | 개발용 Docker Compose             |
+| `pnpm docker:prod`                                          | 프로덕션 Docker Compose 빌드/기동 |
 
 ## 더 알아보기
 
