@@ -10,6 +10,10 @@ allowBuilds:
   protobufjs: true
   unrs-resolver: true
 
+audit:
+  ignore:
+    - GHSA-67mh-4wv8-2f99
+
 # 워크스페이스 전역에서 동일 버전을 강제할 패키지
 catalog:
   typescript: 6.0.3
