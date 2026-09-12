@@ -14,6 +14,10 @@ audit:
   ignore:
     - GHSA-67mh-4wv8-2f99
 
+# Nest platform-express가 끌어오는 multer 2.2.0 DoS 권고. 2.3.0이 패치다.
+overrides:
+  multer: 2.3.0
+
 # 워크스페이스 전역에서 동일 버전을 강제할 패키지
 catalog:
   typescript: 6.0.3
