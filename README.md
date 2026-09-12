@@ -4,7 +4,7 @@ NestJS 12 + Vue 3 기반 pnpm 모노레포. `server`(API) / `web`(클라이언�
 
 ## 기술 스택
 
-- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), `@nestjs/jwt`, bcryptjs, google-auth-library, nodemailer, AWS SDK v3(S3 호환, MinIO), `@google/genai`(Gemini API)
+- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), `@nestjs/jwt`, `@nestjs/passport`, passport-jwt, bcryptjs, google-auth-library, nodemailer, AWS SDK v3(S3 호환, MinIO), `@google/genai`(Gemini API)
 - **클라이언트**: Vue 3, Vite 8, Vue Router 5(파일 기반 라우팅), vue-i18n, Tailwind CSS v4
 - **공용**: TypeScript(`shared` 워크스페이스로 타입/상수 단일 소스화)
 - **툴링**: pnpm workspace, oxlint/oxfmt, husky + lint-staged, Docker Compose(Postgres, MinIO)
