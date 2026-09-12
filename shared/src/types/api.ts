@@ -1,9 +1,3 @@
-/** 모든 성공 응답의 공통 봉투(envelope) */
-export interface ApiResponse<T> {
-  data: T;
-  meta?: Record<string, unknown>;
-}
-
 /** 페이지네이션 요청 파라미터 */
 export interface PaginationQuery {
   page?: number;

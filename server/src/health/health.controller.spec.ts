@@ -19,7 +19,7 @@ describe('HealthController', () => {
   it('returns an ok health payload', async () => {
     const result = await controller.check();
 
-    expect(result.data.status).toBe('ok');
-    expect(result.data.database).toBe('ok');
+    expect(result.status).toBe('ok');
+    expect(result.database).toBe('ok');
   });
 });

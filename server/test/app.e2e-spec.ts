@@ -30,6 +30,6 @@ describe('Health (e2e)', () => {
   it(`GET /${API_PREFIX}/health`, async () => {
     const response = await request(app.getHttpServer()).get(`/${API_PREFIX}/health`).expect(200);
 
-    expect(response.body.data.status).toBe('ok');
+    expect(response.body.status).toBe('ok');
   });
 });
