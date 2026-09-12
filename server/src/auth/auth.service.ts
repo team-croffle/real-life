@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 
 import type {
   AuthProvider,
@@ -21,7 +21,6 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { and, eq, gt, isNull } from 'drizzle-orm';
-import { OAuth2Client } from 'google-auth-library';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
@@ -41,8 +40,9 @@ import {
   REFRESH_TOKEN_EXPIRES,
   REFRESH_TOKEN_TYPE,
 } from './auth.constants';
-import type { OnboardingTokenPayload, RefreshTokenPayload } from './auth.types';
+import type { OnboardingTokenPayload } from './auth.types';
 import { MailService } from './mail.service';
+import { TokenService } from './token.service';
 
 const PASSWORD_ROUNDS = 10;
 const TAG_ATTEMPTS = 8;
@@ -60,6 +60,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly mail: MailService,
+    private readonly tokens: TokenService,
   ) {}
 
   async register(input: {
@@ -99,7 +100,7 @@ export class AuthService {
   }
 
   async verifyEmail(token: string): Promise<LoginResult> {
-    const tokenHash = hashToken(token);
+    const tokenHash = this.tokens.hashToken(token);
     const now = new Date();
 
     const result = await this.db.transaction(async (tx) => {
@@ -151,8 +152,8 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string): Promise<LoginResult> {
-    const payload = await this.verifyRefresh(refreshToken);
-    const tokenHash = hashToken(refreshToken);
+    const payload = await this.tokens.verifyRefresh(refreshToken);
+    const tokenHash = this.tokens.hashToken(refreshToken);
 
     const result = await this.db.transaction(async (tx) => {
       const [row] = await tx
@@ -189,8 +190,8 @@ export class AuthService {
 
   /** Revokes this refresh row. Access JWTs whose sid points at it fail the guard. */
   async logout(refreshToken: string): Promise<void> {
-    const payload = await this.verifyRefresh(refreshToken);
-    const tokenHash = hashToken(refreshToken);
+    const payload = await this.tokens.verifyRefresh(refreshToken);
+    const tokenHash = this.tokens.hashToken(refreshToken);
     const [row] = await this.db
       .select()
       .from(refreshTokens)
@@ -228,7 +229,7 @@ export class AuthService {
       if (!google || !input.idToken) {
         throw new UnauthorizedException();
       }
-      const profile = await this.verifyGoogleIdToken(input.idToken);
+      const profile = await this.tokens.verifyGoogleIdToken(input.idToken);
       if (profile.sub !== google.subject) {
         throw new UnauthorizedException();
       }
@@ -238,7 +239,7 @@ export class AuthService {
   }
 
   async google(idToken: string): Promise<GoogleAuthResult> {
-    const profile = await this.verifyGoogleIdToken(idToken);
+    const profile = await this.tokens.verifyGoogleIdToken(idToken);
     const existing = await this.findUserByIdentity('google', profile.sub);
     if (existing) {
       const ready = existing.emailVerifiedAt
@@ -250,12 +251,7 @@ export class AuthService {
 
     const byEmail = await this.findByEmail(profile.email);
     if (byEmail) {
-      if (await this.findIdentity(byEmail.id, 'google')) {
-        throw new ConflictException('Email already registered');
-      }
-      await this.linkIdentity(byEmail.id, 'google', profile.sub);
-      const claimed = await this.markEmailVerified(byEmail.id, true);
-      const login = await this.issueLogin(claimed);
+      const login = await this.linkEmailAndLogin(byEmail, 'google', profile.sub);
       return { needsOnboarding: false, ...login };
     }
 
@@ -280,18 +276,13 @@ export class AuthService {
     nickname: string;
     jobClass: JobClass;
   }): Promise<LoginResult> {
-    const payload = await this.verifyOnboarding(input.onboardingToken);
+    const payload = await this.tokens.verifyOnboarding(input.onboardingToken);
     if (await this.findUserByIdentity(payload.provider, payload.subject)) {
       throw new ConflictException('Google account already registered');
     }
     const existingEmail = await this.findByEmail(payload.email);
     if (existingEmail) {
-      if (await this.findIdentity(existingEmail.id, payload.provider)) {
-        throw new ConflictException('Email already registered');
-      }
-      await this.linkIdentity(existingEmail.id, payload.provider, payload.subject);
-      const claimed = await this.markEmailVerified(existingEmail.id, true);
-      return this.issueLogin(claimed);
+      return this.linkEmailAndLogin(existingEmail, payload.provider, payload.subject);
     }
 
     const created = await this.insertUser({
@@ -325,8 +316,8 @@ export class AuthService {
       .insert(refreshTokens)
       .values({
         userId: row.id,
-        tokenHash: hashToken(refreshToken),
-        expiresAt: expiresAtFromTtl(REFRESH_TOKEN_EXPIRES),
+        tokenHash: this.tokens.hashToken(refreshToken),
+        expiresAt: this.tokens.expiresAtFromTtl(REFRESH_TOKEN_EXPIRES),
       })
       .returning({ id: refreshTokens.id });
 
@@ -406,8 +397,8 @@ export class AuthService {
     const token = randomBytes(32).toString('base64url');
     await this.db.insert(emailVerificationTokens).values({
       userId: row.id,
-      tokenHash: hashToken(token),
-      expiresAt: expiresAtFromTtl(EMAIL_VERIFY_EXPIRES),
+      tokenHash: this.tokens.hashToken(token),
+      expiresAt: this.tokens.expiresAtFromTtl(EMAIL_VERIFY_EXPIRES),
     });
     const web = (
       this.config.get<string>('WEB_ORIGIN') ??
@@ -421,6 +412,19 @@ export class AuthService {
       this.logger.error(error instanceof Error ? error.message : 'Verification email send failed');
       return { token, mailed: 'queued' };
     }
+  }
+
+  private async linkEmailAndLogin(
+    user: UserRow,
+    provider: AuthProvider,
+    subject: string,
+  ): Promise<LoginResult> {
+    if (await this.findIdentity(user.id, provider)) {
+      throw new ConflictException('Email already registered');
+    }
+    await this.linkIdentity(user.id, provider, subject);
+    const claimed = await this.markEmailVerified(user.id, true);
+    return this.issueLogin(claimed);
   }
 
   private async linkIdentity(
@@ -471,69 +475,6 @@ export class AuthService {
       .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
   }
 
-  private async verifyRefresh(token: string): Promise<RefreshTokenPayload> {
-    try {
-      const payload = await this.jwt.verifyAsync<RefreshTokenPayload>(token, {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      });
-      if (payload.typ !== REFRESH_TOKEN_TYPE || !payload.sub) {
-        throw new UnauthorizedException();
-      }
-      return payload;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException();
-    }
-  }
-
-  private async verifyOnboarding(token: string): Promise<OnboardingTokenPayload> {
-    try {
-      const payload = await this.jwt.verifyAsync<OnboardingTokenPayload>(token, {
-        secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      });
-      if (
-        payload.typ !== ONBOARDING_TOKEN_TYPE ||
-        !payload.provider ||
-        !payload.subject ||
-        !payload.email
-      ) {
-        throw new UnauthorizedException();
-      }
-      return payload;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException();
-    }
-  }
-
-  private async verifyGoogleIdToken(idToken: string): Promise<{ sub: string; email: string }> {
-    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
-    if (!clientId) {
-      throw new ServiceUnavailableException('Google login is not configured');
-    }
-
-    try {
-      const ticket = await new OAuth2Client(clientId).verifyIdToken({
-        idToken,
-        audience: clientId,
-      });
-      const payload = ticket.getPayload();
-      if (!payload?.sub || !payload.email || payload.email_verified !== true) {
-        throw new UnauthorizedException();
-      }
-      return { sub: payload.sub, email: payload.email.toLowerCase() };
-    } catch (error) {
-      if (error instanceof ServiceUnavailableException || error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException();
-    }
-  }
-
   private async getUserRow(id: string, db: AuthDb = this.db): Promise<UserRow> {
     const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
     if (!row) {
@@ -560,28 +501,6 @@ function toUser(row: UserRow): User {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
-}
-
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
-
-function expiresAtFromTtl(ttl: string): Date {
-  const match = /^(\d+)([smhd])$/.exec(ttl);
-  if (!match) {
-    throw new Error(`Invalid token TTL: ${ttl}`);
-  }
-  const amount = Number(match[1]);
-  const unit = match[2];
-  const ms =
-    unit === 's'
-      ? amount * 1000
-      : unit === 'm'
-        ? amount * 60_000
-        : unit === 'h'
-          ? amount * 3_600_000
-          : amount * 86_400_000;
-  return new Date(Date.now() + ms);
 }
 
 function isUniqueViolation(error: unknown): boolean {
