@@ -1,10 +1,4 @@
-import type {
-  ApiResponse,
-  GoogleAuthResult,
-  LoginResult,
-  RegisterResult,
-  User,
-} from '@nest-vue/shared';
+import type { GoogleAuthResult, LoginResult, RegisterResult, User } from '@nest-vue/shared';
 import {
   Body,
   Controller,
@@ -35,14 +29,14 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterDto): Promise<ApiResponse<RegisterResult>> {
-    return { data: await this.authService.register(dto) };
+  register(@Body() dto: RegisterDto): Promise<RegisterResult> {
+    return this.authService.register(dto);
   }
 
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<ApiResponse<LoginResult>> {
-    return { data: await this.authService.verifyEmail(dto.token) };
+  verifyEmail(@Body() dto: VerifyEmailDto): Promise<LoginResult> {
+    return this.authService.verifyEmail(dto.token);
   }
 
   @Post('resend-verification')
@@ -53,14 +47,14 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto): Promise<ApiResponse<LoginResult>> {
-    return { data: await this.authService.login(dto) };
+  login(@Body() dto: LoginDto): Promise<LoginResult> {
+    return this.authService.login(dto);
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body() dto: RefreshDto): Promise<ApiResponse<LoginResult>> {
-    return { data: await this.authService.refresh(dto.refreshToken) };
+  refresh(@Body() dto: RefreshDto): Promise<LoginResult> {
+    return this.authService.refresh(dto.refreshToken);
   }
 
   /** Revokes this refresh row; access JWTs with that sid fail immediately. */
@@ -72,8 +66,8 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async me(@CurrentUser() user: RequestAuthUser): Promise<ApiResponse<User>> {
-    return { data: await this.authService.me(user.id) };
+  me(@CurrentUser() user: RequestAuthUser): Promise<User> {
+    return this.authService.me(user.id);
   }
 
   @Delete('me')
@@ -85,13 +79,13 @@ export class AuthController {
 
   @Post('google')
   @HttpCode(HttpStatus.OK)
-  async google(@Body() dto: GoogleAuthDto): Promise<ApiResponse<GoogleAuthResult>> {
-    return { data: await this.authService.google(dto.idToken) };
+  google(@Body() dto: GoogleAuthDto): Promise<GoogleAuthResult> {
+    return this.authService.google(dto.idToken);
   }
 
   @Post('google/onboarding')
   @HttpCode(HttpStatus.OK)
-  async googleOnboarding(@Body() dto: GoogleOnboardingDto): Promise<ApiResponse<LoginResult>> {
-    return { data: await this.authService.googleOnboarding(dto) };
+  googleOnboarding(@Body() dto: GoogleOnboardingDto): Promise<LoginResult> {
+    return this.authService.googleOnboarding(dto);
   }
 }

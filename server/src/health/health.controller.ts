@@ -1,4 +1,4 @@
-import type { ApiResponse, HealthCheck } from '@nest-vue/shared';
+import type { HealthCheck } from '@nest-vue/shared';
 import { Controller, Get } from '@nestjs/common';
 
 import { HealthService } from './health.service';
@@ -8,7 +8,7 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
-  async check(): Promise<ApiResponse<HealthCheck>> {
-    return { data: await this.healthService.check() };
+  check(): Promise<HealthCheck> {
+    return this.healthService.check();
   }
 }

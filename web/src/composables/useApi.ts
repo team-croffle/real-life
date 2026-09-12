@@ -1,4 +1,4 @@
-import type { ApiErrorResponse, ApiResponse } from '@nest-vue/shared';
+import type { ApiErrorResponse } from '@nest-vue/shared';
 import { ref, type Ref } from 'vue';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
@@ -13,7 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-/** ApiResponse<T> 봉투를 벗겨 T 만 돌려주는 fetch 래퍼 */
+/** JSON 본문을 T 로 돌려주는 fetch 래퍼. 204는 본문이 없다. */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
@@ -29,8 +29,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(response.status, message);
   }
 
-  const payload = (await response.json()) as ApiResponse<T>;
-  return payload.data;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
 }
 
 export interface UseApiResult<T> {
