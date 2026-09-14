@@ -13,6 +13,6 @@ import { TokenService } from './token.service';
   imports: [JwtModule.register({}), PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [AuthController],
   providers: [AuthService, TokenService, JwtStrategy, JwtAuthGuard, MailService],
-  exports: [AuthService, JwtAuthGuard, JwtModule],
+  exports: [AuthService, JwtAuthGuard, JwtModule, PassportModule],
 })
 export class AuthModule {}
