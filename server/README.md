@@ -132,16 +132,17 @@ pnpm --filter @nest-vue/server test:e2e   # e2e (test/**/*.e2e-spec.ts)
 
 ## API
 
-| 메서드 | 경로                            | 설명                                                                                    |
-| ------ | ------------------------------- | --------------------------------------------------------------------------------------- |
-| GET    | `/api/health`                   | 헬스체크                                                                                |
-| POST   | `/api/auth/register`            | 이메일 가입. 토큰 없음. 인증 메일 발송                                                  |
-| POST   | `/api/auth/verify-email`        | body `{ token }`. 인증 후 로그인 토큰. GET으로는 소비하지 않음                          |
-| POST   | `/api/auth/resend-verification` | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                                     |
-| POST   | `/api/auth/login`               | 이메일 로그인. 미인증이면 403                                                           |
-| POST   | `/api/auth/refresh`             | Access/Refresh 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화           |
-| POST   | `/api/auth/logout`              | 해당 refresh 폐기. 그 sid의 access도 즉시 무효                                          |
-| GET    | `/api/auth/me`                  | 현재 유저 (Bearer access)                                                               |
-| DELETE | `/api/auth/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                          |
-| POST   | `/api/auth/google`              | Google ID 토큰. 같은 이메일의 기존 계정이면 identity 연결 후 로그인. 신규는 온보딩 토큰 |
-| POST   | `/api/auth/google/onboarding`   | 닉네임·직업군 설정 후 로그인 토큰                                                       |
+| 메서드 | 경로                            | 설명                                                                                      |
+| ------ | ------------------------------- | ----------------------------------------------------------------------------------------- |
+| GET    | `/api/health`                   | 헬스체크                                                                                  |
+| POST   | `/api/auth/register`            | 이메일 가입. 토큰 없음. 인증 메일 발송                                                    |
+| POST   | `/api/auth/verify-email`        | body `{ token }`. 인증 후 로그인 토큰. GET으로는 소비하지 않음                            |
+| POST   | `/api/auth/resend-verification` | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                                       |
+| POST   | `/api/auth/login`               | 이메일 로그인. 미인증이면 403                                                             |
+| POST   | `/api/auth/refresh`             | Access/Refresh 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화             |
+| POST   | `/api/auth/logout`              | 해당 refresh 폐기. 그 sid의 access도 즉시 무효                                            |
+| GET    | `/api/auth/me`                  | 현재 유저 (Bearer access)                                                                 |
+| DELETE | `/api/auth/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                            |
+| POST   | `/api/auth/google`              | Google ID 토큰. 같은 이메일의 기존 계정이면 identity 연결 후 로그인. 신규는 온보딩 토큰   |
+| POST   | `/api/auth/google/onboarding`   | 닉네임·직업군 설정 후 로그인 토큰                                                         |
+| POST   | `/api/quests`                   | 퀘스트 등록 (Bearer access). 루틴 또는 마감. 골드·XP는 서버가 표로 계산하고 본문에만 넣음 |
