@@ -12,13 +12,14 @@ pnpm --filter @nest-vue/web preview
 
 ## 환경 변수
 
-`.env.example` 은 의도적으로 빈 파일이다. 필요한 값만 `web/.env` 에 채운다.
+`.env.example` 을 복사해 `web/.env` 에 값을 채운다.
 
-| 변수                    | 기본값                  | 설명                           |
-| ----------------------- | ----------------------- | ------------------------------ |
-| `VITE_PORT`             | `5173`                  | dev 서버 포트                  |
-| `VITE_API_PROXY_TARGET` | `http://localhost:3000` | dev 프록시 대상(NestJS)        |
-| `VITE_API_BASE_URL`     | `/api`                  | 클라이언트가 호출할 API 베이스 |
+| 변수                    | 기본값                  | 설명                                                      |
+| ----------------------- | ----------------------- | --------------------------------------------------------- |
+| `VITE_PORT`             | `5173`                  | dev 서버 포트                                             |
+| `VITE_API_PROXY_TARGET` | `http://localhost:3000` | dev 프록시 대상(NestJS)                                   |
+| `VITE_API_BASE_URL`     | `/api`                  | 클라이언트가 호출할 API 베이스                            |
+| `VITE_GOOGLE_CLIENT_ID` | -                       | Google Identity Services. 서버 `GOOGLE_CLIENT_ID` 와 동일 |
 
 예시:
 
@@ -26,6 +27,7 @@ pnpm --filter @nest-vue/web preview
 VITE_PORT=5173
 VITE_API_PROXY_TARGET=http://localhost:3000
 VITE_API_BASE_URL=/api
+VITE_GOOGLE_CLIENT_ID=
 ```
 
 ## 라우팅

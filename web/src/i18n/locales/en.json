@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "nest-vue",
-    "description": "NestJS + Vue 3 monorepo starter"
+    "title": "RealLife",
+    "description": "Turn daily routines into character growth."
   },
   "nav": {
     "home": "Home",
@@ -9,8 +9,8 @@
     "users": "Users"
   },
   "home": {
-    "heading": "Hello 👋",
-    "body": "A pnpm monorepo made of three workspaces: server, web and shared."
+    "heading": "Home",
+    "body": "Quest screens come next. For now this page is here so you can confirm the login loop."
   },
   "about": {
     "heading": "About this project",
@@ -18,5 +18,81 @@
   },
   "locale": {
     "label": "Language"
+  },
+  "brand": {
+    "name": "RealLife",
+    "headline1": "Live your day like a game,",
+    "headline2": "grow a character from your routines.",
+    "sub": "Turn health, study, and hobby routines into quests, and grow a little every day with AI-suggested main quests.",
+    "footer": "© RealLife · Croffle Team"
+  },
+  "auth": {
+    "or": "or",
+    "logout": "Log out",
+    "back": "Back",
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "nickname": "Nickname"
+    },
+    "login": {
+      "title": "Log in",
+      "subtitle": "Ready to keep growing your character?",
+      "submit": "Log in",
+      "google": "Continue with Google",
+      "switch": "Don't have an account?",
+      "switchAction": "Sign up"
+    },
+    "register": {
+      "title": "Sign up",
+      "subtitle": "A few details and we'll make your character.",
+      "submit": "Next",
+      "switch": "Already have an account?",
+      "switchAction": "Log in"
+    },
+    "job": {
+      "step": "STEP 2 / 2",
+      "title": "Choose a job class",
+      "subtitle": "Your job class changes rewards for some quest categories. You can change it later.",
+      "rewardHint": "Rewards for certain activities change with your job class.",
+      "submit": "Get started"
+    },
+    "jobs": {
+      "student": "Student",
+      "office_worker": "Office worker",
+      "freelancer": "Freelancer"
+    },
+    "welcome": {
+      "title": "Your character is ready!",
+      "subtitle": "Start your first journey as a {job}.",
+      "submit": "Enter RealLife"
+    },
+    "checkEmail": {
+      "title": "Check your email",
+      "subtitle": "We sent a verification link to {email}. Open it to create your character.",
+      "resend": "Resend verification email",
+      "resent": "Verification email sent again.",
+      "backToLogin": "Back to log in",
+      "devVerify": "Verify in development"
+    },
+    "verify": {
+      "title": "Email verification",
+      "loading": "Verifying your email…",
+      "missingToken": "This verification link is not valid.",
+      "invalid": "This verification link expired or was already used."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again shortly.",
+      "invalidEmail": "Enter a valid email address.",
+      "invalidPassword": "Password must be at least 8 characters.",
+      "invalidNickname": "Nickname must be 1–20 characters and cannot include #.",
+      "unauthorized": "Email or password is incorrect.",
+      "emailTaken": "This email is already registered.",
+      "socialTaken": "This social account is already registered.",
+      "emailNotVerified": "Email verification is not finished yet.",
+      "googleUnavailable": "Google login is not available right now.",
+      "googleCancelled": "Google login was not completed.",
+      "mailUnavailable": "Could not send the verification email."
+    }
   }
 }
