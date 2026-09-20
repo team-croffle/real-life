@@ -16,10 +16,7 @@ const current = computed({
 <template>
   <label class="flex items-center gap-2 text-sm">
     <span class="sr-only">{{ t('locale.label') }}</span>
-    <select
-      v-model="current"
-      class="rounded-md border border-slate-300 bg-transparent px-2 py-1 dark:border-slate-700"
-    >
+    <select v-model="current" class="border-border rounded-md border bg-transparent px-2 py-1">
       <option v-for="value in SUPPORTED_LOCALES" :key="value" :value="value">
         {{ value.toUpperCase() }}
       </option>
