@@ -35,6 +35,11 @@
       "password": "Password",
       "nickname": "Nickname"
     },
+    "placeholders": {
+      "nickname": "e.g. Routiner",
+      "email": "you{'@'}example.com",
+      "password": "8+ characters"
+    },
     "login": {
       "title": "Log in",
       "subtitle": "Ready to keep growing your character?",
@@ -92,6 +97,8 @@
       "emailNotVerified": "Email verification is not finished yet.",
       "googleUnavailable": "Google login is not available right now.",
       "googleCancelled": "Google login was not completed.",
+      "googleFailed": "Google login failed.",
+      "onboardingExpired": "That sign-up step expired. Please sign in with Google again.",
       "mailUnavailable": "Could not send the verification email."
     }
   }

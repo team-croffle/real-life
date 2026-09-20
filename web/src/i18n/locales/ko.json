@@ -35,6 +35,11 @@
       "password": "비밀번호",
       "nickname": "닉네임"
     },
+    "placeholders": {
+      "nickname": "예: 루틴러",
+      "email": "email{'@'}example.com",
+      "password": "8자 이상"
+    },
     "login": {
       "title": "로그인",
       "subtitle": "캐릭터를 이어서 키워볼까요?",
@@ -92,6 +97,8 @@
       "emailNotVerified": "이메일 인증이 아직 끝나지 않았어요.",
       "googleUnavailable": "구글 로그인을 지금은 쓸 수 없어요.",
       "googleCancelled": "구글 로그인을 완료하지 않았어요.",
+      "googleFailed": "구글 로그인에 실패했어요.",
+      "onboardingExpired": "시간이 지났어요. 구글 로그인을 다시 해주세요.",
       "mailUnavailable": "인증 메일을 보내지 못했어요."
     }
   }

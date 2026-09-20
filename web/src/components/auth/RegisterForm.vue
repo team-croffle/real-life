@@ -12,7 +12,15 @@ import { useAuthStore } from '@/stores/auth';
 const { t } = useI18n();
 const router = useRouter();
 const auth = useAuthStore();
-const draft = auth.emailDraft;
+const restoreDraft =
+  typeof history.state === 'object' &&
+  history.state !== null &&
+  history.state.restoreEmailDraft === true;
+const draft = restoreDraft ? auth.emailDraft : null;
+
+if (!restoreDraft) {
+  auth.clearEmailDraft();
+}
 
 const nickname = ref(draft?.nickname ?? '');
 const email = ref(draft?.email ?? '');
@@ -56,6 +64,7 @@ function onSubmit(): void {
           type="text"
           autocomplete="nickname"
           maxlength="20"
+          :placeholder="t('auth.placeholders.nickname')"
           :aria-invalid="Boolean(nicknameError)"
         />
         <p v-if="nicknameError" class="text-destructive text-[11px]">{{ nicknameError }}</p>
@@ -68,6 +77,7 @@ function onSubmit(): void {
           v-model="email"
           type="email"
           autocomplete="email"
+          :placeholder="t('auth.placeholders.email')"
           :aria-invalid="Boolean(emailError)"
         />
         <p v-if="emailError" class="text-destructive text-[11px]">{{ emailError }}</p>
@@ -80,6 +90,7 @@ function onSubmit(): void {
           v-model="password"
           type="password"
           autocomplete="new-password"
+          :placeholder="t('auth.placeholders.password')"
           :aria-invalid="Boolean(passwordError)"
         />
         <p v-if="passwordError" class="text-destructive text-[11px]">{{ passwordError }}</p>

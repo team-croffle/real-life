@@ -12,6 +12,7 @@ export interface AuthFlowState {
   googleNicknamePrefill: string;
   pendingEmail: string | null;
   devVerifyToken: string | null;
+  justOnboarded: boolean;
 }
 
 const EMPTY_FLOW: AuthFlowState = {
@@ -20,6 +21,7 @@ const EMPTY_FLOW: AuthFlowState = {
   googleNicknamePrefill: '',
   pendingEmail: null,
   devVerifyToken: null,
+  justOnboarded: false,
 };
 
 function isDraft(value: unknown): value is EmailRegisterDraft {
@@ -53,6 +55,7 @@ export function loadAuthFlow(): AuthFlowState {
         typeof parsed.googleNicknamePrefill === 'string' ? parsed.googleNicknamePrefill : '',
       pendingEmail: typeof parsed.pendingEmail === 'string' ? parsed.pendingEmail : null,
       devVerifyToken: typeof parsed.devVerifyToken === 'string' ? parsed.devVerifyToken : null,
+      justOnboarded: parsed.justOnboarded === true,
     };
   } catch {
     return { ...EMPTY_FLOW };
