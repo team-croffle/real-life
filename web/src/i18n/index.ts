@@ -12,12 +12,7 @@ function isSupported(value: string | null | undefined): value is SupportedLocale
 
 function resolveInitialLocale(): SupportedLocale {
   const stored = globalThis.localStorage?.getItem(LOCALE_STORAGE_KEY);
-  if (isSupported(stored)) {
-    return stored;
-  }
-
-  const fromNavigator = globalThis.navigator?.language?.split('-')[0];
-  return isSupported(fromNavigator) ? fromNavigator : DEFAULT_LOCALE;
+  return isSupported(stored) ? stored : DEFAULT_LOCALE;
 }
 
 export const i18n = createI18n({
@@ -27,6 +22,8 @@ export const i18n = createI18n({
   fallbackLocale: DEFAULT_LOCALE,
   messages: { ko, en },
 });
+
+document.documentElement.lang = String(i18n.global.locale.value);
 
 export function setLocale(locale: SupportedLocale): void {
   i18n.global.locale.value = locale;
