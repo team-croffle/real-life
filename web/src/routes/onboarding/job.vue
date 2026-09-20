@@ -17,7 +17,7 @@ async function onBack(): Promise<void> {
     return;
   }
 
-  await router.push('/register');
+  await router.push({ path: '/register', state: { restoreEmailDraft: true } });
 }
 </script>
 

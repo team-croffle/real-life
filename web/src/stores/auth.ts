@@ -40,7 +40,7 @@ function isUnauthorized(error: unknown): boolean {
 export const useAuthStore = defineStore('auth', () => {
   const storedFlow = loadAuthFlow();
   const user = ref<User | null>(null);
-  const justOnboarded = ref(false);
+  const justOnboarded = ref(storedFlow.justOnboarded);
   const pending = ref(false);
   const emailDraft = ref<EmailRegisterDraft | null>(storedFlow.emailDraft);
   const googleOnboardingToken = ref<string | null>(storedFlow.googleOnboardingToken);
@@ -62,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
       googleNicknamePrefill: googleNicknamePrefill.value,
       pendingEmail: pendingEmail.value,
       devVerifyToken: devVerifyToken.value,
+      justOnboarded: justOnboarded.value,
     });
   }
 
@@ -73,12 +74,18 @@ export const useAuthStore = defineStore('auth', () => {
 
   function clearJustOnboarded(): void {
     justOnboarded.value = false;
+    persistFlow();
   }
 
   function clearDraft(): void {
     emailDraft.value = null;
     googleOnboardingToken.value = null;
     googleNicknamePrefill.value = '';
+    persistFlow();
+  }
+
+  function clearEmailDraft(): void {
+    emailDraft.value = null;
     persistFlow();
   }
 
@@ -93,6 +100,7 @@ export const useAuthStore = defineStore('auth', () => {
     justOnboarded.value = false;
     clearAccessToken();
     hasTokens.value = false;
+    persistFlow();
   }
 
   function saveEmailDraft(draft: EmailRegisterDraft): void {
@@ -270,6 +278,7 @@ export const useAuthStore = defineStore('auth', () => {
     applyLoginResult,
     clearJustOnboarded,
     clearDraft,
+    clearEmailDraft,
     clearSession,
     saveEmailDraft,
     setGoogleOnboarding,
