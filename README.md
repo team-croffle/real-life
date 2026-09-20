@@ -17,7 +17,6 @@ real-life/
 │   ├── src/
 │   │   ├── common/        # 공통 필터 등
 │   │   ├── database/      # DatabaseModule, Drizzle 스키마
-│   │   ├── health/        # 헬스체크
 │   │   └── users/         # 사용자 도메인 (controller/service/dto)
 │   ├── drizzle/       # 마이그레이션 산출물
 │   └── test/          # e2e 테스트
