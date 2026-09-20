@@ -16,15 +16,6 @@
     "heading": "이 프로젝트에 대해",
     "body": "타입은 shared 패키지에서 정의하고 server 와 web 이 소스 그대로 참조합니다."
   },
-  "health": {
-    "heading": "서버 상태",
-    "check": "확인",
-    "loading": "확인 중...",
-    "error": "서버에 연결할 수 없습니다.",
-    "status": "상태",
-    "database": "데이터베이스",
-    "uptime": "가동 시간"
-  },
   "locale": {
     "label": "언어"
   }

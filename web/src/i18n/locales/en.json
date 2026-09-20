@@ -16,15 +16,6 @@
     "heading": "About this project",
     "body": "Types live in the shared package and are consumed as source by both server and web."
   },
-  "health": {
-    "heading": "Server health",
-    "check": "Check",
-    "loading": "Checking...",
-    "error": "Could not reach the server.",
-    "status": "Status",
-    "database": "Database",
-    "uptime": "Uptime"
-  },
   "locale": {
     "label": "Language"
   }
