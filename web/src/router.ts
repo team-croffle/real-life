@@ -3,6 +3,12 @@ import { handleHotUpdate, routes } from 'vue-router/auto-routes';
 
 import { useAuthStore } from '@/stores/auth';
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    fromPath?: string;
+  }
+}
+
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
