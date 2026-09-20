@@ -41,7 +41,11 @@ function accessFor(path: string): RouteAccess {
   return 'auth';
 }
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
+  if (to.path === '/register') {
+    to.meta.fromPath = from.path;
+  }
+
   const auth = useAuthStore();
   await auth.hydrate();
 
