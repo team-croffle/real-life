@@ -3,7 +3,6 @@ import type { User } from './user';
 
 export interface LoginResult {
   accessToken: string;
-  refreshToken: string;
   user: User;
 }
 
@@ -32,14 +31,6 @@ export interface ResendVerificationPayload {
 export interface LoginPayload {
   email: string;
   password: string;
-}
-
-export interface RefreshPayload {
-  refreshToken: string;
-}
-
-export interface LogoutPayload {
-  refreshToken: string;
 }
 
 export interface WithdrawPayload {

@@ -1,13 +1,6 @@
 import { randomBytes, randomInt } from 'node:crypto';
 
-import type {
-  AuthProvider,
-  GoogleAuthResult,
-  JobClass,
-  LoginResult,
-  RegisterResult,
-  User,
-} from '@nest-vue/shared';
+import type { AuthProvider, JobClass, RegisterResult, User } from '@nest-vue/shared';
 import {
   ConflictException,
   ForbiddenException,
@@ -40,7 +33,7 @@ import {
   REFRESH_TOKEN_EXPIRES,
   REFRESH_TOKEN_TYPE,
 } from './auth.constants';
-import type { OnboardingTokenPayload } from './auth.types';
+import type { OnboardingTokenPayload, IssuedLogin } from './auth.types';
 import { MailService } from './mail.service';
 import { TokenService } from './token.service';
 
@@ -99,7 +92,7 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(token: string): Promise<LoginResult> {
+  async verifyEmail(token: string): Promise<IssuedLogin> {
     const tokenHash = this.tokens.hashToken(token);
     const now = new Date();
 
@@ -140,7 +133,7 @@ export class AuthService {
     }
   }
 
-  async login(input: { email: string; password: string }): Promise<LoginResult> {
+  async login(input: { email: string; password: string }): Promise<IssuedLogin> {
     const row = await this.findByEmail(input.email.toLowerCase());
     const passwordHash = row?.passwordHash ?? LOGIN_DUMMY_HASH;
     const matches = await compare(input.password, passwordHash);
@@ -151,7 +144,7 @@ export class AuthService {
     return this.issueLogin(row);
   }
 
-  async refresh(refreshToken: string): Promise<LoginResult> {
+  async refresh(refreshToken: string): Promise<IssuedLogin> {
     const payload = await this.tokens.verifyRefresh(refreshToken);
     const tokenHash = this.tokens.hashToken(refreshToken);
 
@@ -238,7 +231,11 @@ export class AuthService {
     await this.db.delete(users).where(eq(users.id, userId));
   }
 
-  async google(idToken: string): Promise<GoogleAuthResult> {
+  async google(
+    idToken: string,
+  ): Promise<
+    ({ needsOnboarding: false } & IssuedLogin) | { needsOnboarding: true; onboardingToken: string }
+  > {
     const profile = await this.tokens.verifyGoogleIdToken(idToken);
     const existing = await this.findUserByIdentity('google', profile.sub);
     if (existing) {
@@ -275,7 +272,7 @@ export class AuthService {
     onboardingToken: string;
     nickname: string;
     jobClass: JobClass;
-  }): Promise<LoginResult> {
+  }): Promise<IssuedLogin> {
     const payload = await this.tokens.verifyOnboarding(input.onboardingToken);
     if (await this.findUserByIdentity(payload.provider, payload.subject)) {
       throw new ConflictException('Google account already registered');
@@ -300,7 +297,7 @@ export class AuthService {
     return this.issueLogin(created);
   }
 
-  private async issueLogin(row: UserRow, db: AuthDb = this.db): Promise<LoginResult> {
+  private async issueLogin(row: UserRow, db: AuthDb = this.db): Promise<IssuedLogin> {
     if (!row.emailVerifiedAt) {
       throw new ForbiddenException('Email not verified');
     }
@@ -418,7 +415,7 @@ export class AuthService {
     user: UserRow,
     provider: AuthProvider,
     subject: string,
-  ): Promise<LoginResult> {
+  ): Promise<IssuedLogin> {
     if (await this.findIdentity(user.id, provider)) {
       throw new ConflictException('Email already registered');
     }

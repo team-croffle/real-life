@@ -1,4 +1,4 @@
-import type { AuthProvider } from '@nest-vue/shared';
+import type { AuthProvider, LoginResult } from '@nest-vue/shared';
 
 export type AccessTokenPayload = {
   sub: string;
@@ -22,3 +22,6 @@ export type OnboardingTokenPayload = {
 export type RequestAuthUser = {
   id: string;
 };
+
+/** 쿠키에 심기 전. JSON 응답에는 refreshToken을 넣지 않는다. */
+export type IssuedLogin = LoginResult & { refreshToken: string };

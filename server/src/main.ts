@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(API_PREFIX);
   app.enableShutdownHooks();
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', '*'),
+    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
     credentials: true,
   });
   app.useGlobalPipes(
