@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,17 +10,16 @@ import { isValidEmail, isValidNickname, isValidPassword } from '@/lib/authValida
 import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
-const restoreDraft =
-  typeof history.state === 'object' &&
-  history.state !== null &&
-  history.state.restoreEmailDraft === true;
-const draft = restoreDraft ? auth.emailDraft : null;
+const fromLogin = route.meta.fromPath === '/login';
 
-if (!restoreDraft) {
+if (fromLogin) {
   auth.clearEmailDraft();
 }
+
+const draft = fromLogin ? null : auth.emailDraft;
 
 const nickname = ref(draft?.nickname ?? '');
 const email = ref(draft?.email ?? '');
