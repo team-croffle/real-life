@@ -11,7 +11,7 @@ import JobCard from '@/components/auth/JobCard.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { authErrorI18nKey } from '@/lib/authErrors';
+import { authErrorI18nKey, isUnauthorized } from '@/lib/authErrors';
 import { isValidNickname, isValidPassword } from '@/lib/authValidation';
 import { useAuthStore } from '@/stores/auth';
 
@@ -58,6 +58,11 @@ async function onSubmit(): Promise<void> {
       });
       await router.push('/onboarding/complete');
     } catch (error) {
+      if (isUnauthorized(error)) {
+        auth.clearDraft();
+        await router.push({ path: '/login', query: { reason: 'onboardingExpired' } });
+        return;
+      }
       formError.value = t(authErrorI18nKey(error));
     }
     return;

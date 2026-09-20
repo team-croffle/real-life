@@ -31,10 +31,6 @@ export function authErrorI18nKey(error: unknown): string {
     return 'auth.errors.emailNotVerified';
   }
 
-  if (error.status === 401) {
-    return 'auth.errors.unauthorized';
-  }
-
   if (error.status === 503 && message.includes('Session refresh')) {
     return 'auth.errors.generic';
   }
@@ -56,4 +52,8 @@ export function isEmailNotVerified(error: unknown): boolean {
     error.status === 403 &&
     error.message.includes('Email not verified')
   );
+}
+
+export function isUnauthorized(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
 }

@@ -3,18 +3,19 @@ import { Loader2 } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useGoogleAuth } from '@/composables/useGoogleAuth';
-import { authErrorI18nKey, isEmailNotVerified } from '@/lib/authErrors';
+import { authErrorI18nKey, isEmailNotVerified, isUnauthorized } from '@/lib/authErrors';
 import { isValidEmail, isValidPassword } from '@/lib/authValidation';
 import { useAuthStore } from '@/stores/auth';
 
 const { t, locale } = useI18n();
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const { pending } = storeToRefs(auth);
@@ -51,7 +52,9 @@ async function onSubmit(): Promise<void> {
     await router.push('/');
   } catch (error) {
     unverified.value = isEmailNotVerified(error);
-    formError.value = t(authErrorI18nKey(error));
+    formError.value = isUnauthorized(error)
+      ? t('auth.errors.unauthorized')
+      : t(authErrorI18nKey(error));
   }
 }
 
@@ -76,7 +79,9 @@ async function onGoogleCredential(idToken: string): Promise<void> {
     const result = await auth.loginWithGoogle(idToken);
     await router.push(result.needsOnboarding ? '/onboarding/job' : '/');
   } catch (error) {
-    formError.value = t(authErrorI18nKey(error));
+    formError.value = isUnauthorized(error)
+      ? t('auth.errors.googleFailed')
+      : t(authErrorI18nKey(error));
   } finally {
     googlePending.value = false;
   }
@@ -106,6 +111,10 @@ async function renderGoogleButton(): Promise<void> {
 }
 
 onMounted(() => {
+  if (route.query.reason === 'onboardingExpired') {
+    formError.value = t('auth.errors.onboardingExpired');
+    void router.replace({ path: '/login' });
+  }
   void renderGoogleButton();
 });
 
