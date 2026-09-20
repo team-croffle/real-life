@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "nest-vue",
-    "description": "NestJS + Vue 3 모노레포 스타터"
+    "title": "RealLife",
+    "description": "일상을 게임처럼, 루틴을 캐릭터 성장으로."
   },
   "nav": {
     "home": "홈",
@@ -9,8 +9,8 @@
     "users": "사용자"
   },
   "home": {
-    "heading": "안녕하세요 👋",
-    "body": "server, web, shared 세 워크스페이스로 구성된 pnpm 모노레포입니다."
+    "heading": "홈",
+    "body": "퀘스트 화면은 다음 작업에서 연결됩니다. 지금은 로그인 루프만 확인하세요."
   },
   "about": {
     "heading": "이 프로젝트에 대해",
@@ -18,5 +18,81 @@
   },
   "locale": {
     "label": "언어"
+  },
+  "brand": {
+    "name": "RealLife",
+    "headline1": "일상을 게임처럼,",
+    "headline2": "루틴을 캐릭터 성장으로.",
+    "sub": "건강 · 학습 · 취미 루틴을 퀘스트로 등록하고, AI가 제안하는 메인 퀘스트로 매일 성장하세요.",
+    "footer": "© RealLife · Croffle Team"
+  },
+  "auth": {
+    "or": "또는",
+    "logout": "로그아웃",
+    "back": "이전",
+    "fields": {
+      "email": "이메일",
+      "password": "비밀번호",
+      "nickname": "닉네임"
+    },
+    "login": {
+      "title": "로그인",
+      "subtitle": "캐릭터를 이어서 키워볼까요?",
+      "submit": "로그인",
+      "google": "구글 계정으로 계속하기",
+      "switch": "아직 계정이 없나요?",
+      "switchAction": "회원가입"
+    },
+    "register": {
+      "title": "회원가입",
+      "subtitle": "몇 가지만 알려주시면 캐릭터를 만들어드려요.",
+      "submit": "다음",
+      "switch": "이미 계정이 있나요?",
+      "switchAction": "로그인"
+    },
+    "job": {
+      "step": "STEP 2 / 2",
+      "title": "직업군을 선택하세요",
+      "subtitle": "선택한 직업군에 따라 특정 카테고리 퀘스트의 보상이 달라져요. 가입 후에도 변경할 수 있어요.",
+      "rewardHint": "직업군에 따라 특정 활동의 보상이 달라져요.",
+      "submit": "시작하기"
+    },
+    "jobs": {
+      "student": "학생",
+      "office_worker": "직장인",
+      "freelancer": "프리랜서"
+    },
+    "welcome": {
+      "title": "캐릭터가 준비됐어요!",
+      "subtitle": "{job}으로 첫 여정을 시작해보세요.",
+      "submit": "RealLife 시작하기"
+    },
+    "checkEmail": {
+      "title": "이메일을 확인하세요",
+      "subtitle": "{email}로 인증 메일을 보냈어요. 링크를 열면 캐릭터가 만들어집니다.",
+      "resend": "인증 메일 다시 보내기",
+      "resent": "인증 메일을 다시 보냈어요.",
+      "backToLogin": "로그인으로 돌아가기",
+      "devVerify": "개발용 인증하기"
+    },
+    "verify": {
+      "title": "이메일 인증",
+      "loading": "이메일을 확인하고 있어요…",
+      "missingToken": "인증 링크가 올바르지 않아요.",
+      "invalid": "인증 링크가 만료됐거나 이미 사용됐어요."
+    },
+    "errors": {
+      "generic": "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
+      "invalidEmail": "이메일 형식을 확인해 주세요.",
+      "invalidPassword": "비밀번호는 8자 이상이어야 해요.",
+      "invalidNickname": "닉네임은 1–20자이고 #은 쓸 수 없어요.",
+      "unauthorized": "이메일 또는 비밀번호가 올바르지 않아요.",
+      "emailTaken": "이미 가입된 이메일이에요.",
+      "socialTaken": "이미 연결된 소셜 계정이에요.",
+      "emailNotVerified": "이메일 인증이 아직 끝나지 않았어요.",
+      "googleUnavailable": "구글 로그인을 지금은 쓸 수 없어요.",
+      "googleCancelled": "구글 로그인을 완료하지 않았어요.",
+      "mailUnavailable": "인증 메일을 보내지 못했어요."
+    }
   }
 }
