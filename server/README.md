@@ -134,7 +134,6 @@ pnpm --filter @nest-vue/server test:e2e   # e2e (test/**/*.e2e-spec.ts)
 
 | 메서드 | 경로                            | 설명                                                                                      |
 | ------ | ------------------------------- | ----------------------------------------------------------------------------------------- |
-| GET    | `/api/health`                   | 헬스체크                                                                                  |
 | POST   | `/api/auth/register`            | 이메일 가입. 토큰 없음. 인증 메일 발송                                                    |
 | POST   | `/api/auth/verify-email`        | body `{ token }`. 인증 후 로그인 토큰. GET으로는 소비하지 않음                            |
 | POST   | `/api/auth/resend-verification` | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                                       |
