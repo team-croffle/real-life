@@ -44,19 +44,20 @@ async function onBack(): Promise<void> {
         <BrandPanel />
       </aside>
       <section class="flex-1 overflow-y-auto px-6 py-10 md:px-12 md:py-11">
-        <div class="mb-6 flex items-center justify-end gap-2">
-          <LocaleSwitcher />
+        <div class="mb-6 flex items-center justify-between">
           <Button
             v-if="canGoBack"
             type="button"
             variant="ghost"
             size="icon"
-            class="text-secondary-foreground -mr-2"
+            class="text-secondary-foreground -ml-2"
             :aria-label="t('auth.back')"
             @click="onBack"
           >
             <ChevronLeft class="size-5" />
           </Button>
+          <span v-else class="size-9" aria-hidden="true" />
+          <LocaleSwitcher />
         </div>
         <div :class="cn('auth-screen-enter', props.wide ? 'max-w-[460px]' : 'max-w-[340px]')">
           <slot />
