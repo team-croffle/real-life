@@ -1,20 +1,9 @@
-import type { ApiErrorResponse, LoginResult } from '@nest-vue/shared';
+import type { ApiErrorResponse } from '@nest-vue/shared';
 import { ref, type Ref } from 'vue';
 
-import { getAccessToken } from '@/auth/authTokens';
+import { apiBaseUrl } from '@/lib/apiBase';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
-
-const PUBLIC_PATHS = [
-  '/auth/login',
-  '/auth/register',
-  '/auth/google',
-  '/auth/google/onboarding',
-  '/auth/verify-email',
-  '/auth/resend-verification',
-  '/auth/refresh',
-  '/auth/logout',
-] as const;
+const BASE_URL = apiBaseUrl();
 
 export class ApiError extends Error {
   readonly status: number;
@@ -26,74 +15,30 @@ export class ApiError extends Error {
   }
 }
 
-export interface ApiFetchInit extends RequestInit {
-  skipAuth?: boolean;
-  _retried?: boolean;
-}
+export type ApiFetchInit = RequestInit;
 
-type RefreshOutcome = 'ok' | 'unauthorized' | 'unavailable';
-
-let refreshPromise: Promise<RefreshOutcome> | null = null;
-
-function isPublicPath(path: string): boolean {
-  return PUBLIC_PATHS.some(
-    (publicPath) => path === publicPath || path.startsWith(`${publicPath}?`),
-  );
-}
-
-async function refreshSession(): Promise<RefreshOutcome> {
-  try {
-    const response = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      const { useAuthStore } = await import('@/stores/auth');
-      useAuthStore().clearSession();
-      return 'unauthorized';
-    }
-
-    if (!response.ok) {
-      return 'unavailable';
-    }
-
-    const result = (await response.json()) as LoginResult;
-    const { useAuthStore } = await import('@/stores/auth');
-    useAuthStore().applyLoginResult(result);
-    return 'ok';
-  } catch {
-    return 'unavailable';
-  }
-}
-
-async function ensureRefreshed(): Promise<RefreshOutcome> {
-  if (!refreshPromise) {
-    refreshPromise = (async () => {
-      try {
-        return await refreshSession();
-      } finally {
-        refreshPromise = null;
-      }
-    })();
+/** 스토어와 라우터가 이 파일을 다시 가져오므로 순환을 피하려고 호출 시점에 불러온다. */
+async function logoutOnUnauthorized(): Promise<void> {
+  const { useAuthStore } = await import('@/stores/auth');
+  const auth = useAuthStore();
+  if (!auth.isAuthenticated) {
+    return;
   }
 
-  return refreshPromise;
+  await auth.logout();
+  const { router } = await import('@/router');
+  if (router.currentRoute.value.path !== '/login') {
+    await router.push({ path: '/login', query: { reason: 'sessionExpired' } });
+  }
 }
 
 /** JSON 본문을 T 로 돌려주는 fetch 래퍼. 204는 본문이 없다. */
 export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
-  const { skipAuth, _retried, headers: initHeaders, ...rest } = init;
-  const publicPath = skipAuth ?? isPublicPath(path);
+  const { headers: initHeaders, ...rest } = init;
   const headers = new Headers(initHeaders);
 
   if (rest.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
-  }
-
-  const accessToken = getAccessToken();
-  if (!publicPath && accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
   const response = await fetch(`${BASE_URL}${path}`, {
@@ -102,24 +47,15 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     headers,
   });
 
-  if (response.status === 401 && !_retried && !publicPath) {
-    const outcome = await ensureRefreshed();
-    if (outcome === 'ok') {
-      return apiFetch<T>(path, { ...init, _retried: true });
-    }
-
-    if (outcome === 'unavailable') {
-      throw new ApiError(503, 'Session refresh unavailable');
-    }
-
-    throw new ApiError(401, 'Unauthorized');
-  }
-
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ApiErrorResponse | null;
     const message = Array.isArray(body?.message)
       ? body.message.join(', ')
       : (body?.message ?? response.statusText);
+
+    if (response.status === 401) {
+      await logoutOnUnauthorized();
+    }
 
     throw new ApiError(response.status, message);
   }

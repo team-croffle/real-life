@@ -1,23 +1,22 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import AuthLayout from '@/components/auth/AuthLayout.vue';
 import JobSelectForm from '@/components/auth/JobSelectForm.vue';
 import { useAuthStore } from '@/stores/auth';
 
+const { t } = useI18n();
 const router = useRouter();
 const auth = useAuthStore();
-const { googleOnboardingToken } = storeToRefs(auth);
 
 async function onBack(): Promise<void> {
-  if (googleOnboardingToken.value) {
-    auth.clearDraft();
-    await router.push('/login');
+  if (!globalThis.confirm(t('auth.job.unsavedBack'))) {
     return;
   }
 
-  await router.push('/register');
+  await auth.logout();
+  await router.push('/login');
 }
 </script>
 

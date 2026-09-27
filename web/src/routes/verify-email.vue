@@ -27,7 +27,7 @@ onMounted(async () => {
 
   try {
     await verifyEmail(token);
-    await router.replace('/onboarding/complete');
+    await router.replace('/onboarding/job');
   } catch (cause) {
     error.value =
       cause instanceof ApiError && cause.status === 401

@@ -1,32 +1,27 @@
 <script setup lang="ts">
+import { Loader2 } from 'lucide-vue-next';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { authErrorI18nKey } from '@/lib/authErrors';
 import { isValidEmail, isValidNickname, isValidPassword } from '@/lib/authValidation';
 import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
-const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
-const fromLogin = route.meta.fromPath === '/login';
 
-if (fromLogin) {
-  auth.clearEmailDraft();
-}
-
-const draft = fromLogin ? null : auth.emailDraft;
-
-const nickname = ref(draft?.nickname ?? '');
-const email = ref(draft?.email ?? '');
-const password = ref(draft?.password ?? '');
+const nickname = ref('');
+const email = ref('');
+const password = ref('');
 const nicknameError = ref('');
 const emailError = ref('');
 const passwordError = ref('');
+const formError = ref('');
 
 function validate(): boolean {
   nicknameError.value = isValidNickname(nickname.value) ? '' : t('auth.errors.invalidNickname');
@@ -35,17 +30,22 @@ function validate(): boolean {
   return !nicknameError.value && !emailError.value && !passwordError.value;
 }
 
-function onSubmit(): void {
+async function onSubmit(): Promise<void> {
+  formError.value = '';
   if (!validate()) {
     return;
   }
 
-  auth.saveEmailDraft({
-    nickname: nickname.value.trim(),
-    email: email.value.trim(),
-    password: password.value,
-  });
-  void router.push('/onboarding/job');
+  try {
+    await auth.register({
+      nickname: nickname.value.trim(),
+      email: email.value.trim(),
+      password: password.value,
+    });
+    await router.push('/register/check-email');
+  } catch (error) {
+    formError.value = t(authErrorI18nKey(error));
+  }
 }
 </script>
 
@@ -95,7 +95,12 @@ function onSubmit(): void {
         <p v-if="passwordError" class="text-destructive text-[11px]">{{ passwordError }}</p>
       </div>
 
-      <Button type="submit" class="mb-5">{{ t('auth.register.submit') }}</Button>
+      <p v-if="formError" class="text-destructive mb-3 text-[12px]" role="alert">{{ formError }}</p>
+
+      <Button type="submit" class="mb-5" :disabled="auth.pending">
+        <Loader2 v-if="auth.pending" class="animate-spin" />
+        {{ t('auth.register.submit') }}
+      </Button>
     </form>
 
     <p class="text-muted-foreground text-center text-xs">

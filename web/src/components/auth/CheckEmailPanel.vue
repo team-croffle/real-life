@@ -11,12 +11,11 @@ import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
 const auth = useAuthStore();
-const { pendingEmail, devVerifyToken } = storeToRefs(auth);
+const { pendingEmail } = storeToRefs(auth);
 
 const pending = ref(false);
 const formError = ref('');
 const resent = ref(false);
-const isDev = import.meta.env.DEV;
 
 async function onResend(): Promise<void> {
   if (!pendingEmail.value) {
@@ -50,19 +49,6 @@ async function onResend(): Promise<void> {
     <Button type="button" class="mb-3.5" :disabled="pending" @click="onResend">
       <Loader2 v-if="pending" class="animate-spin" />
       {{ t('auth.checkEmail.resend') }}
-    </Button>
-
-    <Button
-      v-if="isDev && devVerifyToken"
-      type="button"
-      variant="outline"
-      size="sm"
-      class="mb-5"
-      as-child
-    >
-      <RouterLink :to="{ path: '/verify-email', query: { token: devVerifyToken } }">
-        {{ t('auth.checkEmail.devVerify') }}
-      </RouterLink>
     </Button>
 
     <p class="text-muted-foreground text-center text-xs">

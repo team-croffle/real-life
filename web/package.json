@@ -14,6 +14,7 @@
   "dependencies": {
     "@nest-vue/shared": "workspace:*",
     "@vueuse/core": "^14.4.0",
+    "better-auth": "^1.7.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-vue-next": "^0.544.0",

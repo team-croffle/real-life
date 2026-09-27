@@ -49,7 +49,7 @@ async function onSubmit(): Promise<void> {
 
   try {
     await auth.login({ email: email.value.trim(), password: password.value });
-    await router.push('/');
+    await router.push(auth.needsJobOnboarding ? '/onboarding/job' : '/');
   } catch (error) {
     unverified.value = isEmailNotVerified(error);
     formError.value = isUnauthorized(error)
@@ -111,8 +111,8 @@ async function renderGoogleButton(): Promise<void> {
 }
 
 onMounted(() => {
-  if (route.query.reason === 'onboardingExpired') {
-    formError.value = t('auth.errors.onboardingExpired');
+  if (route.query.reason === 'sessionExpired') {
+    formError.value = t('auth.errors.sessionExpired');
     void router.replace({ path: '/login' });
   }
   void renderGoogleButton();
