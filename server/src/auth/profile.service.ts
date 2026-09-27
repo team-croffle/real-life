@@ -147,14 +147,26 @@ export class ProfileService {
       throw new ForbiddenException('Google confirmation required');
     }
 
+    const [googleAccount] = await this.db
+      .select({ accountId: accounts.accountId })
+      .from(accounts)
+      .where(and(eq(accounts.userId, session.user.id), eq(accounts.providerId, 'google')))
+      .limit(1);
+    if (!googleAccount) {
+      throw new ForbiddenException('Google confirmation is not available');
+    }
+
     const audience = this.config.get<string>('GOOGLE_CLIENT_ID', '');
-    const googleEmail = await this.googleEmailFromIdToken(input.idToken, audience);
-    if (!googleEmail || googleEmail !== session.user.email.toLowerCase()) {
+    const subject = await this.googleSubjectFromIdToken(input.idToken, audience);
+    if (!subject || subject !== googleAccount.accountId) {
       throw new ForbiddenException('Google confirmation failed');
     }
   }
 
-  private async googleEmailFromIdToken(idToken: string, audience: string): Promise<string | null> {
+  private async googleSubjectFromIdToken(
+    idToken: string,
+    audience: string,
+  ): Promise<string | null> {
     const response = await fetch('https://oauth2.googleapis.com/tokeninfo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -163,21 +175,11 @@ export class ProfileService {
     if (!response.ok) {
       return null;
     }
-    const payload = (await response.json()) as {
-      aud?: string;
-      email?: string;
-      email_verified?: boolean | string;
-    };
+    const payload = (await response.json()) as { aud?: string; sub?: string };
     if (!audience || payload.aud !== audience) {
       return null;
     }
-    if (payload.email_verified !== true && payload.email_verified !== 'true') {
-      return null;
-    }
-    if (!payload.email) {
-      return null;
-    }
-    return payload.email.toLowerCase();
+    return payload.sub ?? null;
   }
 
   private async getUserRow(userId: string) {
