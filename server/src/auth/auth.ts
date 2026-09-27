@@ -110,7 +110,8 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: {
-        user: users,
+        // 키는 모델 이름과 같아야 어댑터가 테이블을 찾는다. user 모델은 modelName이 `users`다.
+        users,
         session: sessions,
         account: accounts,
         verification: verifications,
@@ -118,6 +119,7 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
     }),
     advanced: {
       database: {
+        // uuid면 라이브러리가 id를 만들지 않고 DB 기본값에 맡긴다.
         generateId: 'uuid',
       },
     },
@@ -130,8 +132,9 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
           input: true,
         },
         tag: {
+          // 가입 요청에는 태그가 없다. required면 라이브러리가 훅보다 먼저 거절한다.
           type: 'string',
-          required: true,
+          required: false,
           input: false,
         },
         jobClass: {
