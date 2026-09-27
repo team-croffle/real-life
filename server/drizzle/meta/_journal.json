@@ -36,6 +36,13 @@
       "when": 1790155088522,
       "tag": "0004_account_provider_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790500840148,
+      "tag": "0005_id_defaults",
+      "breakpoints": true
     }
   ]
 }
