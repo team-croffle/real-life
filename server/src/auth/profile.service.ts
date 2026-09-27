@@ -6,7 +6,6 @@ import {
   HttpException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -205,7 +204,8 @@ export class ProfileService {
       throw new ServiceUnavailableException('Email sending is not configured');
     }
     if (status >= 500) {
-      throw new InternalServerErrorException();
+      // 원인을 남기려면 원래 오류를 올려야 한다. 필터가 500으로 응답하면서 스택을 찍는다.
+      throw error;
     }
     throw new HttpException(message || 'Auth request failed', status);
   }
