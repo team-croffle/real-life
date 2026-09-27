@@ -51,16 +51,17 @@
     "register": {
       "title": "Sign up",
       "subtitle": "A few details and we'll make your character.",
-      "submit": "Next",
+      "submit": "Sign up",
       "switch": "Already have an account?",
       "switchAction": "Log in"
     },
     "job": {
-      "step": "STEP 2 / 2",
+      "step": "Last step",
       "title": "Choose a job class",
       "subtitle": "Your job class changes rewards for some quest categories. You can change it later.",
       "rewardHint": "Rewards for certain activities change with your job class.",
-      "submit": "Get started"
+      "submit": "Get started",
+      "unsavedBack": "You need a job class before using the app. Going back logs you out. Continue?"
     },
     "jobs": {
       "student": "Student",
@@ -74,11 +75,10 @@
     },
     "checkEmail": {
       "title": "Check your email",
-      "subtitle": "We sent a verification link to {email}. Open it to create your character.",
+      "subtitle": "We sent a verification link to {email}. Open it to choose your job class.",
       "resend": "Resend verification email",
       "resent": "Verification email sent again.",
-      "backToLogin": "Back to log in",
-      "devVerify": "Verify in development"
+      "backToLogin": "Back to log in"
     },
     "verify": {
       "title": "Email verification",
@@ -98,7 +98,8 @@
       "googleUnavailable": "Google login is not available right now.",
       "googleCancelled": "Google login was not completed.",
       "googleFailed": "Google login failed.",
-      "onboardingExpired": "That sign-up step expired. Please sign in with Google again.",
+      "sessionExpired": "Your session expired. Please sign in again.",
+      "tooManyRequests": "Too many requests. Please try again shortly.",
       "mailUnavailable": "Could not send the verification email."
     }
   }

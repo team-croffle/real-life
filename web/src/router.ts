@@ -3,12 +3,6 @@ import { handleHotUpdate, routes } from 'vue-router/auto-routes';
 
 import { useAuthStore } from '@/stores/auth';
 
-declare module 'vue-router' {
-  interface RouteMeta {
-    fromPath?: string;
-  }
-}
-
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
@@ -47,23 +41,25 @@ function accessFor(path: string): RouteAccess {
   return 'auth';
 }
 
-router.beforeEach(async (to, from) => {
-  if (to.path === '/register') {
-    to.meta.fromPath = from.path;
-  }
-
+router.beforeEach(async (to) => {
   const auth = useAuthStore();
   await auth.hydrate();
 
   switch (accessFor(to.path)) {
     case 'guest':
+      if (auth.needsJobOnboarding) {
+        return { path: '/onboarding/job' };
+      }
       return auth.isAuthenticated ? { path: '/' } : true;
     case 'onboardingJob':
-      if (auth.isAuthenticated) {
-        return { path: '/' };
+      if (auth.needsJobOnboarding) {
+        return true;
       }
-      return auth.hasJobAccess ? true : { path: '/register' };
+      return auth.isAuthenticated ? { path: '/' } : { path: '/login' };
     case 'checkEmail':
+      if (auth.needsJobOnboarding) {
+        return { path: '/onboarding/job' };
+      }
       if (auth.isAuthenticated) {
         return { path: '/' };
       }
@@ -72,11 +68,17 @@ router.beforeEach(async (to, from) => {
       if (!auth.isAuthenticated) {
         return { path: '/login' };
       }
+      if (auth.needsJobOnboarding) {
+        return { path: '/onboarding/job' };
+      }
       return auth.justOnboarded ? true : { path: '/' };
     case 'public':
       return true;
     case 'auth':
-      return auth.isAuthenticated || auth.hasTokens ? true : { path: '/login' };
+      if (auth.needsJobOnboarding) {
+        return { path: '/onboarding/job' };
+      }
+      return auth.isAuthenticated ? true : { path: '/login' };
   }
 });
 

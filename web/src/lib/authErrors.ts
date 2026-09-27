@@ -31,6 +31,10 @@ export function authErrorI18nKey(error: unknown): string {
     return 'auth.errors.emailNotVerified';
   }
 
+  if (error.status === 429) {
+    return 'auth.errors.tooManyRequests';
+  }
+
   if (error.status === 503 && message.includes('Session refresh')) {
     return 'auth.errors.generic';
   }

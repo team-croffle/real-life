@@ -1,40 +1,56 @@
 import type {
-  GoogleAuthPayload,
-  GoogleAuthResult,
-  GoogleOnboardingPayload,
+  CompleteOnboardingPayload,
   LoginPayload,
-  LoginResult,
   RegisterPayload,
   RegisterResult,
   User,
 } from '@nest-vue/shared';
+import { isJobClass, isUserRole } from '@nest-vue/shared';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
-import {
-  clearAuthFlow,
-  loadAuthFlow,
-  saveAuthFlow,
-  type EmailRegisterDraft,
-} from '@/auth/authFlowStorage';
-import { clearAccessToken, getAccessToken, setAccessToken } from '@/auth/authTokens';
+import { authClient } from '@/auth/authClient';
+import { clearAuthFlow, loadAuthFlow, saveAuthFlow } from '@/auth/authFlowStorage';
 import { ApiError, apiFetch } from '@/composables/useApi';
-import { decodeGoogleNickname } from '@/composables/useGoogleAuth';
-
-export type { EmailRegisterDraft };
 
 let hydratePromise: Promise<void> | null = null;
-let hydrated = false;
+
+function mapSessionUser(value: Record<string, unknown>): User {
+  const createdAt = value.createdAt;
+  const updatedAt = value.updatedAt;
+
+  return {
+    id: String(value.id),
+    email: String(value.email ?? ''),
+    nickname: String(value.nickname ?? value.name ?? ''),
+    tag: String(value.tag ?? ''),
+    jobClass: isJobClass(value.jobClass) ? value.jobClass : null,
+    role: isUserRole(value.role) ? value.role : 'member',
+    emailVerified: Boolean(value.emailVerified),
+    createdAt: createdAt instanceof Date ? createdAt.toISOString() : String(createdAt ?? ''),
+    updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : String(updatedAt ?? ''),
+  };
+}
+
+function throwClientError(error: { status?: number; message?: string; code?: string }): never {
+  const code = error.code ?? '';
+  if (code === 'EMAIL_NOT_VERIFIED') {
+    throw new ApiError(403, 'Email not verified');
+  }
+  if (code === 'USER_ALREADY_EXISTS') {
+    throw new ApiError(409, 'Email already registered');
+  }
+  if (code === 'INVALID_EMAIL_OR_PASSWORD' || error.status === 401) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+  throw new ApiError(error.status ?? 400, error.message ?? 'Unauthorized');
+}
 
 async function resendVerification(email: string): Promise<void> {
-  await apiFetch<void>('/auth/resend-verification', {
+  await apiFetch<void>('/account/resend-verification', {
     method: 'POST',
     body: JSON.stringify({ email }),
   });
-}
-
-function isUnauthorized(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 401;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -42,34 +58,22 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const justOnboarded = ref(storedFlow.justOnboarded);
   const pending = ref(false);
-  const emailDraft = ref<EmailRegisterDraft | null>(storedFlow.emailDraft);
-  const googleOnboardingToken = ref<string | null>(storedFlow.googleOnboardingToken);
   const googleNicknamePrefill = ref(storedFlow.googleNicknamePrefill);
   const pendingEmail = ref<string | null>(storedFlow.pendingEmail);
-  const devVerifyToken = ref<string | null>(storedFlow.devVerifyToken);
-  const hasTokens = ref(false);
 
   const isAuthenticated = computed(() => user.value !== null);
-  const hasJobAccess = computed(
-    () => emailDraft.value !== null || googleOnboardingToken.value !== null,
-  );
+  const needsJobOnboarding = computed(() => user.value !== null && user.value.jobClass === null);
 
   function persistFlow(): void {
-    const draft = emailDraft.value;
     saveAuthFlow({
-      emailDraft: draft ? { nickname: draft.nickname, email: draft.email, password: '' } : null,
-      googleOnboardingToken: googleOnboardingToken.value,
       googleNicknamePrefill: googleNicknamePrefill.value,
       pendingEmail: pendingEmail.value,
-      devVerifyToken: devVerifyToken.value,
       justOnboarded: justOnboarded.value,
     });
   }
 
-  function applyLoginResult(result: LoginResult): void {
-    setAccessToken(result.accessToken);
-    hasTokens.value = true;
-    user.value = result.user;
+  function applyUser(next: User | null): void {
+    user.value = next;
   }
 
   function clearJustOnboarded(): void {
@@ -78,91 +82,82 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function clearDraft(): void {
-    emailDraft.value = null;
-    googleOnboardingToken.value = null;
     googleNicknamePrefill.value = '';
-    persistFlow();
-  }
-
-  function clearEmailDraft(): void {
-    emailDraft.value = null;
     persistFlow();
   }
 
   function clearPendingEmail(): void {
     pendingEmail.value = null;
-    devVerifyToken.value = null;
     persistFlow();
   }
 
   function clearSession(): void {
     user.value = null;
     justOnboarded.value = false;
-    clearAccessToken();
-    hasTokens.value = false;
     persistFlow();
   }
 
-  function saveEmailDraft(draft: EmailRegisterDraft): void {
-    emailDraft.value = draft;
-    googleOnboardingToken.value = null;
-    googleNicknamePrefill.value = '';
-    persistFlow();
-  }
-
-  function setGoogleOnboarding(token: string, nickname = ''): void {
-    googleOnboardingToken.value = token;
-    googleNicknamePrefill.value = nickname;
-    emailDraft.value = null;
-    persistFlow();
-  }
-
-  function setPendingEmail(email: string, token?: string): void {
+  function setPendingEmail(email: string): void {
     pendingEmail.value = email;
-    devVerifyToken.value = token ?? null;
     persistFlow();
+  }
+
+  async function readSession(): Promise<User | null | 'unavailable'> {
+    const result = await authClient.getSession();
+    if (result.error) {
+      return 'unavailable';
+    }
+    if (!result.data?.user) {
+      return null;
+    }
+    return mapSessionUser(result.data.user as unknown as Record<string, unknown>);
+  }
+
+  async function readSessionWithRetry(): Promise<User | null | 'unavailable'> {
+    const first = await readSession();
+    if (first !== 'unavailable') {
+      return first;
+    }
+    return readSession();
+  }
+
+  async function requireSessionUser(): Promise<User> {
+    const next = await readSessionWithRetry();
+    if (next === 'unavailable' || next === null) {
+      throw new ApiError(401, 'Unauthorized');
+    }
+    return next;
   }
 
   async function hydrate(): Promise<void> {
-    if (hydrated) {
-      return;
-    }
-
     if (!hydratePromise) {
       hydratePromise = (async () => {
         try {
-          if (!getAccessToken()) {
-            const refreshed = await apiFetch<LoginResult>('/auth/refresh', { method: 'POST' });
-            applyLoginResult(refreshed);
-          }
-          user.value = await apiFetch<User>('/auth/me');
-          hasTokens.value = true;
-          hydrated = true;
-        } catch (error) {
-          if (isUnauthorized(error)) {
-            clearSession();
-            hydrated = true;
+          const next = await readSessionWithRetry();
+          if (next === 'unavailable') {
             return;
           }
-
-          // access가 있을 때만 앱에 남긴다. 게스트 5xx를 로그인된 것처럼 보지 않는다.
-          hasTokens.value = Boolean(getAccessToken());
+          applyUser(next);
+        } finally {
           hydratePromise = null;
         }
       })();
     }
 
-    await hydratePromise;
+    return hydratePromise;
   }
 
   async function login(payload: LoginPayload): Promise<void> {
     pending.value = true;
     try {
-      const result = await apiFetch<LoginResult>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(payload),
+      const result = await authClient.signIn.email({
+        email: payload.email,
+        password: payload.password,
       });
-      applyLoginResult(result);
+      if (result.error) {
+        throwClientError(result.error);
+      }
+      applyUser(await requireSessionUser());
       justOnboarded.value = false;
       clearDraft();
       clearPendingEmail();
@@ -174,11 +169,11 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(payload: RegisterPayload): Promise<RegisterResult> {
     pending.value = true;
     try {
-      const result = await apiFetch<RegisterResult>('/auth/register', {
+      const result = await apiFetch<RegisterResult>('/account/register', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      setPendingEmail(result.email, result.devVerifyToken);
+      setPendingEmail(result.email);
       clearDraft();
       return result;
     } finally {
@@ -189,12 +184,14 @@ export const useAuthStore = defineStore('auth', () => {
   async function verifyEmail(token: string): Promise<void> {
     pending.value = true;
     try {
-      const result = await apiFetch<LoginResult>('/auth/verify-email', {
-        method: 'POST',
-        body: JSON.stringify({ token }),
+      const result = await authClient.verifyEmail({
+        query: { token },
       });
-      applyLoginResult(result);
-      justOnboarded.value = true;
+      if (result.error) {
+        throwClientError({ ...result.error, status: result.error.status ?? 401 });
+      }
+      applyUser(await requireSessionUser());
+      justOnboarded.value = false;
       clearPendingEmail();
     } finally {
       pending.value = false;
@@ -204,44 +201,38 @@ export const useAuthStore = defineStore('auth', () => {
   async function loginWithGoogle(idToken: string): Promise<{ needsOnboarding: boolean }> {
     pending.value = true;
     try {
-      const result = await apiFetch<GoogleAuthResult>('/auth/google', {
-        method: 'POST',
-        body: JSON.stringify({ idToken } satisfies GoogleAuthPayload),
+      const result = await authClient.signIn.social({
+        provider: 'google',
+        idToken: { token: idToken },
       });
-
-      if (result.needsOnboarding) {
-        setGoogleOnboarding(result.onboardingToken, decodeGoogleNickname(idToken));
-        return { needsOnboarding: true };
+      if (result.error) {
+        throwClientError(result.error);
       }
-
-      applyLoginResult(result);
-      justOnboarded.value = false;
-      clearDraft();
-      clearPendingEmail();
-      return { needsOnboarding: false };
+      const next = await requireSessionUser();
+      applyUser(next);
+      const needsOnboarding = next.jobClass === null;
+      if (needsOnboarding) {
+        googleNicknamePrefill.value = next.nickname ?? '';
+        persistFlow();
+      } else {
+        justOnboarded.value = false;
+        clearDraft();
+        clearPendingEmail();
+      }
+      return { needsOnboarding };
     } finally {
       pending.value = false;
     }
   }
 
-  async function completeGoogleOnboarding(
-    payload: Omit<GoogleOnboardingPayload, 'onboardingToken'>,
-  ): Promise<void> {
-    const onboardingToken = googleOnboardingToken.value;
-    if (!onboardingToken) {
-      throw new Error('Missing Google onboarding token');
-    }
-
+  async function completeOnboarding(payload: CompleteOnboardingPayload): Promise<void> {
     pending.value = true;
     try {
-      const result = await apiFetch<LoginResult>('/auth/google/onboarding', {
+      const next = await apiFetch<User>('/account/onboarding', {
         method: 'POST',
-        body: JSON.stringify({
-          onboardingToken,
-          ...payload,
-        } satisfies GoogleOnboardingPayload),
+        body: JSON.stringify(payload),
       });
-      applyLoginResult(result);
+      applyUser(next);
       justOnboarded.value = true;
       clearDraft();
       clearPendingEmail();
@@ -252,7 +243,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(): Promise<void> {
     try {
-      await apiFetch<void>('/auth/logout', { method: 'POST' });
+      await authClient.signOut();
     } catch {
       // 로컬 세션은 항상 지운다.
     } finally {
@@ -267,21 +258,13 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     justOnboarded,
     pending,
-    emailDraft,
-    googleOnboardingToken,
     googleNicknamePrefill,
     pendingEmail,
-    devVerifyToken,
-    hasTokens,
     isAuthenticated,
-    hasJobAccess,
-    applyLoginResult,
+    needsJobOnboarding,
     clearJustOnboarded,
     clearDraft,
-    clearEmailDraft,
     clearSession,
-    saveEmailDraft,
-    setGoogleOnboarding,
     setPendingEmail,
     hydrate,
     login,
@@ -289,7 +272,7 @@ export const useAuthStore = defineStore('auth', () => {
     verifyEmail,
     resendVerification,
     loginWithGoogle,
-    completeGoogleOnboarding,
+    completeOnboarding,
     logout,
   };
 });

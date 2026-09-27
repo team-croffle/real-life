@@ -34,7 +34,9 @@ function onStart(): void {
     </svg>
     <h1 class="mt-4 mb-1.5 text-[19px] font-bold">{{ t('auth.welcome.title') }}</h1>
     <p class="text-secondary-foreground mb-[26px] text-[12.5px]">
-      {{ t('auth.welcome.subtitle', { job: user ? t(`auth.jobs.${user.jobClass}`) : '' }) }}
+      {{
+        t('auth.welcome.subtitle', { job: user?.jobClass ? t(`auth.jobs.${user.jobClass}`) : '' })
+      }}
     </p>
     <Button type="button" @click="onStart">{{ t('auth.welcome.submit') }}</Button>
   </div>
