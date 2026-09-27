@@ -1,9 +1,8 @@
 import type { CreateQuestResult } from '@nest-vue/shared';
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
+import type { UserSession } from '@thallesp/nestjs-better-auth';
 
-import type { RequestAuthUser } from '../auth/auth.types';
-import { CurrentUser } from '../auth/current-user.decorator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { QuestsService } from './quests.service';
 
@@ -12,11 +11,8 @@ export class QuestsController {
   constructor(private readonly questsService: QuestsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
-  create(
-    @CurrentUser() user: RequestAuthUser,
-    @Body() dto: CreateQuestDto,
-  ): Promise<CreateQuestResult> {
-    return this.questsService.create(user.id, dto);
+  @UseGuards(AuthGuard)
+  create(@Session() session: UserSession, @Body() dto: CreateQuestDto): Promise<CreateQuestResult> {
+    return this.questsService.create(session.user.id, dto);
   }
 }
