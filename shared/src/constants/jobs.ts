@@ -2,6 +2,10 @@ export const JOB_CLASSES = ['student', 'office_worker', 'freelancer'] as const;
 
 export type JobClass = (typeof JOB_CLASSES)[number];
 
+export function isJobClass(value: unknown): value is JobClass {
+  return typeof value === 'string' && (JOB_CLASSES as readonly string[]).includes(value);
+}
+
 export const JOB_CLASS_LABELS: Record<JobClass, string> = {
   student: '학생',
   office_worker: '직장인',

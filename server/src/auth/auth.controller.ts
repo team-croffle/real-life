@@ -1,4 +1,4 @@
-import type { GoogleAuthResult, LoginResult, RegisterResult, User } from '@nest-vue/shared';
+import type { RegisterResult, User } from '@nest-vue/shared';
 import {
   Body,
   Controller,
@@ -7,132 +7,57 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Req,
-  Res,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import type { Request, Response } from 'express';
+import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
+import type { UserSession } from '@thallesp/nestjs-better-auth';
 
-import { AuthService } from './auth.service';
-import type { IssuedLogin, RequestAuthUser } from './auth.types';
-import { CurrentUser } from './current-user.decorator';
-import { GoogleAuthDto } from './dto/google-auth.dto';
-import { GoogleOnboardingDto } from './dto/google-onboarding.dto';
-import { LoginDto } from './dto/login.dto';
+import { AllowWithoutJob } from './allow-without-job';
+import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import { attachRefreshCookie, clearRefreshCookie, readRefreshCookie } from './refresh-cookie';
+import { MailSendLimitGuard } from './mail-send-limit.guard';
+import { ProfileService } from './profile.service';
 
-@Controller('auth')
+@Controller('account')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly config: ConfigService,
-  ) {}
-
-  private cookieSecure(): boolean {
-    return this.config.get<string>('NODE_ENV') === 'production';
-  }
-
-  private loginBody(res: Response, issued: IssuedLogin): LoginResult {
-    attachRefreshCookie(res, issued.refreshToken, this.cookieSecure());
-    return { accessToken: issued.accessToken, user: issued.user };
-  }
+  constructor(private readonly profiles: ProfileService) {}
 
   @Post('register')
+  @UseGuards(MailSendLimitGuard)
   register(@Body() dto: RegisterDto): Promise<RegisterResult> {
-    return this.authService.register(dto);
-  }
-
-  @Post('verify-email')
-  @HttpCode(HttpStatus.OK)
-  async verifyEmail(
-    @Body() dto: VerifyEmailDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResult> {
-    return this.loginBody(res, await this.authService.verifyEmail(dto.token));
+    return this.profiles.register(dto);
   }
 
   @Post('resend-verification')
+  @UseGuards(MailSendLimitGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async resendVerification(@Body() dto: ResendVerificationDto): Promise<void> {
-    await this.authService.resendVerification(dto.email);
-  }
-
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() dto: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResult> {
-    return this.loginBody(res, await this.authService.login(dto));
-  }
-
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResult> {
-    const token = readRefreshCookie(req);
-    if (!token) {
-      throw new UnauthorizedException();
-    }
-    return this.loginBody(res, await this.authService.refresh(token));
-  }
-
-  /** Revokes this refresh row; access JWTs with that sid fail immediately. */
-  @Post('logout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
-    const token = readRefreshCookie(req);
-    if (token) {
-      try {
-        await this.authService.logout(token);
-      } catch {
-        // 쿠키는 항상 지운다.
-      }
-    }
-    clearRefreshCookie(res, this.cookieSecure());
+    await this.profiles.resendVerification(dto.email);
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  me(@CurrentUser() user: RequestAuthUser): Promise<User> {
-    return this.authService.me(user.id);
+  @UseGuards(AuthGuard)
+  me(@Session() session: UserSession): Promise<User> {
+    return this.profiles.me(session.user.id);
+  }
+
+  @Post('onboarding')
+  @AllowWithoutJob()
+  @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
+  completeOnboarding(
+    @Session() session: UserSession,
+    @Body() dto: CompleteOnboardingDto,
+  ): Promise<User> {
+    return this.profiles.completeOnboarding(session.user.id, dto);
   }
 
   @Delete('me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async withdraw(@CurrentUser() user: RequestAuthUser, @Body() dto: WithdrawDto): Promise<void> {
-    await this.authService.withdraw(user.id, dto);
-  }
-
-  @Post('google')
-  @HttpCode(HttpStatus.OK)
-  async google(
-    @Body() dto: GoogleAuthDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<GoogleAuthResult> {
-    const result = await this.authService.google(dto.idToken);
-    if (result.needsOnboarding) {
-      return result;
-    }
-    return { needsOnboarding: false, ...this.loginBody(res, result) };
-  }
-
-  @Post('google/onboarding')
-  @HttpCode(HttpStatus.OK)
-  async googleOnboarding(
-    @Body() dto: GoogleOnboardingDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResult> {
-    return this.loginBody(res, await this.authService.googleOnboarding(dto));
+  async withdraw(@Session() session: UserSession, @Body() dto: WithdrawDto): Promise<void> {
+    await this.profiles.withdraw(session, dto);
   }
 }

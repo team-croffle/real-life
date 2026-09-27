@@ -23,28 +23,27 @@ pnpm docker:dev
 
 아래 값을 `server/.env` 에 채운다. 새 변수를 추가하면 `.env.example` 을 같은 커밋에서 맞춘다.
 
-| 변수                 | 필수 | 기본값                  | 설명                                           |
-| -------------------- | ---- | ----------------------- | ---------------------------------------------- |
-| `DATABASE_URL`       | O    | -                       | `postgresql://user:pass@host:5432/db`          |
-| `PORT`               | X    | `3000`                  | HTTP 포트                                      |
-| `CORS_ORIGIN`        | X    | `http://localhost:5173` | 허용 오리진. credentials 쿠키라 `*` 불가       |
-| `DATABASE_POOL_MAX`  | X    | `10`                    | pg 커넥션 풀 최대 크기                         |
-| `NODE_ENV`           | X    | -                       | `development` / `production`                   |
-| `JWT_ACCESS_SECRET`  | O    | -                       | Access JWT 서명 키                             |
-| `JWT_REFRESH_SECRET` | O    | -                       | Refresh JWT 서명 키                            |
-| `GOOGLE_CLIENT_ID`   | X    | -                       | 없으면 Google 로그인은 비활성                  |
-| `SMTP_HOST`          | X    | `smtp.gmail.com`        | Gmail SMTP 호스트                              |
-| `SMTP_PORT`          | X    | `587`                   | `587`은 STARTTLS, `465`는 SSL                  |
-| `SMTP_USER`          | X    | -                       | Gmail 주소. 비밀번호 가입 메일 발송            |
-| `SMTP_PASS`          | X    | -                       | Gmail **앱 비밀번호** (계정 비밀번호 아님)     |
-| `MAIL_FROM`          | X    | `SMTP_USER`             | From 헤더. 비우면 SMTP_USER                    |
-| `WEB_ORIGIN`         | X    | `CORS_ORIGIN`           | 인증 메일 링크 베이스 (`/verify-email?token=`) |
+| 변수                   | 필수 | 기본값                  | 설명                                            |
+| ---------------------- | ---- | ----------------------- | ----------------------------------------------- |
+| `DATABASE_URL`         | O    | -                       | `postgresql://user:pass@host:5432/db`           |
+| `PORT`                 | X    | `3000`                  | HTTP 포트                                       |
+| `CORS_ORIGIN`          | X    | `http://localhost:5173` | 허용 오리진. credentials 쿠키라 `*` 불가        |
+| `DATABASE_POOL_MAX`    | X    | `10`                    | pg 커넥션 풀 최대 크기                          |
+| `NODE_ENV`             | X    | -                       | `development` / `production`                    |
+| `BETTER_AUTH_SECRET`   | O    | -                       | 세션 서명 키. 32자 이상                         |
+| `BETTER_AUTH_URL`      | X    | `http://localhost:3000` | 서버 origin. Better Auth baseURL                |
+| `GOOGLE_CLIENT_ID`     | X    | -                       | 없으면 Google 로그인은 비활성                   |
+| `GOOGLE_CLIENT_SECRET` | X    | -                       | OAuth 코드 교환용. ID 토큰 로그인에는 비워 둔다 |
+| `SMTP_HOST`            | X    | `smtp.gmail.com`        | Gmail SMTP 호스트                               |
+| `SMTP_PORT`            | X    | `587`                   | `587`은 STARTTLS, `465`는 SSL                   |
+| `SMTP_USER`            | X    | -                       | Gmail 주소. 비밀번호 가입 메일 발송             |
+| `SMTP_PASS`            | X    | -                       | Gmail **앱 비밀번호** (계정 비밀번호 아님)      |
+| `MAIL_FROM`            | X    | `SMTP_USER`             | From 헤더. 비우면 SMTP_USER                     |
+| `WEB_ORIGIN`           | X    | `CORS_ORIGIN`           | 인증 메일 링크 베이스 (`/verify-email?token=`)  |
 
-Access JWT 만료는 코드 상수 `ACCESS_TOKEN_EXPIRES` (**15분**)다. Access payload의 `sid`는 `refresh_tokens` 행 id다. 가드는 그 행이 폐기·만료되지 않았고 유저가 남아 있는지 확인한다. 로그아웃·탈퇴·refresh 회전 후에는 해당 access도 즉시 401이다.
+세션은 Better Auth httpOnly 쿠키다. 웹은 `credentials: 'include'`로 쿠키를 실어 보낸다. 가드는 세션이 살아 있는지 본다.
 
-Refresh는 JSON이 아니라 httpOnly 쿠키다. 이름 `refreshToken`, Path `/api/auth`, SameSite=Lax, Max-Age 7일, `production`만 Secure. 웹은 access를 메모리에만 두고 `credentials: 'include'`로 쿠키를 실어 보낸다.
-
-Gmail SMTP: Google 계정에서 2단계 인증을 켠 뒤 [앱 비밀번호](https://myaccount.google.com/apppasswords)를 발급한다. 16자리를 공백 없이 `SMTP_PASS`에 넣고 `SMTP_USER`에 그 Gmail을 넣는다. `production`에서 SMTP가 없으면 가입 전에 503이다. SMTP가 있는데 발송만 실패하면 가입은 되고 재발송하면 된다. `development`에서 SMTP가 비어 있으면 메일 대신 가입 응답의 `devVerifyToken`으로 POST `/auth/verify-email` 한다 (로그에 링크를 안 남긴다).
+Gmail SMTP: Google 계정에서 2단계 인증을 켠 뒤 [앱 비밀번호](https://myaccount.google.com/apppasswords)를 발급한다. 16자리를 공백 없이 `SMTP_PASS`에 넣고 `SMTP_USER`에 그 Gmail을 넣는다. SMTP가 없으면 이메일 가입은 503이다. SMTP가 있는데 발송만 실패하면 가입은 되고 재발송하면 된다.
 
 ### MinIO (S3 호환 오브젝트 스토리지)
 
@@ -80,9 +79,10 @@ CORS_ORIGIN=http://localhost:5173
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nest_vue
 DATABASE_POOL_MAX=10
 
-JWT_ACCESS_SECRET=change-me-access
-JWT_REFRESH_SECRET=change-me-refresh
+BETTER_AUTH_SECRET=change-me-better-auth-secret-32chars
+BETTER_AUTH_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 
 SMTP_USER=
 SMTP_PASS=
@@ -134,16 +134,12 @@ pnpm --filter @nest-vue/server test:e2e   # e2e (test/**/*.e2e-spec.ts)
 
 ## API
 
-| 메서드 | 경로                            | 설명                                                                                      |
-| ------ | ------------------------------- | ----------------------------------------------------------------------------------------- |
-| POST   | `/api/auth/register`            | 이메일 가입. 토큰 없음. 인증 메일 발송                                                    |
-| POST   | `/api/auth/verify-email`        | body `{ token }`. 인증 후 access JSON + refresh httpOnly 쿠키. GET으로는 소비하지 않음    |
-| POST   | `/api/auth/resend-verification` | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                                       |
-| POST   | `/api/auth/login`               | 이메일 로그인. 미인증이면 403. access JSON + refresh 쿠키                                 |
-| POST   | `/api/auth/refresh`             | refresh 쿠키로 access 재발급. 폐기된 refresh 재사용 시 해당 유저 refresh 전부 무효화      |
-| POST   | `/api/auth/logout`              | refresh 쿠키 폐기. 그 sid의 access도 즉시 무효                                            |
-| GET    | `/api/auth/me`                  | 현재 유저 (Bearer access)                                                                 |
-| DELETE | `/api/auth/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                            |
-| POST   | `/api/auth/google`              | Google ID 토큰. 기존 계정이면 access JSON + refresh 쿠키. 신규는 온보딩 토큰              |
-| POST   | `/api/auth/google/onboarding`   | 닉네임·직업군 설정 후 access JSON + refresh 쿠키                                          |
-| POST   | `/api/quests`                   | 퀘스트 등록 (Bearer access). 루틴 또는 마감. 골드·XP는 서버가 표로 계산하고 본문에만 넣음 |
+| 메서드 | 경로                               | 설명                                                                             |
+| ------ | ---------------------------------- | -------------------------------------------------------------------------------- |
+| POST   | `/api/account/register`            | 이메일 가입. 세션 없음. 인증 메일 발송                                           |
+| GET    | `/api/auth/*`                      | Better Auth 핸들러. 로그인·로그아웃·세션·메일 인증·Google ID 토큰                |
+| POST   | `/api/account/resend-verification` | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                              |
+| GET    | `/api/account/me`                  | 현재 유저 (세션 쿠키)                                                            |
+| POST   | `/api/account/onboarding`          | 세션 있는 계정의 닉네임·직업군 설정. 메일 인증 또는 Google 이후                  |
+| DELETE | `/api/account/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                   |
+| POST   | `/api/quests`                      | 퀘스트 등록 (세션). 루틴 또는 마감. 골드·XP는 서버가 표로 계산하고 본문에만 넣음 |
