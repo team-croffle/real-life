@@ -2,6 +2,7 @@ export * from './constants/api';
 export * from './constants/auth';
 export * from './constants/jobs';
 export * from './constants/quests';
+export * from './constants/wallet';
 export * from './types/api';
 export * from './types/auth';
 export * from './types/quest';
