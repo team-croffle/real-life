@@ -43,6 +43,13 @@
       "when": 1790500840148,
       "tag": "0005_id_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790596183981,
+      "tag": "0006_wallet",
+      "breakpoints": true
     }
   ]
 }
