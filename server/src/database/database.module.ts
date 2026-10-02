@@ -7,6 +7,7 @@ import { DRIZZLE, PG_POOL } from './database.constants';
 import * as schema from './schema';
 
 export type DrizzleDb = ReturnType<typeof createDrizzle>;
+export type DrizzleTx = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0];
 
 function createDrizzle(pool: Pool) {
   return drizzle(pool, { schema, casing: 'snake_case' });

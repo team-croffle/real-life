@@ -9,7 +9,7 @@ import {
 import { count, desc, eq } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
-import type { DrizzleDb } from '../database/database.module';
+import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { walletEntries, wallets } from '../database/schema/wallets';
 import type { CreatePostHocDeductionDto } from './dto/create-post-hoc-deduction.dto';
 import type { ListWalletEntriesQueryDto } from './dto/list-wallet-entries-query.dto';
@@ -71,31 +71,35 @@ export class WalletService {
     dto: CreatePostHocDeductionDto,
   ): Promise<WalletBalance> {
     return this.db.transaction(async (tx) => {
-      await tx.insert(wallets).values({ userId }).onConflictDoNothing();
-
-      const [walletRow] = await tx
-        .select({ balance: wallets.balance })
-        .from(wallets)
-        .where(eq(wallets.userId, userId))
-        .for('update');
-
-      if (!walletRow) {
-        throw new InternalServerErrorException('wallet row missing after insert');
-      }
-
-      const nextBalance = walletRow.balance - dto.amount;
-      if (nextBalance < -WALLET_DEBT_LIMIT) {
-        throw new BadRequestException('deduction would exceed the debt limit');
-      }
-
-      await tx.insert(walletEntries).values({
-        userId,
-        amount: -dto.amount,
-      });
-
-      await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
-
-      return { balance: nextBalance };
+      const balance = await this.applyBalanceDelta(tx, userId, -dto.amount);
+      return { balance };
     });
+  }
+
+  async applyBalanceDelta(tx: DrizzleTx, userId: string, amount: number): Promise<number> {
+    await tx.insert(wallets).values({ userId }).onConflictDoNothing();
+
+    const [walletRow] = await tx
+      .select({ balance: wallets.balance })
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .for('update');
+
+    if (!walletRow) {
+      throw new InternalServerErrorException('wallet row missing after insert');
+    }
+
+    if (amount === 0) {
+      return walletRow.balance;
+    }
+
+    const nextBalance = walletRow.balance + amount;
+    if (amount < 0 && nextBalance < -WALLET_DEBT_LIMIT) {
+      throw new BadRequestException('deduction would exceed the debt limit');
+    }
+
+    await tx.insert(walletEntries).values({ userId, amount });
+    await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
+    return nextBalance;
   }
 }
