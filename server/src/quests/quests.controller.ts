@@ -3,7 +3,7 @@ import type {
   QuestCompletionResult,
   QuestDayMarkResult,
 } from '@nest-vue/shared';
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
@@ -42,5 +42,12 @@ export class QuestsController {
     @Param('id') questId: string,
   ): Promise<QuestDayMarkResult> {
     return this.questCompletionService.markToday(session.user.id, questId);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @UseGuards(AuthGuard)
+  abandon(@Session() session: UserSession, @Param('id') questId: string): Promise<void> {
+    return this.questsService.abandon(session.user.id, questId);
   }
 }
