@@ -6,13 +6,17 @@ import {
 } from '@nest-vue/shared';
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
+import { questCompletions } from '../database/schema/quest-completions';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
 import type { CreateQuestDto } from './dto/create-quest.dto';
@@ -93,6 +97,40 @@ export class QuestsService {
       .returning();
 
     return toQuest(requireInserted(questRow), QUEST_REWARDS[dto.difficulty][period]);
+  }
+
+  async abandon(userId: string, questId: string): Promise<void> {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(questId)
+    ) {
+      throw new NotFoundException();
+    }
+
+    await this.db.transaction(async (tx) => {
+      const [questRow] = await tx
+        .select({ id: quests.id, schedule: quests.schedule })
+        .from(quests)
+        .where(and(eq(quests.id, questId), eq(quests.userId, userId)))
+        .for('update');
+
+      if (!questRow) {
+        throw new NotFoundException();
+      }
+
+      if (questRow.schedule === 'deadline') {
+        const [completionRow] = await tx
+          .select({ id: questCompletions.id })
+          .from(questCompletions)
+          .where(eq(questCompletions.questId, questRow.id))
+          .limit(1);
+
+        if (completionRow) {
+          throw new ConflictException('completed deadline quests cannot be abandoned');
+        }
+      }
+
+      await tx.delete(quests).where(eq(quests.id, questRow.id));
+    });
   }
 }
 
