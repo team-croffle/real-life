@@ -1,7 +1,6 @@
-import type { Quest, QuestRewardPeriod, QuestWeekday } from '@nest-vue/shared';
+import type { Quest, QuestWeekday } from '@nest-vue/shared';
 import {
   QUEST_DEADLINE_DAILY_REMAINING_DAYS,
-  QUEST_DEADLINE_WEEKLY_MAX_REMAINING_DAYS,
   QUEST_REWARDS,
   QUEST_WEEKDAYS,
 } from '@nest-vue/shared';
@@ -17,6 +16,13 @@ import type { DrizzleDb } from '../database/database.module';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
 import type { CreateQuestDto } from './dto/create-quest.dto';
+import {
+  APP_TIME_ZONE,
+  calendarDaysBetween,
+  isCalendarDate,
+  rewardPeriodForRemainingDays,
+  seoulCalendarDate,
+} from './quest-calendar';
 
 @Injectable()
 export class QuestsService {
@@ -67,7 +73,7 @@ export class QuestsService {
 
     const remainingDays = calendarDaysBetween(seoulCalendarDate(), endsOn);
     if (remainingDays < QUEST_DEADLINE_DAILY_REMAINING_DAYS) {
-      throw new BadRequestException('endsOn must be today or later in Asia/Seoul');
+      throw new BadRequestException(`endsOn must be today or later in ${APP_TIME_ZONE}`);
     }
 
     const period = rewardPeriodForRemainingDays(remainingDays);
@@ -100,45 +106,6 @@ function requireInserted(questRow: QuestRow | undefined): QuestRow {
 function uniqueSortedWeekdays(weekdays: QuestWeekday[]): QuestWeekday[] {
   const selected = new Set(weekdays);
   return QUEST_WEEKDAYS.filter((weekday) => selected.has(weekday));
-}
-
-function seoulCalendarDate(now = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
-}
-
-function isCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-  const [year, month, day] = value.split('-').map(Number);
-  const utc = new Date(Date.UTC(year, month - 1, day));
-  return (
-    utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day
-  );
-}
-
-function calendarDaysBetween(fromDate: string, toDate: string): number {
-  return Math.round((calendarDateToUtc(toDate) - calendarDateToUtc(fromDate)) / 86_400_000);
-}
-
-function calendarDateToUtc(value: string): number {
-  const [year, month, day] = value.split('-').map(Number);
-  return Date.UTC(year, month - 1, day);
-}
-
-function rewardPeriodForRemainingDays(remainingDays: number): QuestRewardPeriod {
-  if (remainingDays <= QUEST_DEADLINE_DAILY_REMAINING_DAYS) {
-    return 'daily';
-  }
-  if (remainingDays <= QUEST_DEADLINE_WEEKLY_MAX_REMAINING_DAYS) {
-    return 'weekly';
-  }
-  return 'long_term';
 }
 
 function toQuest(questRow: QuestRow, reward: { gold: number; xp: number }): Quest {
