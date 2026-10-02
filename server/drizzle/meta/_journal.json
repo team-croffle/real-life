@@ -50,6 +50,13 @@
       "when": 1790596183981,
       "tag": "0006_wallet",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790920338057,
+      "tag": "0007_quest_completion",
+      "breakpoints": true
     }
   ]
 }
