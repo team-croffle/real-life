@@ -15,9 +15,13 @@ audit:
   ignore:
     - GHSA-67mh-4wv8-2f99
 
-# Nest platform-express가 끌어오는 multer 2.2.0 DoS 권고. 2.3.0이 패치다.
+# Nest platform-express가 끌어오는 multer DoS 권고. 2.4.0이 패치다.
+# fast-uri 3.1.6, brace-expansion 2.1.4·5.0.9 권고. 메이저별로 패치 버전만 올린다.
 overrides:
-  multer: 2.3.0
+  multer: 2.4.0
+  fast-uri: 3.1.8
+  'brace-expansion@2': 2.1.7
+  'brace-expansion@5': 5.0.12
 
 # 워크스페이스 전역에서 동일 버전을 강제할 패키지
 catalog:
