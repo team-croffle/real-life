@@ -15,6 +15,7 @@ export const users = pgTable(
     nickname: text().notNull(),
     tag: text().notNull(),
     jobClass: jobClassEnum(),
+    jobClassChangedAt: timestamp({ withTimezone: true, mode: 'date' }),
     role: userRoleEnum().notNull().default('member'),
     createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })

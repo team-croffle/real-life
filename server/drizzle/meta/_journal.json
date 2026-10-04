@@ -57,6 +57,13 @@
       "when": 1790920338057,
       "tag": "0007_quest_completion",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791111195567,
+      "tag": "0008_job_class_changed_at",
+      "breakpoints": true
     }
   ]
 }
