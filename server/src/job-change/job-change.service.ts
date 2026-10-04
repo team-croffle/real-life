@@ -75,8 +75,9 @@ export class JobChangeService {
         .set({ jobClass: dto.jobClass, jobClassChangedAt: now })
         .where(eq(users.id, userId));
 
-      await resetLevelXp(tx, userId);
+      // 퀘스트 완료는 지갑을 잠근 다음 진행도를 잠근다. 순서가 반대면 두 트랜잭션이 서로를 기다린다.
       const goldGranted = await grantForReason(tx, this.wallet, userId, reason);
+      await resetLevelXp(tx, userId);
 
       return {
         jobClass: dto.jobClass,
