@@ -63,6 +63,7 @@ export class QuestCompletionService {
       const daySpan = questRow.schedule === 'deadline' ? calendarDaysBetween(createdOn, today) : 0;
       const markedDayCount = daySpan > 0 ? await lockedMarkCount(tx, questRow.id, userId) : 0;
       const table = completionTableAmount(questRow.difficulty, daySpan, markedDayCount);
+      // 직업 변경은 users, 지갑, 진행도 순으로 잠근다. 배율은 지갑보다 먼저 users를 잠근 뒤의 직업으로 계산한다.
       const multiplier = jobRewardMultiplier(await requireJobClass(tx, userId), questRow.category);
       const noteBonus = note !== null;
       const gold = grantAmount(
@@ -196,7 +197,8 @@ async function requireJobClass(tx: DrizzleTx, userId: string) {
   const [userRow] = await tx
     .select({ jobClass: users.jobClass })
     .from(users)
-    .where(eq(users.id, userId));
+    .where(eq(users.id, userId))
+    .for('update');
 
   if (!userRow?.jobClass) {
     throw new ForbiddenException();
