@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
+import { JobChangeModule } from './job-change/job-change.module';
 import { QuestsModule } from './quests/quests.module';
 import { WalletModule } from './wallet/wallet.module';
 
@@ -18,6 +19,7 @@ import { WalletModule } from './wallet/wallet.module';
     AuthModule,
     QuestsModule,
     WalletModule,
+    JobChangeModule,
   ],
 })
 export class AppModule {}
