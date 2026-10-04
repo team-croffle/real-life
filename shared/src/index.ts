@@ -1,5 +1,6 @@
 export * from './constants/api';
 export * from './constants/auth';
+export * from './constants/job-change';
 export * from './constants/jobs';
 export * from './constants/quests';
 export * from './constants/wallet';
@@ -7,6 +8,7 @@ export * from './quest-completion';
 export * from './types/api';
 export * from './types/quest-completion';
 export * from './types/auth';
+export * from './types/job-change';
 export * from './types/quest';
 export * from './types/user';
 export * from './types/wallet';
