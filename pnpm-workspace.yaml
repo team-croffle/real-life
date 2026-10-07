@@ -20,11 +20,16 @@ audit:
 
 # Nest platform-express가 끌어오는 multer DoS 권고. 2.4.0이 패치다.
 # fast-uri 3.1.6, brace-expansion 2.1.4·5.0.9 권고. 메이저별로 패치 버전만 올린다.
+# proxy-addr 2.0.7, source-map-js 1.2.1, tinypool 2.1.0 권고.
+# pnpm update로는 취약 버전이 남아서 패치 버전으로 고정한다.
 overrides:
   multer: 2.4.0
   fast-uri: 3.1.8
   'brace-expansion@2': 2.1.7
   'brace-expansion@5': 5.0.12
+  proxy-addr: 2.0.8
+  source-map-js: 1.2.2
+  tinypool: 2.1.2
 
 # 워크스페이스 전역에서 동일 버전을 강제할 패키지
 catalog:
