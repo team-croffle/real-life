@@ -25,6 +25,7 @@ audit:
 # fast-uri 3.1.6, brace-expansion 2.1.4·5.0.9 권고. 메이저별로 패치 버전만 올린다.
 # proxy-addr 2.0.7, source-map-js 1.2.1, tinypool 2.1.0 권고.
 # pnpm update로는 취약 버전이 남아서 패치 버전으로 고정한다.
+# shell-quote 1.9.0 권고. concurrently 10.0.5가 1.9.0을 집어 둬서 1.11.0으로 고정한다.
 overrides:
   multer: 2.4.0
   fast-uri: 3.1.8
@@ -33,6 +34,7 @@ overrides:
   proxy-addr: 2.0.8
   source-map-js: 1.2.2
   tinypool: 2.1.2
+  shell-quote: 1.11.0
 
 # 워크스페이스 전역에서 동일 버전을 강제할 패키지
 catalog:
