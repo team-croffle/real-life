@@ -9,7 +9,6 @@
     "dev:web": "pnpm --filter @nest-vue/web dev",
     "build": "pnpm --filter @nest-vue/server build && pnpm --filter @nest-vue/web build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @nest-vue/server test",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt .",
