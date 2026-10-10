@@ -18,8 +18,7 @@ real-life/
 │   │   ├── common/        # 공통 필터 등
 │   │   ├── database/      # DatabaseModule, Drizzle 스키마
 │   │   └── users/         # 사용자 도메인 (controller/service/dto)
-│   ├── drizzle/       # 마이그레이션 산출물
-│   └── test/          # e2e 테스트
+│   └── drizzle/       # 마이그레이션 산출물
 ├── web/               # Vue 3 + Vite 클라이언트 (@nest-vue/web)
 │   └── src/
 │       ├── components/    # UI 컴포넌트
@@ -59,7 +58,6 @@ pnpm dev:web
 | `pnpm dev`                                                  | server + web 동시 개발 서버 실행  |
 | `pnpm build`                                                | server + web 프로덕션 빌드        |
 | `pnpm typecheck`                                            | 전체 워크스페이스 타입체크        |
-| `pnpm test`                                                 | 서버 단위 테스트 (Jest)           |
 | `pnpm lint` / `pnpm lint:fix`                               | oxlint                            |
 | `pnpm format` / `pnpm format:check`                         | oxfmt                             |
 | `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle 마이그레이션 관리         |

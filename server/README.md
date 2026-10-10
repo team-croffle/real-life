@@ -125,13 +125,6 @@ constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 따라서 출력이 `dist/server/src/main.js` + `dist/shared/src/*.js` 형태가 된다.
 `tsc-alias` 가 `@nest-vue/shared`, `@/*` 경로 별칭을 상대 경로로 다시 써 준다.
 
-## 테스트
-
-```bash
-pnpm --filter @nest-vue/server test       # 단위 (src/**/*.spec.ts)
-pnpm --filter @nest-vue/server test:e2e   # e2e (test/**/*.e2e-spec.ts)
-```
-
 ## API
 
 | 메서드 | 경로                               | 설명                                                                             |
