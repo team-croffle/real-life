@@ -75,7 +75,7 @@ export class QuestCompletionService {
       );
       const xp = grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, noteBonus);
 
-      const balance = await this.walletService.applyBalanceDelta(tx, userId, gold);
+      const balance = await this.walletService.applyBalanceDelta(tx, userId, gold, 'completion');
       const progress = await grantProgress(tx, userId, xp);
 
       try {

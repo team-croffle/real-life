@@ -1,4 +1,4 @@
-import type { Paginated, WalletBalance, WalletEntry } from '@nest-vue/shared';
+import type { Paginated, WalletBalance, WalletEntry, WalletEntryKind } from '@nest-vue/shared';
 import { WALLET_DEBT_LIMIT } from '@nest-vue/shared';
 import {
   BadRequestException,
@@ -71,12 +71,17 @@ export class WalletService {
     dto: CreatePostHocDeductionDto,
   ): Promise<WalletBalance> {
     return this.db.transaction(async (tx) => {
-      const balance = await this.applyBalanceDelta(tx, userId, -dto.amount);
+      const balance = await this.applyBalanceDelta(tx, userId, -dto.amount, 'post_hoc_deduction');
       return { balance };
     });
   }
 
-  async applyBalanceDelta(tx: DrizzleTx, userId: string, amount: number): Promise<number> {
+  async applyBalanceDelta(
+    tx: DrizzleTx,
+    userId: string,
+    amount: number,
+    kind: WalletEntryKind,
+  ): Promise<number> {
     await tx.insert(wallets).values({ userId }).onConflictDoNothing();
 
     const [walletRow] = await tx
@@ -98,7 +103,7 @@ export class WalletService {
       throw new BadRequestException('deduction would exceed the debt limit');
     }
 
-    await tx.insert(walletEntries).values({ userId, amount });
+    await tx.insert(walletEntries).values({ userId, amount, kind });
     await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
     return nextBalance;
   }

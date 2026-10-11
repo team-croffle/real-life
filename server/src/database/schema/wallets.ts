@@ -1,6 +1,9 @@
-import { index, integer, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { WALLET_ENTRY_KINDS } from '@nest-vue/shared';
+import { index, integer, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { users } from './users';
+
+export const walletEntryKindEnum = pgEnum('wallet_entry_kind', WALLET_ENTRY_KINDS);
 
 export const wallets = pgTable('wallets', {
   userId: uuid()
@@ -21,6 +24,7 @@ export const walletEntries = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     amount: integer().notNull(),
+    kind: walletEntryKindEnum().notNull(),
     createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => [index('wallet_entries_user_id_idx').on(table.userId)],
