@@ -1,3 +1,5 @@
+import type { StatusEffect } from '../constants/status-effect';
+
 export interface QuestCompletionResult {
   gold: number;
   xp: number;
@@ -8,6 +10,7 @@ export interface QuestCompletionResult {
   ticketsGranted: number;
   ticketCount: number;
   titlesGranted: number[];
+  statusEffect: StatusEffect | null;
 }
 
 export interface QuestDayMarkResult {
