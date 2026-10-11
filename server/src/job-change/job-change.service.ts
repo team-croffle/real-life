@@ -138,7 +138,7 @@ async function grantForReason(
   reason: JobChangeReason,
 ): Promise<number> {
   if (reason === 'employment') {
-    await wallet.applyBalanceDelta(tx, userId, JOB_CHANGE_EMPLOYMENT_GOLD);
+    await wallet.applyBalanceDelta(tx, userId, JOB_CHANGE_EMPLOYMENT_GOLD, 'employment');
     return JOB_CHANGE_EMPLOYMENT_GOLD;
   }
   if (reason === 'unemployment') {
