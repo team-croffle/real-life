@@ -1,5 +1,5 @@
 import type { Paginated, WalletBalance, WalletEntry, WalletEntryKind } from '@nest-vue/shared';
-import { WALLET_DEBT_LIMIT } from '@nest-vue/shared';
+import { WALLET_DEBT_LIMIT, appliedGoldPenalty } from '@nest-vue/shared';
 import {
   BadRequestException,
   Inject,
@@ -106,5 +106,34 @@ export class WalletService {
     await tx.insert(walletEntries).values({ userId, amount, kind });
     await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
     return nextBalance;
+  }
+
+  /** 외상 한도까지만 깎는다. 적용액이 0이면 내역을 넣지 않고 잔액도 바꾸지 않는다. */
+  async applyClampedPenalty(
+    tx: DrizzleTx,
+    userId: string,
+    loss: number,
+  ): Promise<{ balance: number; applied: number }> {
+    await tx.insert(wallets).values({ userId }).onConflictDoNothing();
+
+    const [walletRow] = await tx
+      .select({ balance: wallets.balance })
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .for('update');
+
+    if (!walletRow) {
+      throw new InternalServerErrorException('wallet row missing after insert');
+    }
+
+    const applied = appliedGoldPenalty(walletRow.balance, loss);
+    if (applied === 0) {
+      return { balance: walletRow.balance, applied: 0 };
+    }
+
+    const nextBalance = walletRow.balance - applied;
+    await tx.insert(walletEntries).values({ userId, amount: -applied, kind: 'penalty' });
+    await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
+    return { balance: nextBalance, applied };
   }
 }

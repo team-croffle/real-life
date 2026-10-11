@@ -1,4 +1,4 @@
-import type { QuestRewardPeriod, QuestWeekday } from '@nest-vue/shared';
+import type { QuestRewardPeriod, QuestSchedule, QuestWeekday } from '@nest-vue/shared';
 import {
   QUEST_DEADLINE_DAILY_REMAINING_DAYS,
   QUEST_DEADLINE_WEEKLY_MAX_REMAINING_DAYS,
@@ -36,10 +36,40 @@ export function weekdayOfCalendarDate(value: string): QuestWeekday {
   return WEEKDAYS_FROM_UTC_DAY[new Date(calendarDateToUtc(value)).getUTCDay()];
 }
 
+export function addCalendarDays(value: string, days: number): string {
+  const utc = new Date(calendarDateToUtc(value) + days * 86_400_000);
+  const year = utc.getUTCFullYear();
+  const month = String(utc.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(utc.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /** 등록한 주(한국 시간, 월~일)가 0이고, 짝수 주만 수행 주다. */
 export function isBiweeklyOnWeek(createdOn: string, today: string): boolean {
   const weeks = calendarDaysBetween(mondayOf(createdOn), mondayOf(today)) / 7;
   return weeks % 2 === 0;
+}
+
+export function isRoutineDueOn(
+  quest: {
+    schedule: QuestSchedule;
+    weekdays: readonly QuestWeekday[] | null;
+    biweekly: boolean | null;
+  },
+  createdOn: string,
+  day: string,
+): boolean {
+  if (quest.schedule !== 'routine' || day < createdOn) {
+    return false;
+  }
+  const weekdays = quest.weekdays ?? [];
+  if (!weekdays.includes(weekdayOfCalendarDate(day))) {
+    return false;
+  }
+  if (quest.biweekly && !isBiweeklyOnWeek(createdOn, day)) {
+    return false;
+  }
+  return true;
 }
 
 export function rewardPeriodForRemainingDays(remainingDays: number): QuestRewardPeriod {
@@ -56,14 +86,6 @@ function mondayOf(value: string): string {
   const utcDay = new Date(calendarDateToUtc(value)).getUTCDay();
   const daysSinceMonday = utcDay === 0 ? 6 : utcDay - 1;
   return addCalendarDays(value, -daysSinceMonday);
-}
-
-function addCalendarDays(value: string, days: number): string {
-  const utc = new Date(calendarDateToUtc(value) + days * 86_400_000);
-  const year = utc.getUTCFullYear();
-  const month = String(utc.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(utc.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 function calendarDateToUtc(value: string): number {

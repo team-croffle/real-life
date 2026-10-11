@@ -1,4 +1,4 @@
-import type { QuestCompletionResult, QuestDayMarkResult } from '@nest-vue/shared';
+import type { QuestCompletionResult, QuestDayMarkResult, StatusEffect } from '@nest-vue/shared';
 import {
   QUEST_NOTE_MAX_LENGTH,
   applyLevelXp,
@@ -31,10 +31,11 @@ import { WalletService } from '../wallet/wallet.service';
 import type { CompleteQuestDto } from './dto/complete-quest.dto';
 import {
   calendarDaysBetween,
-  isBiweeklyOnWeek,
+  isRoutineDueOn,
   seoulCalendarDate,
   weekdayOfCalendarDate,
 } from './quest-calendar';
+import { QuestPenaltyService } from './quest-penalty.service';
 
 const QUEST_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -44,6 +45,7 @@ export class QuestCompletionService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly walletService: WalletService,
+    private readonly questPenaltyService: QuestPenaltyService,
   ) {}
 
   async complete(
@@ -53,6 +55,7 @@ export class QuestCompletionService {
   ): Promise<QuestCompletionResult> {
     assertQuestId(questId);
     const note = normalizeNote(dto.note);
+    await this.questPenaltyService.settle(userId);
 
     return this.db.transaction(async (tx) => {
       const questRow = await lockQuest(tx, userId, questId);
@@ -94,6 +97,8 @@ export class QuestCompletionService {
         throw error;
       }
 
+      const statusEffect = await statusAfterCompletion(tx, userId, questRow.schedule === 'routine');
+
       return {
         gold,
         xp,
@@ -104,6 +109,7 @@ export class QuestCompletionService {
         ticketsGranted: progress.ticketsGranted,
         ticketCount: progress.ticketCount,
         titlesGranted: progress.titlesGranted,
+        statusEffect,
       };
     });
   }
@@ -217,11 +223,11 @@ async function assertCompletable(
   }
 
   if (questRow.schedule === 'routine') {
-    const weekdays = questRow.weekdays ?? [];
-    if (!weekdays.includes(weekdayOfCalendarDate(today))) {
-      throw new BadRequestException('today is not a scheduled weekday');
-    }
-    if (questRow.biweekly && !isBiweeklyOnWeek(createdOn, today)) {
+    if (!isRoutineDueOn(questRow, createdOn, today)) {
+      const weekdays = questRow.weekdays ?? [];
+      if (!weekdays.includes(weekdayOfCalendarDate(today))) {
+        throw new BadRequestException('today is not a scheduled weekday');
+      }
       throw new BadRequestException('today is an off week');
     }
     if (await hasCompletionOn(tx, questRow.id, today)) {
@@ -236,6 +242,26 @@ async function assertCompletable(
   if (await hasAnyCompletion(tx, questRow.id)) {
     throw new ConflictException('quest is already completed');
   }
+}
+
+async function statusAfterCompletion(
+  tx: DrizzleTx,
+  userId: string,
+  clearLethargy: boolean,
+): Promise<StatusEffect | null> {
+  if (clearLethargy) {
+    await tx
+      .update(userProgress)
+      .set({ statusEffect: null })
+      .where(eq(userProgress.userId, userId));
+    return null;
+  }
+
+  const [progressRow] = await tx
+    .select({ statusEffect: userProgress.statusEffect })
+    .from(userProgress)
+    .where(eq(userProgress.userId, userId));
+  return progressRow?.statusEffect ?? null;
 }
 
 async function hasCompletionOn(

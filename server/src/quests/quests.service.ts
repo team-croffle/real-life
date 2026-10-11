@@ -19,6 +19,7 @@ import type { DrizzleDb } from '../database/database.module';
 import { questCompletions } from '../database/schema/quest-completions';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
+import { userProgress } from '../database/schema/user-progress';
 import type { CreateQuestDto } from './dto/create-quest.dto';
 import {
   APP_TIME_ZONE,
@@ -48,20 +49,24 @@ export class QuestsService {
         throw new BadRequestException('weekdays must contain at least one weekday');
       }
 
-      const [questRow] = await this.db
-        .insert(quests)
-        .values({
-          userId,
-          kind: dto.kind,
-          category: dto.category,
-          title,
-          difficulty: dto.difficulty,
-          schedule: 'routine',
-          weekdays,
-          biweekly: dto.biweekly,
-          endsOn: null,
-        })
-        .returning();
+      const questRow = await this.db.transaction(async (tx) => {
+        const [inserted] = await tx
+          .insert(quests)
+          .values({
+            userId,
+            kind: dto.kind,
+            category: dto.category,
+            title,
+            difficulty: dto.difficulty,
+            schedule: 'routine',
+            weekdays,
+            biweekly: dto.biweekly,
+            endsOn: null,
+          })
+          .returning();
+        await tx.insert(userProgress).values({ userId }).onConflictDoNothing();
+        return inserted;
+      });
 
       return toQuest(requireInserted(questRow), QUEST_REWARDS[dto.difficulty].daily);
     }
