@@ -1,4 +1,10 @@
-import type { QuestCategory, QuestDifficulty, QuestKind, QuestWeekday } from '../constants/quests';
+import type {
+  QuestCategory,
+  QuestDifficulty,
+  QuestKind,
+  QuestSchedule,
+  QuestWeekday,
+} from '../constants/quests';
 
 interface QuestFields {
   id: string;
@@ -28,6 +34,36 @@ export interface DeadlineQuest extends QuestFields {
 }
 
 export type Quest = RoutineQuest | DeadlineQuest;
+
+/** GET /api/quests. 골드·경험치는 수행 내용 없이 오늘 완료한다고 본 지급액이다. */
+export interface QuestListItem {
+  id: string;
+  kind: QuestKind;
+  category: QuestCategory;
+  title: string;
+  difficulty: QuestDifficulty;
+  schedule: QuestSchedule;
+  weekdays: QuestWeekday[] | null;
+  biweekly: boolean | null;
+  endsOn: string | null;
+  /** 한국 달력 날짜 `YYYY-MM-DD` */
+  createdOn: string;
+  dueToday: boolean;
+  completedToday: boolean;
+  completed: boolean;
+  canComplete: boolean;
+  canAbandon: boolean;
+  canMarkToday: boolean;
+  /** 루틴은 null. 마감은 day-mark가 없으면 0 */
+  markedDayCount: number | null;
+  /** 루틴은 null */
+  markedToday: boolean | null;
+  /** 루틴, 또는 오늘이 마감 기간 밖이면 null. 기간 안이면 만든 날과 오늘을 포함한다 */
+  elapsedDays: number | null;
+  /** 오늘 완료할 수 없는 마감은 null. 루틴은 일일 금액 */
+  expectedGold: number | null;
+  expectedXp: number | null;
+}
 
 interface CreateQuestFields {
   kind: QuestKind;

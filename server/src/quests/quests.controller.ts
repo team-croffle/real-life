@@ -2,8 +2,9 @@ import type {
   CreateQuestResult,
   QuestCompletionResult,
   QuestDayMarkResult,
+  QuestListItem,
 } from '@nest-vue/shared';
-import { Body, Controller, Delete, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
@@ -23,6 +24,12 @@ export class QuestsController {
   @UseGuards(AuthGuard)
   create(@Session() session: UserSession, @Body() dto: CreateQuestDto): Promise<CreateQuestResult> {
     return this.questsService.create(session.user.id, dto);
+  }
+
+  @Get()
+  @UseGuards(AuthGuard)
+  list(@Session() session: UserSession): Promise<QuestListItem[]> {
+    return this.questsService.list(session.user.id);
   }
 
   @Post(':id/complete')
