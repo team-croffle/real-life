@@ -5,12 +5,23 @@
   },
   "nav": {
     "home": "홈",
+    "quests": "퀘스트",
+    "stats": "스탯",
+    "wallet": "지갑",
+    "job": "직업",
+    "account": "계정",
     "about": "소개",
     "users": "사용자"
   },
   "home": {
-    "heading": "홈",
-    "body": "퀘스트 화면은 다음 작업에서 연결됩니다. 지금은 로그인 루프만 확인하세요."
+    "greeting": "안녕하세요, {name}님",
+    "subtitle": "오늘도 한 걸음, 꾸준히 성장해봐요",
+    "questsTitle": "오늘의 퀘스트",
+    "questsEmpty": "퀘스트 메뉴에서 등록하고 완료할 수 있어요.",
+    "openQuests": "퀘스트 보기"
+  },
+  "placeholder": {
+    "body": "준비 중이에요."
   },
   "about": {
     "heading": "이 프로젝트에 대해",

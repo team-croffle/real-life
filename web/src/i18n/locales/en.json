@@ -5,12 +5,23 @@
   },
   "nav": {
     "home": "Home",
+    "quests": "Quests",
+    "stats": "Stats",
+    "wallet": "Wallet",
+    "job": "Job",
+    "account": "Account",
     "about": "About",
     "users": "Users"
   },
   "home": {
-    "heading": "Home",
-    "body": "Quest screens come next. For now this page is here so you can confirm the login loop."
+    "greeting": "Hello, {name}",
+    "subtitle": "One step at a time.",
+    "questsTitle": "Today's quests",
+    "questsEmpty": "Register and complete quests from the Quests menu.",
+    "openQuests": "Open quests"
+  },
+  "placeholder": {
+    "body": "Not ready yet."
   },
   "about": {
     "heading": "About this project",
