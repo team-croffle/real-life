@@ -31,6 +31,7 @@ import { WalletService } from '../wallet/wallet.service';
 import type { CompleteQuestDto } from './dto/complete-quest.dto';
 import {
   calendarDaysBetween,
+  isDeadlineInPeriod,
   isRoutineDueOn,
   seoulCalendarDate,
   weekdayOfCalendarDate,
@@ -128,7 +129,7 @@ export class QuestCompletionService {
       if (questRow.endsOn === createdOn) {
         throw new BadRequestException('only weekly and long quests can mark a day');
       }
-      if (today < createdOn || today > questRow.endsOn) {
+      if (!isDeadlineInPeriod(createdOn, questRow.endsOn, today)) {
         throw new BadRequestException('today is outside the quest period');
       }
       if (await hasAnyCompletion(tx, questRow.id)) {
@@ -236,7 +237,7 @@ async function assertCompletable(
     return;
   }
 
-  if (questRow.endsOn === null || today > questRow.endsOn) {
+  if (questRow.endsOn === null || !isDeadlineInPeriod(createdOn, questRow.endsOn, today)) {
     throw new BadRequestException('quest is past its end date');
   }
   if (await hasAnyCompletion(tx, questRow.id)) {

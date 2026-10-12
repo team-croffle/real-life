@@ -72,6 +72,11 @@ export function isRoutineDueOn(
   return true;
 }
 
+/** 만든 날과 끝나는 날을 포함한다. */
+export function isDeadlineInPeriod(createdOn: string, endsOn: string, day: string): boolean {
+  return day >= createdOn && day <= endsOn;
+}
+
 export function rewardPeriodForRemainingDays(remainingDays: number): QuestRewardPeriod {
   if (remainingDays <= QUEST_DEADLINE_DAILY_REMAINING_DAYS) {
     return 'daily';
