@@ -33,10 +33,10 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 const filtered = computed(() => {
   if (tab.value === 'today') {
-    return items.value.filter((item) => item.target && !item.done);
+    return items.value.filter((item) => item.canComplete);
   }
   if (tab.value === 'done') {
-    return items.value.filter((item) => item.target && item.done);
+    return items.value.filter((item) => item.dueToday && isDone(item));
   }
   return items.value;
 });
@@ -44,6 +44,10 @@ const filtered = computed(() => {
 const abandonTitle = computed(
   () => items.value.find((item) => item.id === abandonId.value)?.title ?? '',
 );
+
+function isDone(item: QuestListItem): boolean {
+  return item.schedule === 'deadline' ? item.completed : item.completedToday;
+}
 
 function showToast(message: string): void {
   toast.value = message;
