@@ -3,7 +3,6 @@ import { Check, Ellipsis } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { estimateQuestReward } from '@/lib/questReward';
 import type { QuestListItem } from '@/lib/quests';
 
 const props = defineProps<{
@@ -19,8 +18,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const reward = computed(() =>
-  estimateQuestReward(props.item.difficulty, props.item.schedule, props.item.endsOn),
+const done = computed(() =>
+  props.item.schedule === 'deadline' ? props.item.completed : props.item.completedToday,
 );
 
 const scheduleText = computed(() => {
@@ -54,16 +53,16 @@ const difficultyClass = computed(() => {
 <template>
   <article
     class="bg-surface border-border relative flex flex-wrap items-center gap-3 rounded-[14px] border px-3.5 py-3"
-    :class="item.done ? 'opacity-[0.42]' : undefined"
+    :class="done ? 'opacity-[0.42]' : undefined"
   >
     <div
-      v-if="item.done"
+      v-if="done"
       class="quest-check bg-muted border-border flex size-5 shrink-0 items-center justify-center rounded-full border"
     >
       <Check class="text-muted-foreground size-2.5" :stroke-width="3.4" />
     </div>
     <button
-      v-else-if="item.target"
+      v-else-if="item.canComplete"
       type="button"
       class="border-primary size-5 shrink-0 rounded-full border-2 bg-transparent"
       :aria-label="t('quest.complete')"
@@ -73,7 +72,7 @@ const difficultyClass = computed(() => {
 
     <span
       class="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
-      :class="item.done ? 'bg-muted text-muted-foreground' : 'bg-accent text-accent-foreground'"
+      :class="done ? 'bg-muted text-muted-foreground' : 'bg-accent text-accent-foreground'"
     >
       {{ t(`quest.categories.${item.category}`) }}
     </span>
@@ -89,17 +88,22 @@ const difficultyClass = computed(() => {
       item.title
     }}</span>
 
-    <span v-if="!item.target" class="text-muted-foreground shrink-0 text-[11px] whitespace-nowrap">
+    <span
+      v-if="!item.dueToday"
+      class="text-muted-foreground shrink-0 text-[11px] whitespace-nowrap"
+    >
       {{ t('quest.notToday') }}
     </span>
     <span class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">{{
       scheduleText
     }}</span>
-    <span v-if="reward" class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">
-      {{ t('quest.rewardCard', { xp: reward.xp, gold: reward.gold }) }}
+    <span
+      v-if="item.expectedGold !== null && item.expectedXp !== null"
+      class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
+    >
+      {{ t('quest.rewardCard', { xp: item.expectedXp, gold: item.expectedGold }) }}
     </span>
-
-    <div v-if="!item.done" class="relative shrink-0" data-quest-menu>
+    <div v-if="item.canAbandon" class="relative shrink-0" data-quest-menu>
       <button
         type="button"
         class="text-muted-foreground p-1"
