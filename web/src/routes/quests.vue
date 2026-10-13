@@ -6,10 +6,17 @@ import { useI18n } from 'vue-i18n';
 import AppShell from '@/components/layouts/AppShell.vue';
 import QuestAbandonDialog from '@/components/quest/QuestAbandonDialog.vue';
 import QuestCard from '@/components/quest/QuestCard.vue';
+import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
-import { abandonQuest, completeQuest, getQuests, type QuestListItem } from '@/lib/quests';
+import {
+  abandonQuest,
+  completeQuest,
+  getQuests,
+  markQuestToday,
+  type QuestListItem,
+} from '@/lib/quests';
 
 type QuestTab = 'today' | 'done' | 'all';
 type QuestView = 'loading' | 'ready' | 'error';
@@ -25,6 +32,9 @@ const menuId = ref<string | null>(null);
 const abandonId = ref<string | null>(null);
 const abandonError = ref('');
 const abandonPending = ref(false);
+const completeId = ref<string | null>(null);
+const completeError = ref('');
+const completePending = ref(false);
 const registerOpen = ref(false);
 const busyId = ref<string | null>(null);
 const toast = ref('');
@@ -44,6 +54,9 @@ const filtered = computed(() => {
 const abandonTitle = computed(
   () => items.value.find((item) => item.id === abandonId.value)?.title ?? '',
 );
+const completeItem = computed(
+  () => items.value.find((item) => item.id === completeId.value) ?? null,
+);
 
 function isDone(item: QuestListItem): boolean {
   return item.schedule === 'deadline' ? item.completed : item.completedToday;
@@ -55,6 +68,13 @@ function showToast(message: string): void {
   toastTimer = setTimeout(() => {
     toast.value = '';
   }, 2500);
+}
+
+function statusErrorMessage(cause: unknown, messages: Record<number, string>): string {
+  if (!(cause instanceof ApiError) || cause.status === 401) {
+    return '';
+  }
+  return messages[cause.status] ?? (cause.message || t('quest.errors.generic'));
 }
 
 function questErrorMessage(cause: unknown): string {
@@ -95,6 +115,12 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   menuId.value = null;
+  if (completeId.value) {
+    if (!completePending.value) {
+      completeId.value = null;
+    }
+    return;
+  }
   if (abandonId.value) {
     if (!abandonPending.value) {
       abandonId.value = null;
@@ -119,17 +145,55 @@ function openAbandon(id: string): void {
   abandonId.value = id;
 }
 
-async function onComplete(id: string): Promise<void> {
+function openComplete(id: string): void {
+  menuId.value = null;
+  completeError.value = '';
+  completeId.value = id;
+}
+
+async function onConfirmComplete(note: string): Promise<void> {
+  const id = completeId.value;
+  if (!id || completePending.value) {
+    return;
+  }
+  completePending.value = true;
+  completeError.value = '';
+  try {
+    const result = await completeQuest(id, note);
+    completeId.value = null;
+    await load(true);
+    showToast(t('quest.toast.completed', { gold: result.gold, xp: result.xp }));
+  } catch (cause) {
+    const message = statusErrorMessage(cause, {
+      400: t('quest.errors.completeBadRequest'),
+      403: t('quest.errors.completeForbidden'),
+      404: t('quest.errors.notFound'),
+      409: t('quest.errors.completeConflict'),
+    });
+    if (message) {
+      completeError.value = message;
+    }
+  } finally {
+    completePending.value = false;
+  }
+}
+
+async function onMark(id: string): Promise<void> {
   if (busyId.value) {
     return;
   }
   busyId.value = id;
   try {
-    const result = await completeQuest(id);
+    await markQuestToday(id);
     await load(true);
-    showToast(t('quest.toast.completed', { gold: result.gold, xp: result.xp }));
+    showToast(t('quest.toast.marked'));
   } catch (cause) {
-    const message = questErrorMessage(cause);
+    const message = statusErrorMessage(cause, {
+      400: t('quest.errors.markBadRequest'),
+      403: t('quest.errors.markForbidden'),
+      404: t('quest.errors.notFound'),
+      409: t('quest.errors.markConflict'),
+    });
     if (message) {
       showToast(message);
     }
@@ -236,7 +300,9 @@ onUnmounted(() => {
           :key="item.id"
           :item="item"
           :menu-open="menuId === item.id"
-          @complete="onComplete(item.id)"
+          :busy="busyId === item.id"
+          @complete="openComplete(item.id)"
+          @mark="onMark(item.id)"
           @toggle-menu="toggleMenu(item.id)"
           @abandon="openAbandon(item.id)"
         />
@@ -244,6 +310,15 @@ onUnmounted(() => {
     </div>
 
     <QuestRegisterDialog :open="registerOpen" @close="registerOpen = false" @created="onCreated" />
+
+    <QuestCompleteDialog
+      v-if="completeItem"
+      :item="completeItem"
+      :pending="completePending"
+      :error="completeError"
+      @cancel="completeId = null"
+      @confirm="onConfirmComplete"
+    />
 
     <QuestAbandonDialog
       v-if="abandonId"

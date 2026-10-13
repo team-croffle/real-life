@@ -3,15 +3,18 @@ import { Check, Ellipsis } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { Button } from '@/components/ui/button';
 import type { QuestListItem } from '@/lib/quests';
 
 const props = defineProps<{
   item: QuestListItem;
   menuOpen: boolean;
+  busy: boolean;
 }>();
 
 const emit = defineEmits<{
   complete: [];
+  mark: [];
   toggleMenu: [];
   abandon: [];
 }>();
@@ -103,6 +106,24 @@ const difficultyClass = computed(() => {
     >
       {{ t('quest.rewardCard', { xp: item.expectedXp, gold: item.expectedGold }) }}
     </span>
+    <Button
+      v-if="item.canMarkToday"
+      type="button"
+      variant="outline"
+      size="sm"
+      class="w-auto shrink-0"
+      :disabled="busy"
+      @click="emit('mark')"
+    >
+      {{ t('quest.markToday') }}
+    </Button>
+    <span
+      v-else-if="item.markedToday"
+      class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
+    >
+      {{ t('quest.markedToday') }}
+    </span>
+
     <div v-if="item.canAbandon" class="relative shrink-0" data-quest-menu>
       <button
         type="button"
