@@ -1,6 +1,32 @@
 # 에이전트 지침
 
-NestJS 12 + Vue 3 pnpm 모노레포다. 워크스페이스는 `server`(API), `web`(클라이언트), `shared`(타입·상수)다. 스택, 스크립트, 디렉터리 구조는 [README.md](README.md)를 본다. 이 문서에 README를 복제하지 않는다.
+## 프로젝트 소개
+
+할 일을 퀘스트로 등록하고, 완료하면 골드와 경험치를 받는 웹앱이다.
+
+퀘스트는 루틴 또는 마감으로 등록한다. 완료하면 지갑에 골드를 더하고 진행도의 경험치를 올린다. 예정일이 지난 루틴을 완료하지 않으면, 정산할 때 골드와 경험치를 깎는다.
+
+- 프론트: Vue, Vite (`web`)
+- 서버: NestJS (`server`)
+- DB: PostgreSQL, Drizzle ORM
+- 패키지 매니저: pnpm 워크스페이스 (`shared`, `server`, `web`)
+- 배포: API 서버는 Docker 이미지로 빌드하고, Docker Compose로 Postgres와 함께 기동한다 (`docker/docker-compose.yaml`, `docker/Dockerfile`)
+
+## 프로젝트 구조
+
+| 부분   | 위치      | 스택과 역할                                                            |
+| ------ | --------- | ---------------------------------------------------------------------- |
+| 웹     | `web/`    | Vue 3, Vite. 화면 (개발 중 `/api`는 서버로 프록시)                     |
+| 서버   | `server/` | NestJS, Drizzle, PostgreSQL. API (인증, 퀘스트, 지갑, 스탯, 직업 변경) |
+| 공유   | `shared/` | 서버와 웹이 같이 쓰는 타입, 상수, 보상·패널티 계산                     |
+| 인프라 | `docker/` | Compose (postgres, server)                                             |
+
+루트 `package.json` 스크립트:
+
+- 실행: `pnpm dev`, `pnpm dev:server`, `pnpm dev:web`
+- 빌드: `pnpm build`
+- 타입체크: `pnpm typecheck`
+- lint: `pnpm lint`, `pnpm lint:fix`
 
 작업 전 로드맵과 명세를 확인한다.
 
@@ -10,11 +36,9 @@ NestJS 12 + Vue 3 pnpm 모노레포다. 워크스페이스는 `server`(API), `we
 
 브랜치는 서버와 클라이언트를 분리해서 진행한다. 같은 브랜치에 서버 작업과 클라이언트 작업을 함께 넣지 않는다. 예: `feat/auth-server` → `feat/auth-web`.
 
-파일명·함수명·타입명은 실제 동작과 일치해야 한다. 예: JWT를 localStorage에 저장하는 파일을 `session.ts`라고 부르지 않는다.
-
 커밋 전에 스스로 점검한다. 단일 책임 원칙 위반, 불필요하게 복잡한 구조, 중복 로직이 있으면 커밋 전에 먼저 알린다.
 
-작업은 `feat/*` 브랜치에서 한다. **`master`에 직접 커밋하지 않는다.** 현재 브랜치가 `master`이면 커밋하지 말고 사용자에게 `feat/*`로 바꿔 달라고 한다. 사용자가 `master`에 커밋하라고 명시한 경우(초기 세팅 등)만 예외다.
+작업은 `master`가 아닌 작업 브랜치(`feat/*`, `docs/*` 등)에서 한다. **`master`에 직접 커밋하지 않는다.** 현재 브랜치가 `master`이면 커밋하지 말고 사용자에게 `feat/*`로 바꿔 달라고 한다. 사용자가 `master`에 커밋하라고 명시한 경우(초기 세팅 등)만 예외다.
 
 긴 작업은 **커밋당 한 가지 관심사**로 나눈다. 마지막에 한 커밋으로 몰지 않는다.
 
@@ -52,3 +76,8 @@ feat: add user list API
 ```
 
 `type` 예: `feat`, `fix`, `refactor`, `chore`, `docs`. 제목은 영어 명령형. 요약과 불릿은 한글.
+
+## 이름 규칙
+
+- 이름은 실제 동작을 말해야 한다. 동작이 바뀌면 이름도 같이 바꾼다.
+  예: 가입 흐름의 임시값만 담는 저장소는 `authFlow`이고, 로그인 세션은 DB의 `session` 테이블이다. 둘을 섞어 부르지 않는다.
