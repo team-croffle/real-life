@@ -82,6 +82,22 @@
   }
 }
 
+@keyframes check-pop {
+  0% {
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.quest-check {
+  animation: check-pop 0.28s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
 .auth-screen-enter {
   animation: fadeIn 0.18s ease;
 }
