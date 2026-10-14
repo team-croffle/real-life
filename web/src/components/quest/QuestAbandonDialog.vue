@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
 
-defineProps<{
+const props = defineProps<{
   title: string;
   pending: boolean;
   error: string;
@@ -15,6 +15,13 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+function requestCancel(): void {
+  if (props.pending) {
+    return;
+  }
+  emit('cancel');
+}
 </script>
 
 <template>
@@ -23,7 +30,7 @@ const { t } = useI18n();
       type="button"
       class="bg-foreground/40 absolute inset-0"
       :aria-label="t('quest.cancel')"
-      @click="emit('cancel')"
+      @click="requestCancel"
     />
     <div
       role="dialog"
@@ -42,7 +49,7 @@ const { t } = useI18n();
           size="sm"
           class="w-auto flex-1"
           :disabled="pending"
-          @click="emit('cancel')"
+          @click="requestCancel"
         >
           {{ t('quest.cancel') }}
         </Button>

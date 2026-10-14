@@ -123,9 +123,7 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   if (abandonId.value) {
-    if (!abandonPending.value) {
-      abandonId.value = null;
-    }
+    closeAbandon();
     return;
   }
   if (registerBusy.value) {
@@ -141,6 +139,13 @@ function openRegister(): void {
 
 function toggleMenu(id: string): void {
   menuId.value = menuId.value === id ? null : id;
+}
+
+function closeAbandon(): void {
+  if (abandonPending.value) {
+    return;
+  }
+  abandonId.value = null;
 }
 
 function openAbandon(id: string): void {
@@ -334,7 +339,7 @@ onUnmounted(() => {
       :title="abandonTitle"
       :pending="abandonPending"
       :error="abandonError"
-      @cancel="abandonId = null"
+      @cancel="closeAbandon"
       @confirm="onConfirmAbandon"
     />
 
