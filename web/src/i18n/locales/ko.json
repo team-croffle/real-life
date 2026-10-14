@@ -113,5 +113,91 @@
       "tooManyRequests": "요청이 너무 잦아요. 잠시 후 다시 시도해 주세요.",
       "mailUnavailable": "인증 메일을 보내지 못했어요."
     }
+  },
+  "quest": {
+    "add": "퀘스트 추가",
+    "complete": "오늘 완료",
+    "menu": "메뉴",
+    "abandon": "포기",
+    "abandonTitle": "퀘스트를 포기할까요?",
+    "abandonBody": "「{title}」을(를) 포기하면 되돌릴 수 없어요.",
+    "cancel": "취소",
+    "close": "닫기",
+    "titleField": "제목",
+    "titlePlaceholder": "직접 입력",
+    "templates": "템플릿에서 제목 넣기",
+    "useTemplate": "제목에 넣기",
+    "difficulty": "난이도",
+    "schedule": "일정",
+    "weekdays": "요일",
+    "biweekly": "격주",
+    "endsOn": "마감일",
+    "submit": "등록",
+    "submitting": "등록 중",
+    "empty": "퀘스트가 없어요",
+    "loadError": "퀘스트를 불러오지 못했어요",
+    "retry": "다시 시도",
+    "notToday": "오늘 비대상 ·",
+    "rewardCard": "예상 +{xp}XP·{gold}G",
+    "rewardModal": "예상 · {period} +{xp} XP · +{gold} G",
+    "rewardNeedDate": "마감일을 고르면 예상 보상이 나와요.",
+    "tabs": {
+      "today": "오늘 할 것",
+      "done": "오늘 완료",
+      "all": "전체"
+    },
+    "repeat": {
+      "daily": "매일",
+      "biweekly": "격주 {days}",
+      "deadline": "마감 {date}"
+    },
+    "kinds": {
+      "general": "일반",
+      "main": "메인"
+    },
+    "categories": {
+      "exercise": "운동",
+      "life": "생활",
+      "study": "학습",
+      "work": "업무",
+      "creation": "창작",
+      "mind": "마음"
+    },
+    "difficulties": {
+      "easy": "쉬움",
+      "normal": "보통",
+      "hard": "어려움"
+    },
+    "schedules": {
+      "routine": "루틴",
+      "deadline": "마감"
+    },
+    "weekdays": {
+      "mon": "월",
+      "tue": "화",
+      "wed": "수",
+      "thu": "목",
+      "fri": "금",
+      "sat": "토",
+      "sun": "일"
+    },
+    "periods": {
+      "daily": "일일",
+      "weekly": "주간",
+      "long_term": "장기"
+    },
+    "toast": {
+      "created": "「{title}」 퀘스트가 추가되었어요",
+      "completed": "완료했어요. +{gold}G · +{xp}XP",
+      "abandoned": "퀘스트를 포기했어요"
+    },
+    "errors": {
+      "generic": "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
+      "notFound": "퀘스트를 찾지 못했어요.",
+      "completedDeadline": "이미 완료한 마감 퀘스트는 포기할 수 없어요.",
+      "title": "제목을 입력해 주세요.",
+      "weekdays": "요일을 하나 이상 골라 주세요.",
+      "endsOn": "마감일은 오늘 이후여야 해요."
+    }
   }
 }
