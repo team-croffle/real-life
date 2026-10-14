@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import type { QuestListItem } from '@/lib/quests';
+import { seoulToday } from '@/lib/seoulDate';
 
 const props = defineProps<{
   item: QuestListItem;
@@ -20,6 +21,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const note = ref('');
+
+const sameDayDeadline = computed(
+  () => props.item.schedule === 'deadline' && props.item.createdOn === seoulToday(),
+);
 
 const zeroReward = computed(
   () =>
@@ -69,7 +74,7 @@ function confirm(): void {
           {{ t('quest.expectedReward', { xp: item.expectedXp, gold: item.expectedGold }) }}
         </p>
         <p class="text-secondary-foreground mb-3 text-[12.5px] leading-normal">
-          {{ t('quest.deadlineRewardRule') }}
+          {{ sameDayDeadline ? t('quest.deadlineRewardSameDay') : t('quest.deadlineRewardSpan') }}
         </p>
         <p
           v-if="zeroReward"
