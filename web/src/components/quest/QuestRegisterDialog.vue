@@ -42,6 +42,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
   created: [title: string];
+  busy: [value: boolean];
 }>();
 
 const { t } = useI18n();
@@ -71,6 +72,17 @@ const routineReward = computed(() => {
     xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
   };
 });
+
+watch(pending, (value) => {
+  emit('busy', value);
+});
+
+function requestClose(): void {
+  if (pending.value) {
+    return;
+  }
+  emit('close');
+}
 
 watch(
   () => props.open,
@@ -178,7 +190,7 @@ async function onSubmit(): Promise<void> {
       type="button"
       class="bg-foreground/40 absolute inset-0"
       :aria-label="t('quest.close')"
-      @click="emit('close')"
+      @click="requestClose"
     />
     <form
       class="bg-surface relative z-10 max-h-[80vh] w-full max-w-[440px] overflow-y-auto rounded-[22px] p-6 shadow-xl"
@@ -190,7 +202,8 @@ async function onSubmit(): Promise<void> {
           type="button"
           class="bg-muted text-secondary-foreground flex size-7 items-center justify-center rounded-full"
           :aria-label="t('quest.close')"
-          @click="emit('close')"
+          :disabled="pending"
+          @click="requestClose"
         >
           <X class="size-3.5" />
         </button>

@@ -36,6 +36,7 @@ const completeId = ref<string | null>(null);
 const completeError = ref('');
 const completePending = ref(false);
 const registerOpen = ref(false);
+const registerBusy = ref(false);
 const busyId = ref<string | null>(null);
 const toast = ref('');
 
@@ -125,6 +126,9 @@ function onKeyDown(event: KeyboardEvent): void {
     if (!abandonPending.value) {
       abandonId.value = null;
     }
+    return;
+  }
+  if (registerBusy.value) {
     return;
   }
   registerOpen.value = false;
@@ -309,7 +313,12 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <QuestRegisterDialog :open="registerOpen" @close="registerOpen = false" @created="onCreated" />
+    <QuestRegisterDialog
+      :open="registerOpen"
+      @close="registerOpen = false"
+      @created="onCreated"
+      @busy="registerBusy = $event"
+    />
 
     <QuestCompleteDialog
       v-if="completeItem"
