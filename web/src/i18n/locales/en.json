@@ -150,8 +150,7 @@
     "retry": "Try again",
     "notToday": "Not today ·",
     "rewardCard": "est. +{xp}XP·{gold}G",
-    "rewardModal": "est. · {period} +{xp} XP · +{gold} G",
-    "rewardNeedDate": "Pick a due date to see the estimate.",
+    "deadlineRewardLater": "The reward is set when you finish, from the duration and how many days you check in.",
     "tabs": {
       "today": "To do today",
       "done": "Done today",

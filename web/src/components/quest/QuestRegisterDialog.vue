@@ -13,6 +13,9 @@ import {
   QUEST_SCHEDULES,
   QUEST_TITLE_TEMPLATES,
   QUEST_WEEKDAYS,
+  completionTableAmount,
+  grantAmount,
+  jobRewardMultiplier,
 } from '@nest-vue/shared';
 import { X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -22,15 +25,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
+import { createQuest } from '@/lib/quests';
 import {
   calendarDaysBetween,
-  estimateQuestReward,
   isCalendarDate,
   seoulToday,
   seoulWeekday,
   sortWeekdays,
-} from '@/lib/questReward';
-import { createQuest } from '@/lib/quests';
+} from '@/lib/seoulDate';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps<{
   open: boolean;
@@ -42,6 +45,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const auth = useAuthStore();
 
 const kind = ref<QuestKind>('general');
 const category = ref<QuestCategory>('exercise');
@@ -55,13 +59,18 @@ const pending = ref(false);
 const error = ref('');
 
 const templates = computed(() => QUEST_TITLE_TEMPLATES[category.value]);
-const reward = computed(() =>
-  estimateQuestReward(
-    difficulty.value,
-    schedule.value,
-    schedule.value === 'deadline' ? endsOn.value : null,
-  ),
-);
+const routineReward = computed(() => {
+  const jobClass = auth.user?.jobClass;
+  if (schedule.value !== 'routine' || !jobClass) {
+    return null;
+  }
+  const table = completionTableAmount(difficulty.value, 0, 0);
+  const multiplier = jobRewardMultiplier(jobClass, category.value);
+  return {
+    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
+    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
+  };
+});
 
 watch(
   () => props.open,
@@ -297,17 +306,11 @@ async function onSubmit(): Promise<void> {
         <Input id="quest-ends-on" v-model="endsOn" type="date" :min="seoulToday()" />
       </div>
 
-      <p class="text-muted-foreground mb-4 text-[12px]">
-        <template v-if="reward">
-          {{
-            t('quest.rewardModal', {
-              period: t(`quest.periods.${reward.period}`),
-              xp: reward.xp,
-              gold: reward.gold,
-            })
-          }}
-        </template>
-        <template v-else>{{ t('quest.rewardNeedDate') }}</template>
+      <p v-if="routineReward" class="text-muted-foreground mb-4 text-[12px]">
+        {{ t('quest.rewardCard', { xp: routineReward.xp, gold: routineReward.gold }) }}
+      </p>
+      <p v-else-if="schedule === 'deadline'" class="text-muted-foreground mb-4 text-[12px]">
+        {{ t('quest.deadlineRewardLater') }}
       </p>
 
       <p v-if="error" class="text-destructive mb-3 text-[12px]">{{ error }}</p>
