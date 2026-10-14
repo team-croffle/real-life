@@ -113,5 +113,91 @@
       "tooManyRequests": "Too many requests. Please try again shortly.",
       "mailUnavailable": "Could not send the verification email."
     }
+  },
+  "quest": {
+    "add": "Add quest",
+    "complete": "Complete today",
+    "menu": "Menu",
+    "abandon": "Give up",
+    "abandonTitle": "Give up this quest?",
+    "abandonBody": "Giving up “{title}” cannot be undone.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "titleField": "Title",
+    "titlePlaceholder": "Type your own",
+    "templates": "Use a template title",
+    "useTemplate": "Use title",
+    "difficulty": "Difficulty",
+    "schedule": "Schedule",
+    "weekdays": "Weekdays",
+    "biweekly": "Every other week",
+    "endsOn": "Due date",
+    "submit": "Save",
+    "submitting": "Saving",
+    "empty": "No quests",
+    "loadError": "Could not load quests",
+    "retry": "Try again",
+    "notToday": "Not today ·",
+    "rewardCard": "est. +{xp}XP·{gold}G",
+    "rewardModal": "est. · {period} +{xp} XP · +{gold} G",
+    "rewardNeedDate": "Pick a due date to see the estimate.",
+    "tabs": {
+      "today": "To do today",
+      "done": "Done today",
+      "all": "All"
+    },
+    "repeat": {
+      "daily": "Every day",
+      "biweekly": "Every other week {days}",
+      "deadline": "Due {date}"
+    },
+    "kinds": {
+      "general": "General",
+      "main": "Main"
+    },
+    "categories": {
+      "exercise": "Exercise",
+      "life": "Life",
+      "study": "Study",
+      "work": "Work",
+      "creation": "Creation",
+      "mind": "Mind"
+    },
+    "difficulties": {
+      "easy": "Easy",
+      "normal": "Normal",
+      "hard": "Hard"
+    },
+    "schedules": {
+      "routine": "Routine",
+      "deadline": "Deadline"
+    },
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "periods": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "long_term": "Long"
+    },
+    "toast": {
+      "created": "Added “{title}”",
+      "completed": "Completed. +{gold}G · +{xp}XP",
+      "abandoned": "Quest given up"
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again shortly.",
+      "notFound": "Quest was not found.",
+      "completedDeadline": "A completed deadline quest cannot be given up.",
+      "title": "Enter a title.",
+      "weekdays": "Pick at least one weekday.",
+      "endsOn": "The due date has to be today or later."
+    }
   }
 }
