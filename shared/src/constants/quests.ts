@@ -13,7 +13,7 @@ export type QuestSchedule = (typeof QUEST_SCHEDULES)[number];
 
 export const QUEST_SCHEDULE_LABELS: Record<QuestSchedule, string> = {
   routine: '루틴',
-  deadline: '마감',
+  deadline: '기한',
 };
 
 export const QUEST_CATEGORIES = ['exercise', 'life', 'study', 'work', 'creation', 'mind'] as const;
