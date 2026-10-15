@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { Stats } from '@nest-vue/shared';
+import type { Progress, Stats } from '@nest-vue/shared';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const props = defineProps<{
   stats: Stats | null;
   balance: number | null;
+  progress: Progress | null;
 }>();
 
 const { t } = useI18n();
@@ -40,6 +41,14 @@ const rows = computed(() => {
   ];
 });
 
+const comboCount = computed(() =>
+  props.progress === null ? t('home.emptyValue') : String(props.progress.comboDayCount),
+);
+
+const ticketCount = computed(() =>
+  props.progress === null ? null : props.progress.gachaTicketCount,
+);
+
 function shown(value: number | null): string {
   return value === null ? t('home.emptyValue') : String(value);
 }
@@ -48,7 +57,7 @@ function shown(value: number | null): string {
 <template>
   <section class="bg-surface border-border flex flex-col gap-4 rounded-[18px] border p-4">
     <p class="text-[22px] font-bold tracking-tight">
-      {{ t('home.streak', { count: t('home.emptyValue') }) }}
+      {{ t('home.streak', { count: comboCount }) }}
     </p>
 
     <div class="flex flex-col gap-3">
@@ -70,7 +79,7 @@ function shown(value: number | null): string {
       </div>
       <div>
         <p class="text-muted-foreground text-[11px] font-bold">{{ t('home.tickets') }}</p>
-        <p class="mt-0.5 text-lg font-bold">{{ t('home.emptyValue') }}</p>
+        <p class="mt-0.5 text-lg font-bold">{{ shown(ticketCount) }}</p>
       </div>
     </div>
   </section>
