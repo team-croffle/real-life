@@ -13,6 +13,7 @@ export * from './types/quest-completion';
 export * from './types/quest-penalty';
 export * from './types/auth';
 export * from './types/job-change';
+export * from './types/progress';
 export * from './types/quest';
 export * from './types/stats';
 export * from './types/user';
