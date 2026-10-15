@@ -65,7 +65,7 @@ const difficultyClass = computed(() => {
       <Check class="text-muted-foreground size-2.5" :stroke-width="3.4" />
     </div>
     <button
-      v-else-if="item.canComplete"
+      v-else-if="item.schedule !== 'deadline' && item.canComplete"
       type="button"
       class="border-primary size-5 shrink-0 rounded-full border-2 bg-transparent"
       :aria-label="t('quest.complete')"
@@ -115,6 +115,7 @@ const difficultyClass = computed(() => {
       :disabled="busy"
       @click="emit('mark')"
     >
+      <Check class="size-3.5" />
       {{ t('quest.markToday') }}
     </Button>
     <span
@@ -123,6 +124,15 @@ const difficultyClass = computed(() => {
     >
       {{ t('quest.markedToday') }}
     </span>
+    <Button
+      v-if="item.schedule === 'deadline' && item.canComplete"
+      type="button"
+      size="sm"
+      class="w-auto shrink-0"
+      @click="emit('complete')"
+    >
+      {{ t('quest.completeButton') }}
+    </Button>
 
     <div v-if="item.canAbandon" class="relative shrink-0" data-quest-menu>
       <button

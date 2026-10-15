@@ -72,6 +72,7 @@ const reward = computed(() => {
       :disabled="busy"
       @click="emit('mark')"
     >
+      <Check class="size-3.5" />
       {{ t('quest.markToday') }}
     </Button>
     <div
@@ -80,6 +81,15 @@ const reward = computed(() => {
     >
       <Check class="text-muted-foreground size-2.5" :stroke-width="3.4" />
     </div>
+    <Button
+      v-else-if="item.schedule === 'deadline' && item.canComplete"
+      type="button"
+      size="sm"
+      class="w-auto shrink-0"
+      @click="emit('complete')"
+    >
+      {{ t('quest.completeButton') }}
+    </Button>
     <button
       v-else-if="item.canComplete"
       type="button"

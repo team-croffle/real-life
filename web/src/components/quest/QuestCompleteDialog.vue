@@ -61,6 +61,12 @@ function confirm(): void {
       aria-modal="true"
       class="bg-surface relative z-10 max-h-[80vh] w-full max-w-[440px] overflow-y-auto rounded-[18px] p-[22px] shadow-xl"
     >
+      <p
+        v-if="item.schedule === 'deadline'"
+        class="bg-accent text-accent-foreground mb-4 rounded-[10px] px-3 py-2.5 text-[13px] leading-normal font-bold"
+      >
+        {{ t('quest.deadlineCompleteNotice') }}
+      </p>
       <h2 class="mb-2 text-[15px] font-bold">{{ t('quest.completeTitle') }}</h2>
       <p class="text-secondary-foreground mb-4 text-[12.5px] leading-normal">
         {{ t('quest.completeBody', { title: item.title }) }}
@@ -85,7 +91,9 @@ function confirm(): void {
       </template>
 
       <div class="mb-4 flex flex-col gap-1">
-        <Label for="quest-note">{{ t('quest.note') }}</Label>
+        <Label for="quest-note">{{
+          item.schedule === 'deadline' ? t('quest.deadlineNote') : t('quest.note')
+        }}</Label>
         <textarea
           id="quest-note"
           v-model="note"
@@ -113,7 +121,9 @@ function confirm(): void {
           {{ t('quest.cancel') }}
         </Button>
         <Button type="button" size="sm" class="w-auto flex-1" :disabled="pending" @click="confirm">
-          {{ t('quest.confirmComplete') }}
+          {{
+            item.schedule === 'deadline' ? t('quest.deadlineConfirm') : t('quest.confirmComplete')
+          }}
         </Button>
       </div>
     </div>
