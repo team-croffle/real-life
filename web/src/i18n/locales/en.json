@@ -17,8 +17,18 @@
     "greeting": "Hello, {name}",
     "subtitle": "One step at a time.",
     "questsTitle": "Today's quests",
-    "questsEmpty": "Register and complete quests from the Quests menu.",
-    "openQuests": "Open quests"
+    "questsEmpty": "No quests for today.",
+    "titleBadge": "Title ·",
+    "levelLine": "Lv.{level} · {job}",
+    "streak": "{count} days in a row",
+    "stamina": "Stamina",
+    "intellect": "Intellect",
+    "sense": "Sense",
+    "gold": "Gold",
+    "tickets": "Draw tickets",
+    "reward": "+{xp}XP·{gold}G",
+    "emptyValue": "—",
+    "characterLabel": "Character"
   },
   "placeholder": {
     "body": "Not ready yet."

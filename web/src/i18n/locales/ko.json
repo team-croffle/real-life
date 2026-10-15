@@ -17,8 +17,18 @@
     "greeting": "안녕하세요, {name}님",
     "subtitle": "오늘도 한 걸음, 꾸준히 성장해봐요",
     "questsTitle": "오늘의 퀘스트",
-    "questsEmpty": "퀘스트 메뉴에서 등록하고 완료할 수 있어요.",
-    "openQuests": "퀘스트 보기"
+    "questsEmpty": "오늘 할 퀘스트가 없어요",
+    "titleBadge": "칭호 ·",
+    "levelLine": "Lv.{level} · {job}",
+    "streak": "{count}일 연속",
+    "stamina": "체력",
+    "intellect": "지성",
+    "sense": "감성",
+    "gold": "골드",
+    "tickets": "뽑기권",
+    "reward": "+{xp}XP·{gold}G",
+    "emptyValue": "—",
+    "characterLabel": "캐릭터"
   },
   "placeholder": {
     "body": "준비 중이에요."
