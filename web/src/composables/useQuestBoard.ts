@@ -22,6 +22,7 @@ export function useQuestBoard() {
   const toast = ref('');
 
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  let loadGeneration = 0;
 
   const completeItem = computed(
     () => items.value.find((item) => item.id === completeId.value) ?? null,
@@ -43,13 +44,21 @@ export function useQuestBoard() {
   }
 
   async function load(silent = false): Promise<void> {
+    const generation = ++loadGeneration;
     if (!silent) {
       view.value = 'loading';
     }
     try {
-      items.value = await getQuests();
+      const next = await getQuests();
+      if (generation !== loadGeneration) {
+        return;
+      }
+      items.value = next;
       view.value = 'ready';
     } catch {
+      if (generation !== loadGeneration) {
+        return;
+      }
       view.value = 'error';
     }
   }

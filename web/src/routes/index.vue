@@ -47,8 +47,14 @@ const jobLabel = computed(() => {
 
 const todayQuests = computed(() => items.value.filter((item) => item.dueToday));
 
+let summaryGeneration = 0;
+
 async function loadSummary(): Promise<void> {
+  const generation = ++summaryGeneration;
   const [statsResult, walletResult] = await Promise.allSettled([getStats(), getWallet()]);
+  if (generation !== summaryGeneration) {
+    return;
+  }
   if (statsResult.status === 'fulfilled') {
     stats.value = statsResult.value;
   }
