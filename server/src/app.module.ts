@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { JobChangeModule } from './job-change/job-change.module';
+import { ProgressModule } from './progress/progress.module';
 import { QuestsModule } from './quests/quests.module';
 import { StatsModule } from './stats/stats.module';
 import { WalletModule } from './wallet/wallet.module';
@@ -19,6 +20,7 @@ import { WalletModule } from './wallet/wallet.module';
     DatabaseModule,
     AuthModule,
     QuestsModule,
+    ProgressModule,
     StatsModule,
     WalletModule,
     JobChangeModule,
