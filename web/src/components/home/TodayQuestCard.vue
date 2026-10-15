@@ -75,6 +75,12 @@ const reward = computed(() => {
       <Check class="size-3.5" />
       {{ t('quest.markToday') }}
     </Button>
+    <span
+      v-else-if="item.markedToday"
+      class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
+    >
+      {{ t('quest.markedToday') }}
+    </span>
     <div
       v-if="done"
       class="quest-check bg-muted border-border flex size-5 shrink-0 items-center justify-center rounded-full border"
