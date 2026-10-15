@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Stats } from '@nest-vue/shared';
+import type { Progress, Stats } from '@nest-vue/shared';
 import { Plus, TriangleAlert } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
@@ -12,8 +12,9 @@ import AppShell from '@/components/layouts/AppShell.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
+import { ApiError } from '@/composables/useApi';
 import { useQuestBoard } from '@/composables/useQuestBoard';
-import { getStats, getWallet } from '@/lib/home';
+import { getProgress, getStats, getWallet, settleQuestPenalties } from '@/lib/home';
 import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
@@ -35,8 +36,11 @@ const {
   showToast,
 } = useQuestBoard();
 
+const SETTLE_TIMEOUT_MS = 10_000;
+
 const stats = ref<Stats | null>(null);
 const balance = ref<number | null>(null);
+const progress = ref<Progress | null>(null);
 const registerOpen = ref(false);
 const registerBusy = ref(false);
 
@@ -47,26 +51,82 @@ const jobLabel = computed(() => {
 
 const todayQuests = computed(() => items.value.filter((item) => item.dueToday));
 
-let summaryGeneration = 0;
+let statsGeneration = 0;
+let walletGeneration = 0;
+let progressGeneration = 0;
+let settleAbort: AbortController | undefined;
+let settleTimer: ReturnType<typeof setTimeout> | undefined;
+let leftHome = false;
+
+async function loadStats(): Promise<void> {
+  const generation = ++statsGeneration;
+  try {
+    const next = await getStats();
+    if (generation !== statsGeneration || leftHome) {
+      return;
+    }
+    stats.value = next;
+  } catch {
+    // 실패한 조회는 직전 값을 유지한다.
+  }
+}
+
+async function loadWallet(): Promise<void> {
+  const generation = ++walletGeneration;
+  try {
+    const next = await getWallet();
+    if (generation !== walletGeneration || leftHome) {
+      return;
+    }
+    balance.value = next.balance;
+  } catch {
+    // 실패한 조회는 직전 값을 유지한다.
+  }
+}
+
+async function loadProgress(): Promise<void> {
+  const generation = ++progressGeneration;
+  try {
+    const next = await getProgress();
+    if (generation !== progressGeneration || leftHome) {
+      return;
+    }
+    progress.value = next;
+  } catch {
+    // 실패한 조회는 직전 값을 유지한다.
+  }
+}
 
 async function loadSummary(): Promise<void> {
-  const generation = ++summaryGeneration;
-  const [statsResult, walletResult] = await Promise.allSettled([getStats(), getWallet()]);
-  if (generation !== summaryGeneration) {
+  await Promise.all([loadStats(), loadWallet()]);
+}
+
+async function settleThenRead(): Promise<void> {
+  settleAbort?.abort();
+  clearTimeout(settleTimer);
+  const controller = new AbortController();
+  settleAbort = controller;
+  const timer = setTimeout(() => controller.abort(), SETTLE_TIMEOUT_MS);
+  settleTimer = timer;
+  try {
+    await settleQuestPenalties(controller.signal);
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.status === 401) {
+      return;
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  if (leftHome || settleAbort !== controller) {
     return;
   }
-  if (statsResult.status === 'fulfilled') {
-    stats.value = statsResult.value;
-  }
-  if (walletResult.status === 'fulfilled') {
-    balance.value = walletResult.value.balance;
-  }
+  await Promise.all([loadProgress(), loadWallet()]);
 }
 
 async function onHomeComplete(note: string): Promise<void> {
   const completed = await onConfirmComplete(note);
   if (completed) {
-    await loadSummary();
+    await Promise.all([loadProgress(), loadSummary()]);
   }
 }
 
@@ -94,11 +154,15 @@ function onKeyDown(event: KeyboardEvent): void {
 
 onMounted(() => {
   void load();
-  void loadSummary();
+  void loadStats();
+  void settleThenRead();
   document.addEventListener('keydown', onKeyDown);
 });
 
 onUnmounted(() => {
+  leftHome = true;
+  clearTimeout(settleTimer);
+  settleAbort?.abort();
   document.removeEventListener('keydown', onKeyDown);
 });
 </script>
@@ -120,8 +184,8 @@ onUnmounted(() => {
       </div>
 
       <div class="grid items-start gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.85fr)]">
-        <CharacterStage :job-label="jobLabel" />
-        <SummaryCard :stats="stats" :balance="balance" />
+        <CharacterStage :job-label="jobLabel" :progress="progress" />
+        <SummaryCard :stats="stats" :balance="balance" :progress="progress" />
       </div>
 
       <section class="mt-8">

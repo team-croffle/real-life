@@ -19,6 +19,8 @@
     "questsTitle": "Today's quests",
     "questsEmpty": "No quests for today.",
     "titleBadge": "Title ·",
+    "titleReached": "Reached Lv.{mark}",
+    "lethargy": "Lethargy",
     "levelLine": "Lv.{level} · {job}",
     "streak": "{count} days in a row",
     "stamina": "Stamina",

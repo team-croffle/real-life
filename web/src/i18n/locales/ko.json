@@ -19,6 +19,8 @@
     "questsTitle": "오늘의 퀘스트",
     "questsEmpty": "오늘 할 퀘스트가 없어요",
     "titleBadge": "칭호 ·",
+    "titleReached": "Lv.{mark} 달성",
+    "lethargy": "무기력",
     "levelLine": "Lv.{level} · {job}",
     "streak": "{count}일 연속",
     "stamina": "체력",
