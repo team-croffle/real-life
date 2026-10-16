@@ -32,6 +32,21 @@
     "emptyValue": "—",
     "characterLabel": "캐릭터"
   },
+  "wallet": {
+    "goldLabel": "보유 골드",
+    "goldAmount": "{amount} G",
+    "debtTitle": "외상",
+    "debtLabel": "외상 잔액",
+    "debtNone": "외상 없음",
+    "entriesTitle": "거래 내역",
+    "entriesEmpty": "거래 내역이 없어요",
+    "entryAmount": "{amount} G",
+    "loadError": "지갑을 불러오지 못했어요",
+    "retry": "다시 시도",
+    "prev": "이전",
+    "next": "다음",
+    "page": "{page} / {totalPages}"
+  },
   "placeholder": {
     "body": "준비 중이에요."
   },

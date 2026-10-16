@@ -32,6 +32,21 @@
     "emptyValue": "—",
     "characterLabel": "Character"
   },
+  "wallet": {
+    "goldLabel": "Gold",
+    "goldAmount": "{amount} G",
+    "debtTitle": "Debt",
+    "debtLabel": "Debt balance",
+    "debtNone": "No debt",
+    "entriesTitle": "Transactions",
+    "entriesEmpty": "No transactions yet.",
+    "entryAmount": "{amount} G",
+    "loadError": "Could not load the wallet",
+    "retry": "Try again",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "{page} / {totalPages}"
+  },
   "placeholder": {
     "body": "Not ready yet."
   },
