@@ -28,7 +28,7 @@
 - 타입체크: `pnpm typecheck`
 - lint: `pnpm lint`, `pnpm lint:fix`
 
-작업 전 로드맵과 명세를 확인한다.
+작업 전에 `.ai/AGENTS.md`(로컬 지침), 로드맵, 명세를 읽는다. `.ai/AGENTS.md`가 없으면 사용자에게 알린다.
 
 ## 브랜치와 커밋
 
