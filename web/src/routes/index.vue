@@ -10,6 +10,7 @@ import SummaryCard from '@/components/home/SummaryCard.vue';
 import TodayQuestCard from '@/components/home/TodayQuestCard.vue';
 import AppShell from '@/components/layouts/AppShell.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
+import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDialog.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
@@ -27,10 +28,12 @@ const {
   completeError,
   completePending,
   completeId,
+  completionResult,
   busyId,
   toast,
   load,
   openComplete,
+  dismissCompletionResult,
   onConfirmComplete,
   onMark,
   showToast,
@@ -146,6 +149,10 @@ function onKeyDown(event: KeyboardEvent): void {
     }
     return;
   }
+  if (completionResult.value) {
+    dismissCompletionResult();
+    return;
+  }
   if (registerBusy.value) {
     return;
   }
@@ -251,6 +258,12 @@ onUnmounted(() => {
       :error="completeError"
       @cancel="completeId = null"
       @confirm="onHomeComplete"
+    />
+
+    <QuestCompleteResultDialog
+      v-if="completionResult"
+      :result="completionResult"
+      @close="dismissCompletionResult"
     />
 
     <p

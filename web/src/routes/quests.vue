@@ -7,6 +7,7 @@ import AppShell from '@/components/layouts/AppShell.vue';
 import QuestAbandonDialog from '@/components/quest/QuestAbandonDialog.vue';
 import QuestCard from '@/components/quest/QuestCard.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
+import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDialog.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
@@ -25,10 +26,12 @@ const {
   completeItem,
   completeError,
   completePending,
+  completionResult,
   busyId,
   toast,
   load,
   openComplete,
+  dismissCompletionResult,
   onConfirmComplete,
   onMark,
   showToast,
@@ -86,6 +89,10 @@ function onKeyDown(event: KeyboardEvent): void {
     if (!completePending.value) {
       completeId.value = null;
     }
+    return;
+  }
+  if (completionResult.value) {
+    dismissCompletionResult();
     return;
   }
   if (abandonId.value) {
@@ -245,6 +252,12 @@ onUnmounted(() => {
       :error="completeError"
       @cancel="completeId = null"
       @confirm="onConfirmComplete"
+    />
+
+    <QuestCompleteResultDialog
+      v-if="completionResult"
+      :result="completionResult"
+      @close="dismissCompletionResult"
     />
 
     <QuestAbandonDialog

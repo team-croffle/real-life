@@ -1,3 +1,4 @@
+import type { QuestCompletionResult } from '@nest-vue/shared';
 import { computed, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -18,6 +19,7 @@ export function useQuestBoard() {
   const completeId = ref<string | null>(null);
   const completeError = ref('');
   const completePending = ref(false);
+  const completionResult = ref<QuestCompletionResult | null>(null);
   const busyId = ref<string | null>(null);
   const toast = ref('');
 
@@ -68,6 +70,10 @@ export function useQuestBoard() {
     completeId.value = id;
   }
 
+  function dismissCompletionResult(): void {
+    completionResult.value = null;
+  }
+
   async function onConfirmComplete(note: string): Promise<boolean> {
     const id = completeId.value;
     if (!id || completePending.value) {
@@ -79,7 +85,11 @@ export function useQuestBoard() {
       const result = await completeQuest(id, note);
       completeId.value = null;
       await load(true);
-      showToast(t('quest.toast.completed', { gold: result.gold, xp: result.xp }));
+      if (result.ticketsGranted > 0 || result.titlesGranted.length > 0) {
+        completionResult.value = result;
+      } else {
+        showToast(t('quest.toast.completed', { gold: result.gold, xp: result.xp }));
+      }
       return true;
     } catch (cause) {
       const message = statusErrorMessage(cause, {
@@ -132,10 +142,12 @@ export function useQuestBoard() {
     completeItem,
     completeError,
     completePending,
+    completionResult,
     busyId,
     toast,
     load,
     openComplete,
+    dismissCompletionResult,
     onConfirmComplete,
     onMark,
     showToast,
