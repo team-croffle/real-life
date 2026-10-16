@@ -15,7 +15,8 @@ import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { useQuestBoard } from '@/composables/useQuestBoard';
-import { getProgress, getStats, getWallet, settleQuestPenalties } from '@/lib/home';
+import { getProgress, getStats, settleQuestPenalties } from '@/lib/home';
+import { getWallet } from '@/lib/wallet';
 import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
