@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { isQuestDone } from '@/composables/useQuestBoard';
 import type { QuestListItem } from '@/lib/quests';
+import { routineRestNotice, routineRestPhase } from '@/lib/routineRest';
 
 const props = defineProps<{
   item: QuestListItem;
@@ -20,6 +21,17 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const done = computed(() => isQuestDone(props.item));
+const phase = computed(() => routineRestPhase(props.item));
+
+const restNotice = computed(() => {
+  const notice = routineRestNotice(props.item);
+  if (!notice) {
+    return '';
+  }
+  return notice.values
+    ? t(`quest.rest.${notice.key}`, notice.values)
+    : t(`quest.rest.${notice.key}`);
+});
 
 const difficultyClass = computed(() => {
   if (props.item.difficulty === 'easy') {
@@ -63,8 +75,17 @@ const reward = computed(() => {
     <span v-if="reward" class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">
       {{ reward }}
     </span>
+    <span v-if="restNotice" class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">
+      {{ restNotice }}
+    </span>
+    <span
+      v-if="phase === 'resting'"
+      class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
+    >
+      {{ t('quest.rest.cannotComplete') }}
+    </span>
     <Button
-      v-if="item.canMarkToday"
+      v-if="item.canMarkToday && phase !== 'resting'"
       type="button"
       variant="outline"
       size="sm"
@@ -97,7 +118,7 @@ const reward = computed(() => {
       {{ t('quest.completeButton') }}
     </Button>
     <button
-      v-else-if="item.canComplete"
+      v-else-if="item.canComplete && phase !== 'resting'"
       type="button"
       class="border-primary size-5 shrink-0 rounded-full border-2 bg-transparent"
       :aria-label="t('quest.complete')"

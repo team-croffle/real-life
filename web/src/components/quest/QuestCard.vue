@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
 import type { QuestListItem } from '@/lib/quests';
+import { routineRestNotice, routineRestPhase } from '@/lib/routineRest';
 
 const props = defineProps<{
   item: QuestListItem;
@@ -17,6 +18,8 @@ const emit = defineEmits<{
   mark: [];
   toggleMenu: [];
   abandon: [];
+  rest: [];
+  resume: [];
 }>();
 
 const { t } = useI18n();
@@ -42,6 +45,21 @@ const scheduleText = computed(() => {
   return days;
 });
 
+const phase = computed(() => routineRestPhase(props.item));
+
+const restNotice = computed(() => {
+  const notice = routineRestNotice(props.item);
+  if (!notice) {
+    return '';
+  }
+  return notice.values
+    ? t(`quest.rest.${notice.key}`, notice.values)
+    : t(`quest.rest.${notice.key}`);
+});
+
+const canRest = computed(() => props.item.schedule === 'routine' && phase.value === 'on');
+const canResume = computed(() => props.item.schedule === 'routine' && phase.value !== 'on');
+
 const difficultyClass = computed(() => {
   if (props.item.difficulty === 'easy') {
     return 'text-primary';
@@ -56,16 +74,16 @@ const difficultyClass = computed(() => {
 <template>
   <article
     class="bg-surface border-border relative flex flex-wrap items-center gap-3 rounded-[14px] border px-3.5 py-3"
-    :class="done ? 'opacity-[0.42]' : undefined"
+    :class="done && phase !== 'resting' ? 'opacity-[0.42]' : undefined"
   >
     <div
-      v-if="done"
+      v-if="done && phase !== 'resting'"
       class="quest-check bg-muted border-border flex size-5 shrink-0 items-center justify-center rounded-full border"
     >
       <Check class="text-muted-foreground size-2.5" :stroke-width="3.4" />
     </div>
     <button
-      v-else-if="item.schedule !== 'deadline' && item.canComplete"
+      v-else-if="item.schedule !== 'deadline' && item.canComplete && phase !== 'resting'"
       type="button"
       class="border-primary size-5 shrink-0 rounded-full border-2 bg-transparent"
       :aria-label="t('quest.complete')"
@@ -92,7 +110,7 @@ const difficultyClass = computed(() => {
     }}</span>
 
     <span
-      v-if="!item.dueToday"
+      v-if="!item.dueToday && phase !== 'resting'"
       class="text-muted-foreground shrink-0 text-[11px] whitespace-nowrap"
     >
       {{ t('quest.notToday') }}
@@ -100,6 +118,15 @@ const difficultyClass = computed(() => {
     <span class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">{{
       scheduleText
     }}</span>
+    <span v-if="restNotice" class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">
+      {{ restNotice }}
+    </span>
+    <span
+      v-if="phase === 'resting'"
+      class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
+    >
+      {{ t('quest.rest.cannotComplete') }}
+    </span>
     <span
       v-if="item.expectedGold !== null && item.expectedXp !== null"
       class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
@@ -107,7 +134,7 @@ const difficultyClass = computed(() => {
       {{ t('quest.rewardCard', { xp: item.expectedXp, gold: item.expectedGold }) }}
     </span>
     <Button
-      v-if="item.canMarkToday"
+      v-if="item.canMarkToday && phase !== 'resting'"
       type="button"
       variant="outline"
       size="sm"
@@ -133,6 +160,17 @@ const difficultyClass = computed(() => {
     >
       {{ t('quest.completeButton') }}
     </Button>
+    <Button
+      v-if="canResume"
+      type="button"
+      :variant="phase === 'scheduled' ? 'outline' : 'default'"
+      size="sm"
+      class="w-auto shrink-0"
+      :disabled="busy"
+      @click="emit('resume')"
+    >
+      {{ phase === 'scheduled' ? t('quest.rest.cancel') : t('quest.rest.resume') }}
+    </Button>
 
     <div v-if="item.canAbandon" class="relative shrink-0" data-quest-menu>
       <button
@@ -148,6 +186,14 @@ const difficultyClass = computed(() => {
         v-if="menuOpen"
         class="bg-surface border-border absolute top-9 right-0 z-10 w-[110px] overflow-hidden rounded-[10px] border shadow-lg"
       >
+        <button
+          v-if="canRest"
+          type="button"
+          class="block w-full px-3.5 py-2.5 text-left text-[12.5px] font-bold"
+          @click="emit('rest')"
+        >
+          {{ t('quest.rest.action') }}
+        </button>
         <button
           type="button"
           class="text-destructive block w-full px-3.5 py-2.5 text-left text-[12.5px] font-bold"
