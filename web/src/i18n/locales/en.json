@@ -53,6 +53,19 @@
     "progressLoadError": "Could not load the status effect",
     "retry": "Try again"
   },
+  "jobChange": {
+    "title": "Change job",
+    "current": "Current job",
+    "choose": "Choose a job",
+    "select": "Select",
+    "nextChange": "Next change after {time}",
+    "bonus": "{stat} quest reward ×{rate}",
+    "stamina": "Stamina",
+    "intellect": "Intellect",
+    "sense": "Sense",
+    "loadError": "Could not load the job",
+    "retry": "Try again"
+  },
   "placeholder": {
     "body": "Not ready yet."
   },
