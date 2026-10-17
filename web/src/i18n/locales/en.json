@@ -47,6 +47,12 @@
     "next": "Next",
     "page": "{page} / {totalPages}"
   },
+  "stats": {
+    "statusLethargy": "Status effect: Lethargy",
+    "loadError": "Could not load stats",
+    "progressLoadError": "Could not load the status effect",
+    "retry": "Try again"
+  },
   "placeholder": {
     "body": "Not ready yet."
   },
