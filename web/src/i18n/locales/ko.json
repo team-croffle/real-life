@@ -53,6 +53,19 @@
     "progressLoadError": "상태이상을 불러오지 못했어요",
     "retry": "다시 시도"
   },
+  "jobChange": {
+    "title": "직업 변경",
+    "current": "현재 직업",
+    "choose": "직업 선택",
+    "select": "선택하기",
+    "nextChange": "다음 변경은 {time} 이후",
+    "bonus": "{stat} 퀘스트 보상 {rate}배",
+    "stamina": "체력",
+    "intellect": "지성",
+    "sense": "감성",
+    "loadError": "직업을 불러오지 못했어요",
+    "retry": "다시 시도"
+  },
   "placeholder": {
     "body": "준비 중이에요."
   },
