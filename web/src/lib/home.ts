@@ -1,10 +1,6 @@
-import type { Progress, QuestPenaltySettlement, Stats } from '@nest-vue/shared';
+import type { Progress, QuestPenaltySettlement } from '@nest-vue/shared';
 
 import { apiFetch } from '@/composables/useApi';
-
-export function getStats(): Promise<Stats> {
-  return apiFetch<Stats>('/stats');
-}
 
 export function getProgress(): Promise<Progress> {
   return apiFetch<Progress>('/progress');
