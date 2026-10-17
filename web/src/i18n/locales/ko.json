@@ -47,6 +47,12 @@
     "next": "다음",
     "page": "{page} / {totalPages}"
   },
+  "stats": {
+    "statusLethargy": "상태이상: 무기력",
+    "loadError": "스탯을 불러오지 못했어요",
+    "progressLoadError": "상태이상을 불러오지 못했어요",
+    "retry": "다시 시도"
+  },
   "placeholder": {
     "body": "준비 중이에요."
   },
