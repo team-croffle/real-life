@@ -253,7 +253,7 @@
       "resume": "Turn on",
       "cancel": "Cancel turn-off",
       "title": "Turn off “{title}”?",
-      "body": "It turns off tomorrow. You can still do it today.",
+      "body": "It turns off tomorrow. Today stays as it is.",
       "startsTomorrow": "Off from tomorrow",
       "startsOn": "Off from {date}",
       "restingFrom": "Resting since {date}",

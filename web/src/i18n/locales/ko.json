@@ -253,7 +253,7 @@
       "resume": "켜기",
       "cancel": "끄기 취소",
       "title": "「{title}」을(를) 끌까요?",
-      "body": "내일부터 꺼져요. 오늘은 그대로 할 수 있어요.",
+      "body": "내일부터 꺼져요. 오늘 분은 그대로예요.",
       "startsTomorrow": "내일부터 꺼져요",
       "startsOn": "{date}부터 꺼져요",
       "restingFrom": "{date}부터 쉬는 중",
