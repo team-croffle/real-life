@@ -210,6 +210,7 @@
     "submit": "Save",
     "submitting": "Saving",
     "empty": "No quests",
+    "emptyRoutines": "No routines",
     "loadError": "Could not load quests",
     "retry": "Try again",
     "notToday": "Not today ·",
@@ -218,7 +219,8 @@
     "tabs": {
       "today": "To do today",
       "done": "Done today",
-      "all": "All"
+      "all": "All",
+      "routines": "Routines"
     },
     "repeat": {
       "daily": "Every day",
@@ -246,6 +248,18 @@
       "routine": "Routine",
       "deadline": "Deadline"
     },
+    "rest": {
+      "action": "Turn off",
+      "resume": "Turn on",
+      "cancel": "Cancel turn-off",
+      "title": "Turn off “{title}”?",
+      "body": "It turns off tomorrow. You can still do it today.",
+      "startsTomorrow": "Off from tomorrow",
+      "startsOn": "Off from {date}",
+      "restingFrom": "Resting since {date}",
+      "restingUntil": "Resting {from}–{until}",
+      "cannotComplete": "You can't complete this today because it's a rest day."
+    },
     "weekdays": {
       "mon": "Mon",
       "tue": "Tue",
@@ -264,7 +278,9 @@
       "created": "Added “{title}”",
       "completed": "Completed. +{gold}G · +{xp}XP",
       "marked": "Checked today",
-      "abandoned": "Quest given up"
+      "abandoned": "Quest given up",
+      "rested": "It turns off tomorrow",
+      "resumed": "It's on from today"
     },
     "errors": {
       "generic": "Something went wrong. Please try again shortly.",
@@ -278,7 +294,9 @@
       "completedDeadline": "A completed deadline quest cannot be given up.",
       "title": "Enter a title.",
       "weekdays": "Pick at least one weekday.",
-      "endsOn": "The due date has to be today or later."
+      "endsOn": "The due date has to be today or later.",
+      "restBadRequest": "This routine can't be turned off.",
+      "resumeBadRequest": "This routine can't be turned on."
     }
   }
 }

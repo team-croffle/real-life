@@ -210,6 +210,7 @@
     "submit": "등록",
     "submitting": "등록 중",
     "empty": "퀘스트가 없어요",
+    "emptyRoutines": "루틴이 없어요",
     "loadError": "퀘스트를 불러오지 못했어요",
     "retry": "다시 시도",
     "notToday": "오늘은 쉬어요",
@@ -218,7 +219,8 @@
     "tabs": {
       "today": "오늘 할 것",
       "done": "오늘 완료",
-      "all": "전체"
+      "all": "전체",
+      "routines": "루틴"
     },
     "repeat": {
       "daily": "매일",
@@ -246,6 +248,18 @@
       "routine": "루틴",
       "deadline": "기한"
     },
+    "rest": {
+      "action": "끄기",
+      "resume": "켜기",
+      "cancel": "끄기 취소",
+      "title": "「{title}」을(를) 끌까요?",
+      "body": "내일부터 꺼져요. 오늘은 그대로 할 수 있어요.",
+      "startsTomorrow": "내일부터 꺼져요",
+      "startsOn": "{date}부터 꺼져요",
+      "restingFrom": "{date}부터 쉬는 중",
+      "restingUntil": "{from}부터 {until}까지 쉬는 중",
+      "cannotComplete": "쉬는 날이라 오늘은 완료할 수 없어요"
+    },
     "weekdays": {
       "mon": "월",
       "tue": "화",
@@ -264,7 +278,9 @@
       "created": "「{title}」 퀘스트가 추가되었어요",
       "completed": "완료했어요. +{gold}G · +{xp}XP",
       "marked": "오늘을 체크했어요",
-      "abandoned": "퀘스트를 포기했어요"
+      "abandoned": "퀘스트를 포기했어요",
+      "rested": "내일부터 꺼졌어요",
+      "resumed": "오늘부터 켜졌어요"
     },
     "errors": {
       "generic": "요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
@@ -278,7 +294,9 @@
       "completedDeadline": "이미 완료한 기한 퀘스트는 포기할 수 없어요.",
       "title": "제목을 입력해 주세요.",
       "weekdays": "요일을 하나 이상 골라 주세요.",
-      "endsOn": "기한은 오늘 이후여야 해요."
+      "endsOn": "기한은 오늘 이후여야 해요.",
+      "restBadRequest": "이 루틴은 끌 수 없어요.",
+      "resumeBadRequest": "이 루틴은 켤 수 없어요."
     }
   }
 }

@@ -9,14 +9,15 @@ import QuestCard from '@/components/quest/QuestCard.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
 import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDialog.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
+import QuestRestDialog from '@/components/quest/QuestRestDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
-import { abandonQuest } from '@/lib/quests';
+import { abandonQuest, restQuest, resumeQuest } from '@/lib/quests';
 
-type QuestTab = 'today' | 'done' | 'all';
+type QuestTab = 'today' | 'done' | 'all' | 'routines';
 
-const tabs: QuestTab[] = ['today', 'done', 'all'];
+const tabs: QuestTab[] = ['today', 'done', 'all', 'routines'];
 
 const { t } = useI18n();
 const {
@@ -42,6 +43,10 @@ const menuId = ref<string | null>(null);
 const abandonId = ref<string | null>(null);
 const abandonError = ref('');
 const abandonPending = ref(false);
+const restId = ref<string | null>(null);
+const restError = ref('');
+const restPending = ref(false);
+const resumeId = ref<string | null>(null);
 const registerOpen = ref(false);
 const registerBusy = ref(false);
 
@@ -52,6 +57,9 @@ const filtered = computed(() => {
   if (tab.value === 'done') {
     return items.value.filter((item) => item.dueToday && isQuestDone(item));
   }
+  if (tab.value === 'routines') {
+    return items.value.filter((item) => item.schedule === 'routine');
+  }
   return items.value;
 });
 
@@ -59,12 +67,20 @@ const abandonTitle = computed(
   () => items.value.find((item) => item.id === abandonId.value)?.title ?? '',
 );
 
-function questErrorMessage(cause: unknown): string {
+const restTitle = computed(() => items.value.find((item) => item.id === restId.value)?.title ?? '');
+
+function questErrorMessage(cause: unknown, action?: 'rest' | 'resume'): string {
   if (!(cause instanceof ApiError) || cause.status === 401) {
     return '';
   }
   if (cause.status === 404) {
     return t('quest.errors.notFound');
+  }
+  if (cause.status === 400 && action === 'rest') {
+    return t('quest.errors.restBadRequest');
+  }
+  if (cause.status === 400 && action === 'resume') {
+    return t('quest.errors.resumeBadRequest');
   }
   if (cause.message.includes('cannot be abandoned')) {
     return t('quest.errors.completedDeadline');
@@ -99,6 +115,10 @@ function onKeyDown(event: KeyboardEvent): void {
     closeAbandon();
     return;
   }
+  if (restId.value) {
+    closeRest();
+    return;
+  }
   if (registerBusy.value) {
     return;
   }
@@ -127,6 +147,19 @@ function openAbandon(id: string): void {
   abandonId.value = id;
 }
 
+function closeRest(): void {
+  if (restPending.value) {
+    return;
+  }
+  restId.value = null;
+}
+
+function openRest(id: string): void {
+  menuId.value = null;
+  restError.value = '';
+  restId.value = id;
+}
+
 function requestComplete(id: string): void {
   menuId.value = null;
   openComplete(id);
@@ -151,6 +184,47 @@ async function onConfirmAbandon(): Promise<void> {
     }
   } finally {
     abandonPending.value = false;
+  }
+}
+
+async function onConfirmRest(): Promise<void> {
+  const id = restId.value;
+  if (!id || restPending.value) {
+    return;
+  }
+  restPending.value = true;
+  restError.value = '';
+  try {
+    await restQuest(id);
+    restId.value = null;
+    await load(true);
+    showToast(t('quest.toast.rested'));
+  } catch (cause) {
+    const message = questErrorMessage(cause, 'rest');
+    if (message) {
+      restError.value = message;
+    }
+  } finally {
+    restPending.value = false;
+  }
+}
+
+async function onResume(id: string): Promise<void> {
+  if (resumeId.value || restPending.value || abandonPending.value) {
+    return;
+  }
+  resumeId.value = id;
+  try {
+    await resumeQuest(id);
+    await load(true);
+    showToast(t('quest.toast.resumed'));
+  } catch (cause) {
+    const message = questErrorMessage(cause, 'resume');
+    if (message) {
+      showToast(message);
+    }
+  } finally {
+    resumeId.value = null;
   }
 }
 
@@ -220,7 +294,9 @@ onUnmounted(() => {
         class="flex flex-col items-center gap-3 px-5 py-[72px] text-center"
       >
         <ListChecks class="text-muted-foreground size-[34px]" />
-        <p class="text-secondary-foreground text-sm font-semibold">{{ t('quest.empty') }}</p>
+        <p class="text-secondary-foreground text-sm font-semibold">
+          {{ tab === 'routines' ? t('quest.emptyRoutines') : t('quest.empty') }}
+        </p>
       </div>
 
       <div v-else class="flex flex-col gap-2.5">
@@ -229,11 +305,13 @@ onUnmounted(() => {
           :key="item.id"
           :item="item"
           :menu-open="menuId === item.id"
-          :busy="busyId === item.id"
+          :busy="busyId === item.id || resumeId === item.id"
           @complete="requestComplete(item.id)"
           @mark="onMark(item.id)"
           @toggle-menu="toggleMenu(item.id)"
           @abandon="openAbandon(item.id)"
+          @rest="openRest(item.id)"
+          @resume="onResume(item.id)"
         />
       </div>
     </div>
@@ -258,6 +336,15 @@ onUnmounted(() => {
       v-if="completionResult"
       :result="completionResult"
       @close="dismissCompletionResult"
+    />
+
+    <QuestRestDialog
+      v-if="restId"
+      :title="restTitle"
+      :pending="restPending"
+      :error="restError"
+      @cancel="closeRest"
+      @confirm="onConfirmRest"
     />
 
     <QuestAbandonDialog
