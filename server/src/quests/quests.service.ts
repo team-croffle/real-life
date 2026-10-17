@@ -3,6 +3,7 @@ import type {
   Quest,
   QuestDifficulty,
   QuestListItem,
+  QuestRoutineRestResult,
   QuestWeekday,
 } from '@nest-vue/shared';
 import {
@@ -25,7 +26,7 @@ import {
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
-import type { DrizzleDb } from '../database/database.module';
+import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { questCompletions } from '../database/schema/quest-completions';
 import { questDayMarks } from '../database/schema/quest-day-marks';
 import type { QuestRow } from '../database/schema/quests';
@@ -40,12 +41,24 @@ import {
   isDeadlineInPeriod,
   isRoutineDueOn,
   rewardPeriodForRemainingDays,
+  routineRestAfterPause,
+  routineRestAfterResume,
   seoulCalendarDate,
+  type RoutineRestDates,
 } from './quest-calendar';
+import { QuestPenaltyService } from './quest-penalty.service';
+
+const QUEST_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const UNSETTLED_PROGRESS_DATE = '0001-01-01';
 
 @Injectable()
 export class QuestsService {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    private readonly questPenaltyService: QuestPenaltyService,
+  ) {}
 
   async create(userId: string, dto: CreateQuestDto): Promise<Quest> {
     const title = dto.title.trim();
@@ -174,10 +187,43 @@ export class QuestsService {
     );
   }
 
+  async rest(userId: string, questId: string): Promise<QuestRoutineRestResult> {
+    assertQuestId(questId);
+    const today = seoulCalendarDate();
+    const first = await this.applyPause(userId, questId, today);
+    if (first !== 'need-settle') {
+      return first;
+    }
+    await this.questPenaltyService.settle(userId);
+    const second = await this.applyPause(userId, questId, today);
+    if (second === 'need-settle') {
+      throw new InternalServerErrorException('routine rest could not be saved');
+    }
+    return second;
+  }
+
+  async resume(userId: string, questId: string): Promise<QuestRoutineRestResult> {
+    assertQuestId(questId);
+    const today = seoulCalendarDate();
+    return this.db.transaction(async (tx) => {
+      const questRow = await lockOwnedQuest(tx, userId, questId);
+      if (questRow.schedule !== 'routine') {
+        throw new BadRequestException('only routines can resume');
+      }
+      return saveRest(
+        tx,
+        questRow,
+        routineRestAfterResume(
+          { restFrom: questRow.restFrom, restUntil: questRow.restUntil },
+          today,
+        ),
+        today,
+      );
+    });
+  }
+
   async abandon(userId: string, questId: string): Promise<void> {
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(questId)
-    ) {
+    if (!QUEST_ID_PATTERN.test(questId)) {
       throw new NotFoundException();
     }
 
@@ -205,6 +251,32 @@ export class QuestsService {
       }
 
       await tx.delete(quests).where(eq(quests.id, questRow.id));
+    });
+  }
+
+  private async applyPause(
+    userId: string,
+    questId: string,
+    today: string,
+  ): Promise<QuestRoutineRestResult | 'need-settle'> {
+    return this.db.transaction(async (tx) => {
+      const questRow = await lockOwnedQuest(tx, userId, questId);
+      if (questRow.schedule !== 'routine') {
+        throw new BadRequestException('only routines can rest');
+      }
+      const [progressRow] = await tx
+        .select({ penaltiesSettledOn: userProgress.penaltiesSettledOn })
+        .from(userProgress)
+        .where(eq(userProgress.userId, userId));
+      const decision = routineRestAfterPause(
+        { restFrom: questRow.restFrom, restUntil: questRow.restUntil },
+        today,
+        progressRow?.penaltiesSettledOn ?? UNSETTLED_PROGRESS_DATE,
+      );
+      if (decision.needsSettle) {
+        return 'need-settle';
+      }
+      return saveRest(tx, questRow, decision.rest, today);
     });
   }
 }
@@ -246,6 +318,8 @@ function toQuestListItem(
       weekdays: questRow.weekdays ?? [],
       biweekly: questRow.biweekly ?? false,
       endsOn: null,
+      restFrom: questRow.restFrom,
+      restUntil: questRow.restUntil,
       createdOn,
       dueToday,
       completedToday,
@@ -281,6 +355,8 @@ function toQuestListItem(
     weekdays: null,
     biweekly: null,
     endsOn,
+    restFrom: null,
+    restUntil: null,
     createdOn,
     dueToday: inPeriod,
     completedToday,
@@ -330,6 +406,8 @@ function toQuest(questRow: QuestRow, reward: { gold: number; xp: number }): Ques
       weekdays: questRow.weekdays ?? [],
       biweekly: questRow.biweekly ?? false,
       endsOn: null,
+      restFrom: questRow.restFrom,
+      restUntil: questRow.restUntil,
     };
   }
 
@@ -339,5 +417,52 @@ function toQuest(questRow: QuestRow, reward: { gold: number; xp: number }): Ques
     weekdays: null,
     biweekly: null,
     endsOn: questRow.endsOn ?? '',
+    restFrom: null,
+    restUntil: null,
   };
+}
+
+function assertQuestId(questId: string): void {
+  if (!QUEST_ID_PATTERN.test(questId)) {
+    throw new NotFoundException();
+  }
+}
+
+async function lockOwnedQuest(tx: DrizzleTx, userId: string, questId: string): Promise<QuestRow> {
+  const [questRow] = await tx
+    .select()
+    .from(quests)
+    .where(and(eq(quests.id, questId), eq(quests.userId, userId)))
+    .for('update');
+  if (!questRow) {
+    throw new NotFoundException();
+  }
+  return questRow;
+}
+
+async function saveRest(
+  tx: DrizzleTx,
+  questRow: QuestRow,
+  rest: RoutineRestDates,
+  today: string,
+): Promise<QuestRoutineRestResult> {
+  const saved =
+    questRow.restFrom === rest.restFrom && questRow.restUntil === rest.restUntil
+      ? questRow
+      : await updateRest(tx, questRow.id, rest);
+  return {
+    id: saved.id,
+    restFrom: saved.restFrom,
+    restUntil: saved.restUntil,
+    dueToday: isRoutineDueOn(saved, seoulCalendarDate(saved.createdAt), today),
+  };
+}
+
+async function updateRest(
+  tx: DrizzleTx,
+  questId: string,
+  rest: RoutineRestDates,
+): Promise<QuestRow> {
+  const [questRow] = await tx.update(quests).set(rest).where(eq(quests.id, questId)).returning();
+  return requireInserted(questRow);
 }
