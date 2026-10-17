@@ -41,6 +41,8 @@ export const quests = pgTable(
     weekdays: questWeekdayEnum().array(),
     biweekly: boolean(),
     endsOn: date({ mode: 'string' }),
+    restFrom: date({ mode: 'string' }),
+    restUntil: date({ mode: 'string' }),
     createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })
       .notNull()
@@ -65,6 +67,28 @@ export const quests = pgTable(
           AND ${table.endsOn} IS NOT NULL
           AND ${table.weekdays} IS NULL
           AND ${table.biweekly} IS NULL
+        )
+      )`,
+    ),
+    check(
+      'quests_rest_period',
+      sql`(
+        (
+          ${table.schedule} = 'deadline'
+          AND ${table.restFrom} IS NULL
+          AND ${table.restUntil} IS NULL
+        )
+        OR
+        (
+          ${table.schedule} = 'routine'
+          AND (
+            (${table.restFrom} IS NULL AND ${table.restUntil} IS NULL)
+            OR
+            (
+              ${table.restFrom} IS NOT NULL
+              AND (${table.restUntil} IS NULL OR ${table.restUntil} >= ${table.restFrom})
+            )
+          )
         )
       )`,
     ),
