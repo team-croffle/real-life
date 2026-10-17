@@ -32,6 +32,7 @@ import type { CompleteQuestDto } from './dto/complete-quest.dto';
 import {
   calendarDaysBetween,
   isDeadlineInPeriod,
+  isRestingOn,
   isRoutineDueOn,
   seoulCalendarDate,
   weekdayOfCalendarDate,
@@ -224,6 +225,9 @@ async function assertCompletable(
   }
 
   if (questRow.schedule === 'routine') {
+    if (isRestingOn(questRow, today)) {
+      throw new BadRequestException('routine is resting today');
+    }
     if (!isRoutineDueOn(questRow, createdOn, today)) {
       const weekdays = questRow.weekdays ?? [];
       if (!weekdays.includes(weekdayOfCalendarDate(today))) {

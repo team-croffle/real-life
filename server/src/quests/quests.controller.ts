@@ -3,6 +3,7 @@ import type {
   QuestCompletionResult,
   QuestDayMarkResult,
   QuestListItem,
+  QuestRoutineRestResult,
 } from '@nest-vue/shared';
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
@@ -49,6 +50,26 @@ export class QuestsController {
     @Param('id') questId: string,
   ): Promise<QuestDayMarkResult> {
     return this.questCompletionService.markToday(session.user.id, questId);
+  }
+
+  @Post(':id/rest')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  rest(
+    @Session() session: UserSession,
+    @Param('id') questId: string,
+  ): Promise<QuestRoutineRestResult> {
+    return this.questsService.rest(session.user.id, questId);
+  }
+
+  @Post(':id/resume')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  resume(
+    @Session() session: UserSession,
+    @Param('id') questId: string,
+  ): Promise<QuestRoutineRestResult> {
+    return this.questsService.resume(session.user.id, questId);
   }
 
   @Delete(':id')

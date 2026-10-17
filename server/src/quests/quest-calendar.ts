@@ -50,12 +50,24 @@ export function isBiweeklyOnWeek(createdOn: string, today: string): boolean {
   return weeks % 2 === 0;
 }
 
+export interface RoutineRestDates {
+  restFrom: string | null;
+  restUntil: string | null;
+}
+
+export function isRestingOn(quest: RoutineRestDates, day: string): boolean {
+  if (quest.restFrom === null || day < quest.restFrom) {
+    return false;
+  }
+  return quest.restUntil === null || day <= quest.restUntil;
+}
+
 export function isRoutineDueOn(
   quest: {
     schedule: QuestSchedule;
     weekdays: readonly QuestWeekday[] | null;
     biweekly: boolean | null;
-  },
+  } & RoutineRestDates,
   createdOn: string,
   day: string,
 ): boolean {
@@ -69,7 +81,49 @@ export function isRoutineDueOn(
   if (quest.biweekly && !isBiweeklyOnWeek(createdOn, day)) {
     return false;
   }
-  return true;
+  return !isRestingOn(quest, day);
+}
+
+/**
+ * 끄기 한 번. needsSettle이면 어제까지 정산한 뒤 다시 본다.
+ * 이미 꺼져 있거나 오늘이 구간에 있으면 날짜를 옮기지 않는다.
+ */
+export function routineRestAfterPause(
+  current: RoutineRestDates,
+  today: string,
+  penaltiesSettledOn: string,
+): { needsSettle: true } | { needsSettle: false; rest: RoutineRestDates } {
+  if (current.restFrom !== null && current.restUntil === null) {
+    return { needsSettle: false, rest: current };
+  }
+  if (current.restFrom !== null && current.restUntil !== null && current.restUntil >= today) {
+    return { needsSettle: false, rest: current };
+  }
+  if (
+    current.restFrom !== null &&
+    current.restUntil !== null &&
+    current.restUntil > penaltiesSettledOn
+  ) {
+    return { needsSettle: true };
+  }
+  return {
+    needsSettle: false,
+    rest: { restFrom: addCalendarDays(today, 1), restUntil: null },
+  };
+}
+
+/** 켜기 한 번. 오늘부터 예정이고, 어제 이전의 닫힌 구간은 남긴다. */
+export function routineRestAfterResume(current: RoutineRestDates, today: string): RoutineRestDates {
+  if (current.restFrom === null) {
+    return current;
+  }
+  if (current.restUntil !== null && current.restUntil < today) {
+    return current;
+  }
+  if (current.restFrom >= today) {
+    return { restFrom: null, restUntil: null };
+  }
+  return { restFrom: current.restFrom, restUntil: addCalendarDays(today, -1) };
 }
 
 /** 만든 날과 끝나는 날을 포함한다. */

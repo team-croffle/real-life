@@ -24,6 +24,10 @@ export interface RoutineQuest extends QuestFields {
   weekdays: QuestWeekday[];
   biweekly: boolean;
   endsOn: null;
+  /** 쉬는 첫 날 `YYYY-MM-DD`. 켜져 있으면 null */
+  restFrom: string | null;
+  /** 쉬는 마지막 날. 아직 꺼져 있으면 null */
+  restUntil: string | null;
 }
 
 export interface DeadlineQuest extends QuestFields {
@@ -31,6 +35,8 @@ export interface DeadlineQuest extends QuestFields {
   weekdays: null;
   biweekly: null;
   endsOn: string;
+  restFrom: null;
+  restUntil: null;
 }
 
 export type Quest = RoutineQuest | DeadlineQuest;
@@ -46,6 +52,10 @@ export interface QuestListItem {
   weekdays: QuestWeekday[] | null;
   biweekly: boolean | null;
   endsOn: string | null;
+  /** 쉬는 첫 날. 기한과 켜진 루틴은 null */
+  restFrom: string | null;
+  /** 쉬는 마지막 날. 아직 꺼진 루틴과 기한은 null */
+  restUntil: string | null;
   /** 한국 달력 날짜 `YYYY-MM-DD` */
   createdOn: string;
   dueToday: boolean;
@@ -87,3 +97,11 @@ export interface CreateDeadlineQuestPayload extends CreateQuestFields {
 export type CreateQuestPayload = CreateRoutineQuestPayload | CreateDeadlineQuestPayload;
 
 export type CreateQuestResult = Quest;
+
+/** POST /api/quests/:id/rest 와 POST /api/quests/:id/resume */
+export interface QuestRoutineRestResult {
+  id: string;
+  restFrom: string | null;
+  restUntil: string | null;
+  dueToday: boolean;
+}
