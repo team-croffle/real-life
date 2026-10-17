@@ -15,7 +15,8 @@ import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { useQuestBoard } from '@/composables/useQuestBoard';
-import { getProgress, getStats, settleQuestPenalties } from '@/lib/home';
+import { getProgress, settleQuestPenalties } from '@/lib/home';
+import { getStats } from '@/lib/stats';
 import { getWallet } from '@/lib/wallet';
 import { useAuthStore } from '@/stores/auth';
 
