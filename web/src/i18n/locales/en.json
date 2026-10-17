@@ -64,7 +64,15 @@
     "intellect": "Intellect",
     "sense": "Sense",
     "loadError": "Could not load the job",
-    "retry": "Try again"
+    "retry": "Try again",
+    "confirmTitle": "Change this job?",
+    "confirmBody": "Changing to {name} sets the level to 1 and XP to 0. The streak stays. You cannot change again for {days}×24 hours after this change.",
+    "cancel": "Cancel",
+    "confirm": "Change",
+    "celebrate": "A new journey starts.",
+    "unchanged": "This is already the current job.",
+    "cooldownError": "It is not time to change yet.",
+    "changeError": "Could not change the job."
   },
   "placeholder": {
     "body": "Not ready yet."
