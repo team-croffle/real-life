@@ -6,10 +6,12 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import JobChangeCard from '@/components/job/JobChangeCard.vue';
+import JobChangeCelebrate from '@/components/job/JobChangeCelebrate.vue';
+import JobChangeConfirmDialog from '@/components/job/JobChangeConfirmDialog.vue';
 import AppShell from '@/components/layouts/AppShell.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
-import { getJobChangeStatus } from '@/lib/jobChange';
+import { changeJobClass, getJobChangeStatus } from '@/lib/jobChange';
 
 type PageState = 'loading' | 'ready' | 'error';
 
@@ -25,6 +27,10 @@ const { t, locale } = useI18n();
 
 const pageState = ref<PageState>('loading');
 const status = ref<JobChangeStatus | null>(null);
+const pendingJob = ref<JobClass | null>(null);
+const changePending = ref(false);
+const changeError = ref('');
+const celebrateName = ref('');
 
 let loadGeneration = 0;
 let leftJob = false;
@@ -65,6 +71,78 @@ function bonusText(jobClass: JobClass): string {
   }).join(', ');
 }
 
+function onSelect(jobClass: JobClass): void {
+  if (
+    !status.value ||
+    status.value.jobClass === jobClass ||
+    coolingDown.value ||
+    changePending.value
+  ) {
+    return;
+  }
+  changeError.value = '';
+  pendingJob.value = jobClass;
+}
+
+function onCancel(): void {
+  if (changePending.value) {
+    return;
+  }
+  pendingJob.value = null;
+  changeError.value = '';
+}
+
+async function onConfirm(): Promise<void> {
+  const jobClass = pendingJob.value;
+  if (!jobClass || changePending.value) {
+    return;
+  }
+  changePending.value = true;
+  changeError.value = '';
+  try {
+    const result = await changeJobClass(jobClass);
+    if (leftJob) {
+      return;
+    }
+    status.value = {
+      jobClass: result.jobClass,
+      jobClassChangedAt: result.jobClassChangedAt,
+      nextJobChangeAt: result.nextJobChangeAt,
+    };
+    celebrateName.value = t(`auth.jobs.${result.jobClass}`);
+    pendingJob.value = null;
+  } catch (cause) {
+    if (leftJob) {
+      return;
+    }
+    if (cause instanceof ApiError && cause.status === 401) {
+      return;
+    }
+    if (cause instanceof ApiError && cause.status === 400) {
+      changeError.value = t('jobChange.unchanged');
+      return;
+    }
+    if (cause instanceof ApiError && cause.status === 409) {
+      changeError.value = t('jobChange.cooldownError');
+      return;
+    }
+    changeError.value = t('jobChange.changeError');
+  } finally {
+    changePending.value = false;
+  }
+}
+
+function onKeyDown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || changePending.value) {
+    return;
+  }
+  if (pendingJob.value) {
+    onCancel();
+    return;
+  }
+  celebrateName.value = '';
+}
+
 async function loadStatus(): Promise<void> {
   const generation = ++loadGeneration;
   pageState.value = 'loading';
@@ -88,10 +166,12 @@ async function loadStatus(): Promise<void> {
 
 onMounted(() => {
   void loadStatus();
+  document.addEventListener('keydown', onKeyDown);
 });
 
 onUnmounted(() => {
   leftJob = true;
+  document.removeEventListener('keydown', onKeyDown);
 });
 </script>
 
@@ -143,6 +223,7 @@ onUnmounted(() => {
             :current="status.jobClass === jobClass"
             :disabled="status.jobClass === jobClass || coolingDown"
             :accent="JOB_ACCENTS[jobClass]"
+            @select="onSelect"
           >
             <template #icon>
               <GraduationCap v-if="jobClass === 'student'" class="text-primary size-[19px]" />
@@ -153,5 +234,14 @@ onUnmounted(() => {
         </div>
       </template>
     </div>
+    <JobChangeConfirmDialog
+      v-if="pendingJob"
+      :name="t(`auth.jobs.${pendingJob}`)"
+      :pending="changePending"
+      :error="changeError"
+      @cancel="onCancel"
+      @confirm="onConfirm"
+    />
+    <JobChangeCelebrate v-if="celebrateName" :name="celebrateName" @close="celebrateName = ''" />
   </AppShell>
 </template>

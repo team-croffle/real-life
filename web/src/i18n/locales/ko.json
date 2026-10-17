@@ -64,7 +64,15 @@
     "intellect": "지성",
     "sense": "감성",
     "loadError": "직업을 불러오지 못했어요",
-    "retry": "다시 시도"
+    "retry": "다시 시도",
+    "confirmTitle": "직업을 변경할까요?",
+    "confirmBody": "\"{name}\"{particle} 바꾸면 레벨은 1, 경험치는 0이 돼요. 연속은 그대로예요. 바꾼 시각부터 {days}×24시간 동안 다시 바꿀 수 없어요.",
+    "cancel": "취소",
+    "confirm": "변경하기",
+    "celebrate": "새로운 여정을 시작해요!",
+    "unchanged": "이미 이 직업이에요.",
+    "cooldownError": "아직 바꿀 수 있는 시각이 아니에요.",
+    "changeError": "직업을 바꾸지 못했어요."
   },
   "placeholder": {
     "body": "준비 중이에요."
