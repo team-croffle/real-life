@@ -340,18 +340,21 @@ async function grantProgress(
     })
     .where(eq(userProgress.userId, userId));
 
+  let titlesGranted: number[] = [];
   if (applied.titlesGranted.length > 0) {
-    await tx
+    const inserted = await tx
       .insert(userTitles)
       .values(applied.titlesGranted.map((levelMark) => ({ userId, levelMark })))
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ levelMark: userTitles.levelMark });
+    titlesGranted = inserted.map((row) => row.levelMark).toSorted((left, right) => left - right);
   }
 
   return {
     level: applied.level,
     levelXp: applied.levelXp,
     ticketsGranted: applied.ticketsGranted,
-    titlesGranted: applied.titlesGranted,
+    titlesGranted,
     ticketCount,
   };
 }
