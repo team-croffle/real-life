@@ -1,5 +1,5 @@
-import type { JobChangeReason, JobChangeResult, JobChangeStatus } from '@nest-vue/shared';
-import { JOB_CHANGE_COOLDOWN_DAYS, JOB_CHANGE_EMPLOYMENT_GOLD } from '@nest-vue/shared';
+import type { JobChangeResult, JobChangeStatus } from '@nest-vue/shared';
+import { JOB_CHANGE_COOLDOWN_DAYS } from '@nest-vue/shared';
 import {
   BadRequestException,
   ConflictException,
@@ -15,17 +15,13 @@ import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
-import { WalletService } from '../wallet/wallet.service';
 import type { ChangeJobClassDto } from './dto/change-job-class.dto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class JobChangeService {
-  constructor(
-    @Inject(DRIZZLE) private readonly db: DrizzleDb,
-    private readonly wallet: WalletService,
-  ) {}
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
   async status(userId: string): Promise<JobChangeStatus> {
     const [userRow] = await this.db
@@ -54,8 +50,6 @@ export class JobChangeService {
   }
 
   async change(userId: string, dto: ChangeJobClassDto): Promise<JobChangeResult> {
-    const reason = dto.reason ?? 'none';
-
     return this.db.transaction(async (tx) => {
       const userRow = await lockedUser(tx, userId);
       if (userRow.jobClass === dto.jobClass) {
@@ -75,16 +69,13 @@ export class JobChangeService {
         .set({ jobClass: dto.jobClass, jobClassChangedAt: now })
         .where(eq(users.id, userId));
 
-      // 퀘스트 완료는 지갑을 잠근 다음 진행도를 잠근다. 순서가 반대면 두 트랜잭션이 서로를 기다린다.
-      const goldGranted = await grantForReason(tx, this.wallet, userId, reason);
       await resetLevelXp(tx, userId);
 
       return {
         jobClass: dto.jobClass,
-        reason,
         level: 1,
         xp: 0,
-        goldGranted,
+        goldGranted: 0,
         jobClassChangedAt: now.toISOString(),
         nextJobChangeAt: nextJobChangeAt(now).toISOString(),
       };
@@ -129,24 +120,4 @@ async function resetLevelXp(tx: DrizzleTx, userId: string): Promise<void> {
   }
 
   await tx.update(userProgress).set({ level: 1, xp: 0 }).where(eq(userProgress.userId, userId));
-}
-
-async function grantForReason(
-  tx: DrizzleTx,
-  wallet: WalletService,
-  userId: string,
-  reason: JobChangeReason,
-): Promise<number> {
-  if (reason === 'employment') {
-    await wallet.applyBalanceDelta(tx, userId, JOB_CHANGE_EMPLOYMENT_GOLD, 'employment');
-    return JOB_CHANGE_EMPLOYMENT_GOLD;
-  }
-  if (reason === 'unemployment') {
-    grantUnemploymentTitle();
-  }
-  return 0;
-}
-
-function grantUnemploymentTitle(): void {
-  // 칭호 이름과 저장 방식은 아직 없다. 정하는 시점에 여기서 테이블에 넣는다.
 }
