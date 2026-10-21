@@ -1,4 +1,4 @@
-export const JOB_CHANGE_COOLDOWN_DAYS = 30;
+export const JOB_CHANGE_COOLDOWN_DAYS = 7;
 
 export const JOB_CHANGE_REASONS = ['none', 'employment', 'unemployment'] as const;
 
