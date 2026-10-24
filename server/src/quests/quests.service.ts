@@ -10,6 +10,7 @@ import {
   QUEST_DEADLINE_DAILY_REMAINING_DAYS,
   QUEST_REWARDS,
   QUEST_WEEKDAYS,
+  comboRewardMultiplier,
   completionTableAmount,
   grantAmount,
   jobRewardMultiplier,
@@ -144,7 +145,7 @@ export class QuestsService {
     }
 
     const questIds = questRows.map((questRow) => questRow.id);
-    const [userRows, completionRows, markRows] = await Promise.all([
+    const [userRows, completionRows, markRows, progressRows] = await Promise.all([
       this.db.select({ jobClass: users.jobClass }).from(users).where(eq(users.id, userId)).limit(1),
       this.db
         .select({
@@ -164,6 +165,14 @@ export class QuestsService {
         })
         .from(questDayMarks)
         .where(and(eq(questDayMarks.userId, userId), inArray(questDayMarks.questId, questIds))),
+      this.db
+        .select({
+          comboDayCount: userProgress.comboDayCount,
+          comboCountedOn: userProgress.comboCountedOn,
+        })
+        .from(userProgress)
+        .where(eq(userProgress.userId, userId))
+        .limit(1),
     ]);
 
     const jobClass = userRows[0]?.jobClass;
@@ -175,12 +184,17 @@ export class QuestsService {
       completionRows.map((row) => [row.questId, { completedToday: row.completedToday === true }]),
     );
     const markByQuest = new Map(markRows.map((row) => [row.questId, row]));
+    const progressRow = progressRows[0];
+    const countedToday = (progressRow?.comboCountedOn ?? '') >= today;
+    const streak = (progressRow?.comboDayCount ?? 0) + (countedToday ? 0 : 1);
+    const comboMultiplier = comboRewardMultiplier(streak);
 
     return questRows.map((questRow) =>
       toQuestListItem(
         questRow,
         today,
         jobClass,
+        comboMultiplier,
         completionByQuest.get(questRow.id),
         markByQuest.get(questRow.id),
       ),
@@ -297,6 +311,7 @@ function toQuestListItem(
   questRow: QuestRow,
   today: string,
   jobClass: JobClass,
+  comboMultiplier: number,
   completion: { completedToday: boolean } | undefined,
   mark: { doneOn: string[] | null; markedDayCount: number } | undefined,
 ): QuestListItem {
@@ -307,7 +322,7 @@ function toQuestListItem(
 
   if (questRow.schedule === 'routine') {
     const dueToday = isRoutineDueOn(questRow, createdOn, today);
-    const payout = rewardPayout(questRow.difficulty, 0, 0, multiplier);
+    const payout = rewardPayout(questRow.difficulty, 0, 0, multiplier, comboMultiplier);
     return {
       id: questRow.id,
       kind: questRow.kind,
@@ -342,7 +357,13 @@ function toQuestListItem(
   const markedToday = (mark?.doneOn ?? []).includes(today);
   const canComplete = inPeriod && !completed;
   const payout = canComplete
-    ? rewardPayout(questRow.difficulty, daySpan, daySpan > 0 ? markedDayCount : 0, multiplier)
+    ? rewardPayout(
+        questRow.difficulty,
+        daySpan,
+        daySpan > 0 ? markedDayCount : 0,
+        multiplier,
+        comboMultiplier,
+      )
     : null;
 
   return {
@@ -377,11 +398,26 @@ function rewardPayout(
   daySpan: number,
   markedDayCount: number,
   multiplier: number,
+  comboMultiplier: number,
 ): { gold: number; xp: number } {
   const table = completionTableAmount(difficulty, daySpan, markedDayCount);
   return {
-    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
-    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
+    gold: grantAmount(
+      table.gold,
+      table.markedDays,
+      table.elapsedDays,
+      multiplier,
+      false,
+      comboMultiplier,
+    ),
+    xp: grantAmount(
+      table.xp,
+      table.markedDays,
+      table.elapsedDays,
+      multiplier,
+      false,
+      comboMultiplier,
+    ),
   };
 }
 

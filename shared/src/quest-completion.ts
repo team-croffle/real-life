@@ -30,6 +30,20 @@ export function jobRewardMultiplier(jobClass: JobClass, category: QuestCategory)
   return JOB_CLASS_REWARD_MULTIPLIERS[jobClass][stat] ?? 1;
 }
 
+/** 명세 7.3. 1~2일은 1, 3~6일은 1.1, 7~29일은 1.2, 30일 이상은 1.5. */
+export function comboRewardMultiplier(comboDayCount: number): number {
+  if (comboDayCount >= 30) {
+    return 1.5;
+  }
+  if (comboDayCount >= 7) {
+    return 1.2;
+  }
+  if (comboDayCount >= 3) {
+    return 1.1;
+  }
+  return 1;
+}
+
 export function rewardPeriodForDaySpan(daySpan: number): QuestRewardPeriod {
   if (daySpan <= QUEST_DEADLINE_DAILY_REMAINING_DAYS) {
     return 'daily';
@@ -61,18 +75,20 @@ export function completionTableAmount(
   return { gold: table.gold, xp: table.xp, markedDays, elapsedDays };
 }
 
-/** 표 금액, 비율, 직업 배율, 수행 내용 10%를 한 번에 반올림한다. */
+/** 표 금액, 비율, 직업 배율, 연속 배율, 수행 내용 10%를 한 번에 반올림한다. */
 export function grantAmount(
   tableAmount: number,
   markedDays: number,
   elapsedDays: number,
   multiplier: number,
   noteBonus: boolean,
+  comboMultiplier = 1,
 ): number {
   const multiplierTenths = Math.round(multiplier * 10);
+  const comboTenths = Math.round(comboMultiplier * 10);
   const noteTenths = noteBonus ? 11 : 10;
   return Math.round(
-    (tableAmount * markedDays * multiplierTenths * noteTenths) / (elapsedDays * 100),
+    (tableAmount * markedDays * multiplierTenths * comboTenths * noteTenths) / (elapsedDays * 1000),
   );
 }
 
