@@ -45,7 +45,7 @@ export class QuestPenaltyService {
         .from(quests)
         .where(and(eq(quests.userId, userId), eq(quests.schedule, 'routine')));
       const fromDate = addCalendarDays(progress.penaltiesSettledOn, 1);
-      const completed = await completedKeys(tx, userId, fromDate, yesterday);
+      const completed = await completedDays(tx, userId, fromDate, yesterday);
       const penalties: QuestPenaltyApplied[] = [];
       let comboDayCount = progress.comboDayCount;
       let statusEffect = progress.statusEffect;
@@ -56,34 +56,31 @@ export class QuestPenaltyService {
         const due = routineRows.filter((questRow) =>
           isRoutineDueOn(questRow, seoulCalendarDate(questRow.createdAt), day),
         );
-        if (due.length === 0) {
-          continue;
-        }
-
         const misses = due
-          .filter((questRow) => !completed.has(completionKey(questRow.id, day)))
+          .filter((questRow) => !completed.keys.has(completionKey(questRow.id, day)))
           .toSorted((left, right) => left.id.localeCompare(right.id));
-        if (misses.length === 0) {
-          comboDayCount += 1;
-          continue;
+        if (misses.length > 0) {
+          statusEffect = 'lethargy';
+          // 잔액과 경험치 바닥은 앞 페널티를 반영한 뒤에 계산한다.
+          /* oxlint-disable no-await-in-loop */
+          for (const questRow of misses) {
+            const applied = await this.applyMiss(tx, userId, questRow, day, levelXp);
+            levelXp -= applied.xpLoss;
+            nextBalance = applied.balance;
+            penalties.push({
+              questId: questRow.id,
+              missedOn: day,
+              gold: -applied.goldLoss,
+              xp: -applied.xpLoss,
+            });
+          }
+          /* oxlint-enable no-await-in-loop */
         }
 
-        comboDayCount = 0;
-        statusEffect = 'lethargy';
-        // 잔액과 경험치 바닥은 앞 페널티를 반영한 뒤에 계산한다.
-        /* oxlint-disable no-await-in-loop */
-        for (const questRow of misses) {
-          const applied = await this.applyMiss(tx, userId, questRow, day, levelXp);
-          levelXp -= applied.xpLoss;
-          nextBalance = applied.balance;
-          penalties.push({
-            questId: questRow.id,
-            missedOn: day,
-            gold: -applied.goldLoss,
-            xp: -applied.xpLoss,
-          });
+        // 연속 +1은 그날 첫 완료가 한다. 정산은 완료가 없는 날만 0으로 만든다.
+        if (!completed.days.has(day)) {
+          comboDayCount = 0;
         }
-        /* oxlint-enable no-await-in-loop */
       }
 
       await tx
@@ -200,12 +197,12 @@ async function lockProgress(tx: DrizzleTx, userId: string) {
   return progressRow;
 }
 
-async function completedKeys(
+async function completedDays(
   tx: DrizzleTx,
   userId: string,
   fromDate: string,
   toDate: string,
-): Promise<Set<string>> {
+): Promise<{ keys: Set<string>; days: Set<string> }> {
   const completionRows = await tx
     .select({
       questId: questCompletions.questId,
@@ -220,7 +217,10 @@ async function completedKeys(
       ),
     );
 
-  return new Set(completionRows.map((row) => completionKey(row.questId, row.completedOn)));
+  return {
+    keys: new Set(completionRows.map((row) => completionKey(row.questId, row.completedOn))),
+    days: new Set(completionRows.map((row) => row.completedOn)),
+  };
 }
 
 function completionKey(questId: string, completedOn: string): string {

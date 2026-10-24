@@ -2,6 +2,7 @@ import type { QuestCompletionResult, QuestDayMarkResult, StatusEffect } from '@n
 import {
   QUEST_NOTE_MAX_LENGTH,
   applyLevelXp,
+  comboRewardMultiplier,
   completionTableAmount,
   grantAmount,
   jobRewardMultiplier,
@@ -27,6 +28,7 @@ import { quests } from '../database/schema/quests';
 import { userProgress } from '../database/schema/user-progress';
 import { userTitles } from '../database/schema/user-titles';
 import { users } from '../database/schema/users';
+import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
 import type { CompleteQuestDto } from './dto/complete-quest.dto';
 import {
@@ -68,8 +70,12 @@ export class QuestCompletionService {
       const daySpan = questRow.schedule === 'deadline' ? calendarDaysBetween(createdOn, today) : 0;
       const markedDayCount = daySpan > 0 ? await lockedMarkCount(tx, questRow.id, userId) : 0;
       const table = completionTableAmount(questRow.difficulty, daySpan, markedDayCount);
-      // 직업 변경은 users, 지갑, 진행도 순으로 잠근다. 배율은 지갑보다 먼저 users를 잠근 뒤의 직업으로 계산한다.
-      const multiplier = jobRewardMultiplier(await requireJobClass(tx, userId), questRow.category);
+      // 직업 변경은 users, 지갑, 진행도 순으로 잠근다. 오늘 첫 완료인지는 그 잠금 뒤에서만 본다.
+      const jobClass = await requireJobClass(tx, userId);
+      await lockWallet(tx, userId);
+      const combo = await advanceComboOnFirstCompletion(tx, userId, today);
+      const multiplier = jobRewardMultiplier(jobClass, questRow.category);
+      const comboMultiplier = comboRewardMultiplier(combo.comboDayCount);
       const noteBonus = note !== null;
       const gold = grantAmount(
         table.gold,
@@ -77,8 +83,16 @@ export class QuestCompletionService {
         table.elapsedDays,
         multiplier,
         noteBonus,
+        comboMultiplier,
       );
-      const xp = grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, noteBonus);
+      const xp = grantAmount(
+        table.xp,
+        table.markedDays,
+        table.elapsedDays,
+        multiplier,
+        noteBonus,
+        comboMultiplier,
+      );
 
       const balance = await this.walletService.applyBalanceDelta(tx, userId, gold, 'completion');
       const progress = await grantProgress(tx, userId, xp);
@@ -199,6 +213,49 @@ async function lockQuest(tx: DrizzleTx, userId: string, questId: string): Promis
     throw new NotFoundException();
   }
   return questRow;
+}
+
+async function lockWallet(tx: DrizzleTx, userId: string): Promise<void> {
+  await tx.insert(wallets).values({ userId }).onConflictDoNothing();
+  const [walletRow] = await tx
+    .select({ balance: wallets.balance })
+    .from(wallets)
+    .where(eq(wallets.userId, userId))
+    .for('update');
+
+  if (!walletRow) {
+    throw new InternalServerErrorException('wallet row missing after insert');
+  }
+}
+
+async function advanceComboOnFirstCompletion(
+  tx: DrizzleTx,
+  userId: string,
+  today: string,
+): Promise<{ comboDayCount: number }> {
+  await tx.insert(userProgress).values({ userId }).onConflictDoNothing();
+  const [progressRow] = await tx
+    .select({
+      comboDayCount: userProgress.comboDayCount,
+      comboCountedOn: userProgress.comboCountedOn,
+    })
+    .from(userProgress)
+    .where(eq(userProgress.userId, userId))
+    .for('update');
+
+  if (!progressRow) {
+    throw new InternalServerErrorException('progress row missing after insert');
+  }
+  if (progressRow.comboCountedOn >= today) {
+    return { comboDayCount: progressRow.comboDayCount };
+  }
+
+  const comboDayCount = progressRow.comboDayCount + 1;
+  await tx
+    .update(userProgress)
+    .set({ comboDayCount, comboCountedOn: today })
+    .where(eq(userProgress.userId, userId));
+  return { comboDayCount };
 }
 
 async function requireJobClass(tx: DrizzleTx, userId: string) {
