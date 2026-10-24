@@ -137,5 +137,5 @@ constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 | DELETE | `/api/account/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                   |
 | POST   | `/api/quests`                      | 퀘스트 등록 (세션). 루틴 또는 마감. 골드·XP는 서버가 표로 계산하고 본문에만 넣음 |
 | GET    | `/api/wallet`                      | 골드 잔액 (세션). 지갑이 없으면 0                                                |
-| GET    | `/api/wallet/entries`              | 골드 내역 (세션). 최신순. `page` 기본 1, `size` 기본 20, 상한 100                |
+| GET    | `/api/wallet/entries`              | 골드 내역과 종류 `kind` (세션). 최신순. `page` 기본 1, `size` 기본 20, 상한 100  |
 | POST   | `/api/wallet/post-hoc-deductions`  | 사후 차감 (세션). 본문 `amount`. 외상 한도를 넘으면 400                          |
