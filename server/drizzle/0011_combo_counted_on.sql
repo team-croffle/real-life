@@ -1,0 +1,1 @@
+ALTER TABLE "user_progress" ADD COLUMN "combo_counted_on" date DEFAULT ((timezone('Asia/Seoul', now()))::date - 1) NOT NULL;
