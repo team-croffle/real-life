@@ -14,6 +14,10 @@ export const userProgress = pgTable('user_progress', {
   xp: integer().notNull().default(0),
   gachaTicketCount: integer().notNull().default(0),
   comboDayCount: integer().notNull().default(0),
+  // 오늘 연속을 이미 올렸는지 보는 서울 날짜. 완료 트랜잭션만 오늘로 바꾼다.
+  comboCountedOn: date({ mode: 'string' })
+    .notNull()
+    .default(sql`((timezone('Asia/Seoul', now()))::date - 1)`),
   statusEffect: statusEffectEnum(),
   penaltiesSettledOn: date({ mode: 'string' })
     .notNull()
