@@ -45,6 +45,7 @@ export class WalletService {
       .select({
         id: walletEntries.id,
         amount: walletEntries.amount,
+        kind: walletEntries.kind,
         createdAt: walletEntries.createdAt,
       })
       .from(walletEntries)
@@ -57,6 +58,7 @@ export class WalletService {
       items: entryRows.map((entryRow) => ({
         id: entryRow.id,
         amount: entryRow.amount,
+        kind: entryRow.kind,
         createdAt: entryRow.createdAt.toISOString(),
       })),
       page,
