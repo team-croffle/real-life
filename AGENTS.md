@@ -1,60 +1,62 @@
-# 에이전트 지침
+# Agent Instructions
 
-## 프로젝트 소개
+Reply to the user in Korean. Commit message bodies and PR text are also written in Korean.
 
-할 일을 퀘스트로 등록하고, 완료하면 골드와 경험치를 받는 웹앱이다.
+## Project Overview
 
-퀘스트는 루틴 또는 기한으로 등록한다. 완료하면 지갑에 골드를 더하고 진행도의 경험치를 올린다. 예정일이 지난 루틴을 완료하지 않으면, 정산할 때 골드와 경험치를 깎는다.
+A web app where you register to-dos as quests and receive gold and XP when you complete them.
 
-- 프론트: Vue, Vite (`web`)
-- 서버: NestJS (`server`)
+A quest is registered as either a routine or a deadline. Completing it adds gold to the wallet and raises XP in the progress. If a routine whose scheduled day has passed is not completed, gold and XP are deducted at settlement.
+
+- Frontend: Vue, Vite (`web`)
+- Server: NestJS (`server`)
 - DB: PostgreSQL, Drizzle ORM
-- 패키지 매니저: pnpm 워크스페이스 (`shared`, `server`, `web`)
-- 배포: API 서버는 Docker 이미지로 빌드하고, Docker Compose로 Postgres와 함께 기동한다 (`docker/docker-compose.yaml`, `docker/Dockerfile`)
+- Package manager: pnpm workspace (`shared`, `server`, `web`)
+- Deployment: the API server is built as a Docker image and started together with Postgres by Docker Compose (`docker/docker-compose.yaml`, `docker/Dockerfile`)
 
-## 프로젝트 구조
+## Project Structure
 
-| 부분   | 위치      | 스택과 역할                                                                          |
-| ------ | --------- | ------------------------------------------------------------------------------------ |
-| 웹     | `web/`    | Vue 3, Vite. 화면 (개발 중 `/api`는 서버로 프록시)                                   |
-| 서버   | `server/` | NestJS, Drizzle, PostgreSQL. API (인증, 퀘스트, 지갑, 스탯, 직업 변경)               |
-| 공유   | `shared/` | 서버와 웹이 같이 쓰는 타입과 상수. 보상·패널티 계산 함수도 있지만 지금은 서버만 쓴다 |
-| 인프라 | `docker/` | Compose (postgres, server)                                                           |
+| Part           | Location  | Stack and role                                                                                                                            |
+| -------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Web            | `web/`    | Vue 3, Vite. Screens (during development `/api` is proxied to the server)                                                                 |
+| Server         | `server/` | NestJS, Drizzle, PostgreSQL. API (auth, quests, wallet, stats, job change)                                                                |
+| Shared         | `shared/` | Types and constants shared by the server and the web. It also has the reward and penalty functions, but only the server uses them for now |
+| Infrastructure | `docker/` | Compose (postgres, server)                                                                                                                |
 
-루트 `package.json` 스크립트:
+Root `package.json` scripts:
 
-- 실행: `pnpm dev`, `pnpm dev:server`, `pnpm dev:web`
-- 빌드: `pnpm build`
-- 타입체크: `pnpm typecheck`
-- lint: `pnpm lint`, `pnpm lint:fix`
+- Run: `pnpm dev`, `pnpm dev:server`, `pnpm dev:web`
+- Build: `pnpm build`
+- Typecheck: `pnpm typecheck`
+- Lint: `pnpm lint`, `pnpm lint:fix`
 
-작업 전에 `.ai/AGENTS.md`(로컬 지침), 로드맵, 명세를 읽는다. `.ai/AGENTS.md`가 없으면 사용자에게 알린다.
+Before working, read `.ai/AGENTS.md` (local instructions), the roadmap, and the spec. If `.ai/AGENTS.md` does not exist, tell the user.
 
-## 브랜치와 커밋
+## Branches and Commits
 
-브랜치 생성·전환은 **사용자가 한다.** 에이전트는 `git checkout`, `git switch`, `git branch`로 브랜치를 만들지 않고, **지금 체크아웃된 브랜치에서만** 작업한다.
+**The user** creates and switches branches. The agent does not create branches with `git checkout`, `git switch`, or `git branch`, and works **only on the branch that is currently checked out**.
 
-브랜치는 서버와 클라이언트를 분리해서 진행한다. 같은 브랜치에 서버 작업과 클라이언트 작업을 함께 넣지 않는다. 예: `feat/auth-server` → `feat/auth-web`.
+Keep server and client work on separate branches. Do not put server work and client work in the same branch. Example: `feat/auth-server` → `feat/auth-web`.
 
-커밋 전에 스스로 점검한다. 단일 책임 원칙 위반, 불필요하게 복잡한 구조, 중복 로직이 있으면 커밋 전에 먼저 알린다.
+Self-check before committing. If you find a single-responsibility violation, needlessly complex structure, or duplicated logic, say so before committing.
 
-작업은 `master`가 아닌 작업 브랜치(`feat/*`, `docs/*` 등)에서 한다. **`master`에 직접 커밋하지 않는다.** 현재 브랜치가 `master`이면 커밋하지 말고 사용자에게 `feat/*`로 바꿔 달라고 한다. 사용자가 `master`에 커밋하라고 명시한 경우(초기 세팅 등)만 예외다.
+Work on a working branch (`feat/*`, `docs/*`, and so on), not on `master`. **Do not commit directly to `master`.** If the current branch is `master`, do not commit; ask the user to switch to a `feat/*` branch. The only exception is when the user explicitly tells you to commit to `master` (initial setup and the like).
 
-커밋 하나는 한 가지 목적만 담는다. 마지막에 한 커밋으로 몰지 않는다.
+One commit carries one purpose only. Do not pile everything into one commit at the end.
 
-목적은 되돌렸을 때 같이 사라져야 하는 범위다. 예: 스키마(+마이그레이션) → 그 스키마를 쓰는 API 한 덩어리(가입/로그인) → 그다음 소셜 → 그다음 메일 인증. UI는 서버와 브랜치가 다르므로 같은 커밋에 넣지 않는다.
+The purpose is the scope that should disappear together when reverted. Example: schema (+ migration) → one chunk of API that uses that schema (sign-up/login) → then social login → then email verification. The UI is on a different branch from the server, so do not put it in the same commit.
 
-파일 개수가 많다는 이유만으로 합치지 않는다. DTO가 여러 개여도 같은 API면 한 커밋일 수 있다. 반대로 스키마와 API, 또는 로그인과 메일 인증처럼 **따로 되돌릴 수 있는 것**은 중간 HEAD가 잠시 깨지더라도 커밋을 나눈다. “한 커밋이어야 앱이 돈다”는 이유로 레이어를 합치지 않는다.
+Do not merge commits just because there are many files. Several DTOs can still be one commit if they belong to the same API. Conversely, things that **can be reverted separately**, such as a schema and an API, or login and email verification, are split into commits even if the HEAD in between is briefly broken. Do not merge layers on the grounds that "it has to be one commit for the app to run".
 
-브랜치당 변경량은 300~500줄을 기준으로 한다. 칼같이 자르지 않는다. 같은 흐름의 작업은 500줄을 넘더라도 억지로 쪼개지 않고, 관계없는 작업은 300줄을 채우려고 붙이지 않는다. 커밋 하나 수준으로 작은 변경은 별도 브랜치로 만들지 않고 관련 있는 브랜치에 묶는다. 기능 추가, 리팩터, 문서, 포맷 변경은 한 커밋에 섞지 않는다.
+Take 300–500 changed lines per branch as the guideline. Do not cut strictly. Do not split work of the same flow just because it goes over 500 lines, and do not attach unrelated work just to reach 300 lines. A change small enough to be a single commit does not get its own branch; bundle it into a related branch. Do not mix feature additions, refactors, docs, and formatting changes in one commit.
 
-커밋 전에 `git diff --stat`으로 크기를 확인한다. 그 밖의 확인 절차는 로컬 지침을 따른다.
+Before committing, check the size with `git diff --stat`. For any other checks, follow the local instructions.
 
-push는 **사용자가 요청할 때만** 한다. 에이전트가 먼저 push하지 않는다.
+Push **only when the user asks**. The agent does not push on its own.
 
-시크릿(`.env`, 자격 증명)은 커밋하지 않는다. git 훅을 건너뛰지 않는다. `master`에 force-push하지 않는다.
+Do not commit secrets (`.env`, credentials). Do not skip git hooks. Do not force-push to `master`.
 
-커밋 메시지 제목은 영어 conventional 형식이다. `feat:`, `fix:`, `docs:`, `refactor:`를 쓰고, 필요하면 `chore:`도 쓴다. 제목 아래에는 요약과 상세 불릿을 한글로 둔다.
+The commit message title is in English conventional format. Use `feat:`, `fix:`, `docs:`, and `refactor:`, and `chore:` when needed. Below the title, put the summary and the detailed bullets in Korean.
 
 ```
 <type>: <short title>
@@ -66,7 +68,7 @@ push는 **사용자가 요청할 때만** 한다. 에이전트가 먼저 push하
 - <후속이나 제약 있으면>
 ```
 
-예시:
+Example:
 
 ```
 feat: add user list API
@@ -77,9 +79,9 @@ feat: add user list API
 - 페이지네이션 쿼리를 기존 목록 패턴에 맞춘다.
 ```
 
-제목은 영어 명령형이다.
+The title is an English imperative.
 
-## 이름 규칙
+## Naming Rules
 
-- 이름은 실제 동작을 말해야 한다. 동작이 바뀌면 이름도 같이 바꾼다.
-  예: 가입 흐름의 임시값만 담는 저장소는 `authFlow`이고, 로그인 세션은 DB의 `session` 테이블이다. 둘을 섞어 부르지 않는다.
+- A name must describe what it actually does. When the behavior changes, change the name too.
+  Example: the store that holds only the temporary values of the sign-up flow is `authFlow`, and the login session is the `session` table in the DB. Do not mix the two when calling them.
