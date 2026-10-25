@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
@@ -17,6 +18,7 @@ import { WalletModule } from './wallet/wallet.module';
       envFilePath: ['.env.local', '.env'],
       expandVariables: true,
     }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     AuthModule,
     QuestsModule,
