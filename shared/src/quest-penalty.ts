@@ -1,4 +1,7 @@
+import { QUEST_DEADLINE_PENALTIES } from './constants/quest-penalty';
+import type { QuestDifficulty } from './constants/quests';
 import { WALLET_DEBT_LIMIT } from './constants/wallet';
+import { rewardPeriodForDaySpan } from './quest-completion';
 
 /** 바닥은 -WALLET_DEBT_LIMIT. 남는 차감액은 버리고, 잔액은 올리지 않는다. */
 export function appliedGoldPenalty(balance: number, loss: number): number {
@@ -15,4 +18,12 @@ export function appliedXpPenalty(levelXp: number, loss: number): number {
     return 0;
   }
   return Math.min(loss, Math.max(0, levelXp));
+}
+
+/** 만든 날부터 마감일까지의 날짜 차이로 표의 열을 고르고, 그 차감액을 돌려준다. */
+export function deadlinePenaltyAmount(
+  difficulty: QuestDifficulty,
+  daySpan: number,
+): { gold: number; xp: number } {
+  return QUEST_DEADLINE_PENALTIES[difficulty][rewardPeriodForDaySpan(daySpan)];
 }
