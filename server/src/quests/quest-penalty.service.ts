@@ -1,5 +1,5 @@
 import type { QuestPenaltyApplied, QuestPenaltySettlement, StatusEffect } from '@nest-vue/shared';
-import { QUEST_PENALTIES, appliedXpPenalty } from '@nest-vue/shared';
+import { QUEST_PENALTIES, appliedXpPenalty, deadlinePenaltyAmount } from '@nest-vue/shared';
 import {
   ForbiddenException,
   Inject,
@@ -7,7 +7,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
@@ -19,7 +19,12 @@ import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
-import { addCalendarDays, isRoutineDueOn, seoulCalendarDate } from './quest-calendar';
+import {
+  addCalendarDays,
+  calendarDaysBetween,
+  isRoutineDueOn,
+  seoulCalendarDate,
+} from './quest-calendar';
 
 @Injectable()
 export class QuestPenaltyService {
@@ -46,6 +51,22 @@ export class QuestPenaltyService {
         .where(and(eq(quests.userId, userId), eq(quests.schedule, 'routine')));
       const fromDate = addCalendarDays(progress.penaltiesSettledOn, 1);
       const completed = await completedDays(tx, userId, fromDate, yesterday);
+      // 마감일이 이번 정산 범위에 있는 기한 퀘스트. 완료 기록은 날짜와 상관없이 본다.
+      const deadlineRows = await tx
+        .select()
+        .from(quests)
+        .where(
+          and(
+            eq(quests.userId, userId),
+            eq(quests.schedule, 'deadline'),
+            gte(quests.endsOn, fromDate),
+            lte(quests.endsOn, yesterday),
+          ),
+        );
+      const completedDeadlineIds = await completedQuestIds(
+        tx,
+        deadlineRows.map((questRow) => questRow.id),
+      );
       const penalties: QuestPenaltyApplied[] = [];
       let comboDayCount = progress.comboDayCount;
       let statusEffect = progress.statusEffect;
@@ -61,21 +82,39 @@ export class QuestPenaltyService {
           .toSorted((left, right) => left.id.localeCompare(right.id));
         if (misses.length > 0) {
           statusEffect = 'lethargy';
-          // 잔액과 경험치 바닥은 앞 페널티를 반영한 뒤에 계산한다.
-          /* oxlint-disable no-await-in-loop */
-          for (const questRow of misses) {
-            const applied = await this.applyMiss(tx, userId, questRow, day, levelXp);
-            levelXp -= applied.xpLoss;
-            nextBalance = applied.balance;
-            penalties.push({
-              questId: questRow.id,
-              missedOn: day,
-              gold: -applied.goldLoss,
-              xp: -applied.xpLoss,
-            });
-          }
-          /* oxlint-enable no-await-in-loop */
         }
+
+        // 기한 퀘스트는 마감일이 이 날이고 완료하지 못한 것만 깎는다. 무기력은 켜지 않는다.
+        const deadlineMisses = deadlineRows
+          .filter((questRow) => questRow.endsOn === day && !completedDeadlineIds.has(questRow.id))
+          .toSorted((left, right) => left.id.localeCompare(right.id));
+        const targets = [
+          ...misses.map((questRow) => ({
+            questRow,
+            table: QUEST_PENALTIES[questRow.difficulty],
+          })),
+          ...deadlineMisses.map((questRow) => ({
+            questRow,
+            table: deadlinePenaltyAmount(
+              questRow.difficulty,
+              calendarDaysBetween(seoulCalendarDate(questRow.createdAt), day),
+            ),
+          })),
+        ];
+        // 잔액과 경험치 바닥은 앞 페널티를 반영한 뒤에 계산한다.
+        /* oxlint-disable no-await-in-loop */
+        for (const { questRow, table } of targets) {
+          const applied = await this.applyMiss(tx, userId, questRow, day, levelXp, table);
+          levelXp -= applied.xpLoss;
+          nextBalance = applied.balance;
+          penalties.push({
+            questId: questRow.id,
+            missedOn: day,
+            gold: -applied.goldLoss,
+            xp: -applied.xpLoss,
+          });
+        }
+        /* oxlint-enable no-await-in-loop */
 
         // 연속 +1은 그날 첫 완료가 한다. 정산은 완료가 없는 날만 0으로 만든다.
         if (!completed.days.has(day)) {
@@ -111,8 +150,8 @@ export class QuestPenaltyService {
     questRow: QuestRow,
     missedOn: string,
     levelXp: number,
+    table: { gold: number; xp: number },
   ): Promise<{ balance: number; goldLoss: number; xpLoss: number }> {
-    const table = QUEST_PENALTIES[questRow.difficulty];
     const gold = await this.walletService.applyClampedPenalty(tx, userId, table.gold);
     const xpLoss = appliedXpPenalty(levelXp, table.xp);
     await tx.insert(questPenalties).values({
@@ -225,4 +264,15 @@ async function completedDays(
 
 function completionKey(questId: string, completedOn: string): string {
   return `${questId}:${completedOn}`;
+}
+
+async function completedQuestIds(tx: DrizzleTx, questIds: string[]): Promise<Set<string>> {
+  if (questIds.length === 0) {
+    return new Set();
+  }
+  const completionRows = await tx
+    .select({ questId: questCompletions.questId })
+    .from(questCompletions)
+    .where(inArray(questCompletions.questId, questIds));
+  return new Set(completionRows.map((row) => row.questId));
 }
