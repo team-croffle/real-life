@@ -23,23 +23,24 @@ pnpm docker:dev
 
 아래 값을 `server/.env` 에 채운다. 새 변수를 추가하면 `.env.example` 을 같은 커밋에서 맞춘다.
 
-| 변수                   | 필수 | 기본값                  | 설명                                            |
-| ---------------------- | ---- | ----------------------- | ----------------------------------------------- |
-| `DATABASE_URL`         | O    | -                       | `postgresql://user:pass@host:5432/db`           |
-| `PORT`                 | X    | `3000`                  | HTTP 포트                                       |
-| `CORS_ORIGIN`          | X    | `http://localhost:5173` | 허용 오리진. credentials 쿠키라 `*` 불가        |
-| `DATABASE_POOL_MAX`    | X    | `10`                    | pg 커넥션 풀 최대 크기                          |
-| `NODE_ENV`             | X    | -                       | `development` / `production`                    |
-| `BETTER_AUTH_SECRET`   | O    | -                       | 세션 서명 키. 32자 이상                         |
-| `BETTER_AUTH_URL`      | X    | `http://localhost:3000` | 서버 origin. Better Auth baseURL                |
-| `GOOGLE_CLIENT_ID`     | X    | -                       | 없으면 Google 로그인은 비활성                   |
-| `GOOGLE_CLIENT_SECRET` | X    | -                       | OAuth 코드 교환용. ID 토큰 로그인에는 비워 둔다 |
-| `SMTP_HOST`            | X    | `smtp.gmail.com`        | Gmail SMTP 호스트                               |
-| `SMTP_PORT`            | X    | `587`                   | `587`은 STARTTLS, `465`는 SSL                   |
-| `SMTP_USER`            | X    | -                       | Gmail 주소. 비밀번호 가입 메일 발송             |
-| `SMTP_PASS`            | X    | -                       | Gmail **앱 비밀번호** (계정 비밀번호 아님)      |
-| `MAIL_FROM`            | X    | `SMTP_USER`             | From 헤더. 비우면 SMTP_USER                     |
-| `WEB_ORIGIN`           | X    | `CORS_ORIGIN`           | 인증 메일 링크 베이스 (`/verify-email?token=`)  |
+| 변수                   | 필수 | 기본값                  | 설명                                                |
+| ---------------------- | ---- | ----------------------- | --------------------------------------------------- |
+| `DATABASE_URL`         | O    | -                       | `postgresql://user:pass@host:5432/db`               |
+| `PORT`                 | X    | `3000`                  | HTTP 포트                                           |
+| `CORS_ORIGIN`          | X    | `http://localhost:5173` | 허용 오리진. credentials 쿠키라 `*` 불가            |
+| `DATABASE_POOL_MAX`    | X    | `10`                    | pg 커넥션 풀 최대 크기                              |
+| `NODE_ENV`             | X    | -                       | `development` / `production`                        |
+| `BETTER_AUTH_SECRET`   | O    | -                       | 세션 서명 키. 32자 이상                             |
+| `BETTER_AUTH_URL`      | X    | `http://localhost:3000` | 서버 origin. Better Auth baseURL                    |
+| `GOOGLE_CLIENT_ID`     | X    | -                       | 없으면 Google 로그인은 비활성                       |
+| `GOOGLE_CLIENT_SECRET` | X    | -                       | OAuth 코드 교환용. ID 토큰 로그인에는 비워 둔다     |
+| `SMTP_HOST`            | X    | `smtp.gmail.com`        | Gmail SMTP 호스트                                   |
+| `SMTP_PORT`            | X    | `587`                   | `587`은 STARTTLS, `465`는 SSL                       |
+| `SMTP_USER`            | X    | -                       | Gmail 주소. 비밀번호 가입 메일 발송                 |
+| `SMTP_PASS`            | X    | -                       | Gmail **앱 비밀번호** (계정 비밀번호 아님)          |
+| `MAIL_FROM`            | X    | `SMTP_USER`             | From 헤더. 비우면 SMTP_USER                         |
+| `WEB_ORIGIN`           | X    | `CORS_ORIGIN`           | 인증 메일 링크 베이스 (`/verify-email?token=`)      |
+| `CRIT_FORCE`           | X    | -                       | 검증용. `double`/`triple`/`none`. production은 무시 |
 
 세션은 Better Auth httpOnly 쿠키다. 웹은 `credentials: 'include'`로 쿠키를 실어 보낸다. 가드는 세션이 살아 있는지 본다.
 
