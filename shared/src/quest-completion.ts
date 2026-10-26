@@ -75,7 +75,7 @@ export function completionTableAmount(
   return { gold: table.gold, xp: table.xp, markedDays, elapsedDays };
 }
 
-/** 표 금액, 비율, 직업 배율, 연속 배율, 수행 내용 10%를 한 번에 반올림한다. */
+/** 표 금액, 비율, 직업 배율, 연속 배율, 수행 내용 10%, 크리티컬 배수를 한 번에 반올림한다. */
 export function grantAmount(
   tableAmount: number,
   markedDays: number,
@@ -83,12 +83,14 @@ export function grantAmount(
   multiplier: number,
   noteBonus: boolean,
   comboMultiplier = 1,
+  critMultiplier = 1,
 ): number {
   const multiplierTenths = Math.round(multiplier * 10);
   const comboTenths = Math.round(comboMultiplier * 10);
   const noteTenths = noteBonus ? 11 : 10;
   return Math.round(
-    (tableAmount * markedDays * multiplierTenths * comboTenths * noteTenths) / (elapsedDays * 1000),
+    (tableAmount * markedDays * multiplierTenths * comboTenths * noteTenths * critMultiplier) /
+      (elapsedDays * 1000),
   );
 }
 
@@ -109,7 +111,12 @@ export function applyLevelXp(
   level: number,
   levelXp: number,
   gainedXp: number,
-): { level: number; levelXp: number; ticketsGranted: number; titlesGranted: number[] } {
+): {
+  level: number;
+  levelXp: number;
+  ticketsGranted: number;
+  titlesGranted: number[];
+} {
   if (level >= LEVEL_CAP || gainedXp <= 0) {
     return {
       level: Math.min(level, LEVEL_CAP),
