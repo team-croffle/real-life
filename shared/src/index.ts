@@ -4,6 +4,7 @@ export * from './constants/job-change';
 export * from './constants/jobs';
 export * from './constants/quests';
 export * from './constants/quest-penalty';
+export * from './constants/quest-crit';
 export * from './constants/status-effect';
 export * from './constants/wallet';
 export * from './quest-completion';
