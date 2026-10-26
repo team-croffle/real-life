@@ -39,6 +39,7 @@ import {
   seoulCalendarDate,
   weekdayOfCalendarDate,
 } from './quest-calendar';
+import { QuestCritRoller } from './quest-crit.roller';
 import { QuestPenaltyService } from './quest-penalty.service';
 
 const QUEST_ID_PATTERN =
@@ -50,6 +51,7 @@ export class QuestCompletionService {
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly walletService: WalletService,
     private readonly questPenaltyService: QuestPenaltyService,
+    private readonly questCritRoller: QuestCritRoller,
   ) {}
 
   async complete(
@@ -72,11 +74,13 @@ export class QuestCompletionService {
       const table = completionTableAmount(questRow.difficulty, daySpan, markedDayCount);
       // 직업 변경은 users, 지갑, 진행도 순으로 잠근다. 오늘 첫 완료인지는 그 잠금 뒤에서만 본다.
       const jobClass = await requireJobClass(tx, userId);
-      await lockWallet(tx, userId);
+      const balanceBefore = await lockWallet(tx, userId);
       const combo = await advanceComboOnFirstCompletion(tx, userId, today);
       const multiplier = jobRewardMultiplier(jobClass, questRow.category);
       const comboMultiplier = comboRewardMultiplier(combo.comboDayCount);
       const noteBonus = note !== null;
+      // 외상(잔액이 음수)일 때는 크리티컬을 굴리지 않는다.
+      const critMultiplier = balanceBefore < 0 ? 1 : this.questCritRoller.roll();
       const gold = grantAmount(
         table.gold,
         table.markedDays,
@@ -84,6 +88,7 @@ export class QuestCompletionService {
         multiplier,
         noteBonus,
         comboMultiplier,
+        critMultiplier,
       );
       const xp = grantAmount(
         table.xp,
@@ -126,6 +131,16 @@ export class QuestCompletionService {
         ticketCount: progress.ticketCount,
         titlesGranted: progress.titlesGranted,
         statusEffect,
+        applied: {
+          baseGold: table.gold,
+          baseXp: table.xp,
+          markedDays: table.markedDays,
+          elapsedDays: table.elapsedDays,
+          jobMultiplier: multiplier,
+          comboMultiplier,
+          noteBonus,
+          critMultiplier,
+        },
       };
     });
   }
@@ -215,7 +230,7 @@ async function lockQuest(tx: DrizzleTx, userId: string, questId: string): Promis
   return questRow;
 }
 
-async function lockWallet(tx: DrizzleTx, userId: string): Promise<void> {
+async function lockWallet(tx: DrizzleTx, userId: string): Promise<number> {
   await tx.insert(wallets).values({ userId }).onConflictDoNothing();
   const [walletRow] = await tx
     .select({ balance: wallets.balance })
@@ -226,6 +241,7 @@ async function lockWallet(tx: DrizzleTx, userId: string): Promise<void> {
   if (!walletRow) {
     throw new InternalServerErrorException('wallet row missing after insert');
   }
+  return walletRow.balance;
 }
 
 async function advanceComboOnFirstCompletion(
