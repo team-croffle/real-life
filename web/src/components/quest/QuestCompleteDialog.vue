@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { QUEST_NOTE_MAX_LENGTH } from '@nest-vue/shared';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import type { QuestListItem } from '@/lib/quests';
 import { seoulToday } from '@/lib/seoulDate';
+import { preloadSounds } from '@/lib/sound';
 
 const props = defineProps<{
   item: QuestListItem;
@@ -21,6 +22,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const note = ref('');
+
+// 결과 창이 뜨기 전에 효과음을 미리 받아 둔다.
+onMounted(preloadSounds);
 
 const sameDayDeadline = computed(
   () => props.item.schedule === 'deadline' && props.item.createdOn === seoulToday(),
@@ -77,7 +81,12 @@ function confirm(): void {
           v-if="item.expectedGold !== null && item.expectedXp !== null"
           class="mb-2 text-[13px] font-bold"
         >
-          {{ t('quest.expectedReward', { xp: item.expectedXp, gold: item.expectedGold }) }}
+          {{
+            t('quest.expectedReward', {
+              xp: item.expectedXp,
+              gold: item.expectedGold,
+            })
+          }}
         </p>
         <p class="text-secondary-foreground mb-3 text-[12.5px] leading-normal">
           {{ sameDayDeadline ? t('quest.deadlineRewardSameDay') : t('quest.deadlineRewardSpan') }}
