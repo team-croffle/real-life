@@ -5,6 +5,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
+import { clearConfetti, fireConfetti } from '@/lib/confetti';
 import { type RewardTag, rewardBreakdown } from '@/lib/questReward';
 
 const props = defineProps<{
@@ -27,6 +28,7 @@ const displayGold = ref(props.result.gold);
 let frame = 0;
 
 onMounted(() => {
+  fireConfetti(isJackpot.value ? 'jackpot' : isCrit.value ? 'crit' : 'basic');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!isCrit.value || reduceMotion) {
     return;
@@ -47,6 +49,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   cancelAnimationFrame(frame);
+  clearConfetti();
 });
 
 function tagLabel(tag: RewardTag): string {
