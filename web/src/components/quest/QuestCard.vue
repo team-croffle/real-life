@@ -147,9 +147,10 @@ const difficultyClass = computed(() => {
     </Button>
     <span
       v-else-if="item.markedToday"
-      class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
+      class="text-muted-foreground flex shrink-0 flex-col items-end leading-tight whitespace-nowrap"
     >
-      {{ t('quest.markedToday') }}
+      <span class="text-[11.5px]">{{ t('quest.markedToday') }}</span>
+      <span class="text-[10.5px] opacity-70">{{ t('quest.markedTodayNote') }}</span>
     </span>
     <Button
       v-if="item.schedule === 'deadline' && item.canComplete"

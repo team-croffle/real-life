@@ -85,11 +85,7 @@ export function useQuestBoard() {
       const result = await completeQuest(id, note);
       completeId.value = null;
       await load(true);
-      if (result.ticketsGranted > 0 || result.titlesGranted.length > 0) {
-        completionResult.value = result;
-      } else {
-        showToast(t('quest.toast.completed', { gold: result.gold, xp: result.xp }));
-      }
+      completionResult.value = result;
       return true;
     } catch (cause) {
       const message = statusErrorMessage(cause, {
