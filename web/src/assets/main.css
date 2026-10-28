@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --bg: #f5f3ee;
@@ -25,28 +25,26 @@
   --jackpot-glow: rgb(173 58 117 / 40%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #22282b;
-    --stage-bg: #1b2124;
-    --surface: #2a3236;
-    --border: #37403f;
-    --text-primary: #e3e0da;
-    --text-secondary: #989c9b;
-    --text-muted: #6e7473;
-    --accent: #63b49c;
-    --accent-soft: rgb(99 180 156 / 16%);
-    --intel: #3d7fa8;
-    --emo: #7e77a3;
-    --auth-stage: #15191b;
-    --primary-foreground: #ffffff;
-    --destructive: #f97066;
-    --ring: #63b49c;
-    --gold: #d9a441;
-    --gold-soft: rgb(217 164 65 / 18%);
-    --jackpot: #e586b3;
-    --jackpot-glow: rgb(229 134 179 / 45%);
-  }
+:root.dark {
+  --bg: #22282b;
+  --stage-bg: #1b2124;
+  --surface: #2a3236;
+  --border: #37403f;
+  --text-primary: #e3e0da;
+  --text-secondary: #989c9b;
+  --text-muted: #6e7473;
+  --accent: #63b49c;
+  --accent-soft: rgb(99 180 156 / 16%);
+  --intel: #3d7fa8;
+  --emo: #7e77a3;
+  --auth-stage: #15191b;
+  --primary-foreground: #ffffff;
+  --destructive: #f97066;
+  --ring: #63b49c;
+  --gold: #d9a441;
+  --gold-soft: rgb(217 164 65 / 18%);
+  --jackpot: #e586b3;
+  --jackpot-glow: rgb(229 134 179 / 45%);
 }
 
 @theme {
@@ -204,7 +202,11 @@
 
 @layer base {
   html {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {

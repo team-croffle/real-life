@@ -9,6 +9,16 @@
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RealLife</title>
+    <script>
+      // 저장된 테마를 화면이 그려지기 전에 적용한다. 키는 src/lib/preferences.ts와 같다.
+      try {
+        if (localStorage.getItem('reallife.theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch {
+        // 저장소가 막힌 브라우저면 라이트로 시작한다.
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
