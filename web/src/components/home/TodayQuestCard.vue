@@ -47,7 +47,10 @@ const reward = computed(() => {
   if (props.item.expectedGold === null || props.item.expectedXp === null) {
     return '';
   }
-  return t('home.reward', { xp: props.item.expectedXp, gold: props.item.expectedGold });
+  return t('home.reward', {
+    xp: props.item.expectedXp,
+    gold: props.item.expectedGold,
+  });
 });
 </script>
 
@@ -98,9 +101,10 @@ const reward = computed(() => {
     </Button>
     <span
       v-else-if="item.markedToday"
-      class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
+      class="text-muted-foreground flex shrink-0 flex-col items-end leading-tight whitespace-nowrap"
     >
-      {{ t('quest.markedToday') }}
+      <span class="text-[11.5px]">{{ t('quest.markedToday') }}</span>
+      <span class="text-[10.5px] opacity-70">{{ t('quest.markedTodayNote') }}</span>
     </span>
     <div
       v-if="done"

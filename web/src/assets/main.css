@@ -19,6 +19,10 @@
   --primary-foreground: #ffffff;
   --destructive: #b42318;
   --ring: #2a7561;
+  --gold: #b08430;
+  --gold-soft: rgb(176 132 48 / 14%);
+  --jackpot: #ad3a75;
+  --jackpot-glow: rgb(173 58 117 / 40%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,6 +42,10 @@
     --primary-foreground: #ffffff;
     --destructive: #f97066;
     --ring: #63b49c;
+    --gold: #d9a441;
+    --gold-soft: rgb(217 164 65 / 18%);
+    --jackpot: #e586b3;
+    --jackpot-glow: rgb(229 134 179 / 45%);
   }
 }
 
@@ -65,6 +73,10 @@
   --color-intel: var(--intel);
   --color-emo: var(--emo);
   --color-auth-stage: var(--auth-stage);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-jackpot: var(--jackpot);
+  --color-jackpot-glow: var(--jackpot-glow);
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -100,6 +112,94 @@
 
 .auth-screen-enter {
   animation: fadeIn 0.18s ease;
+}
+
+@keyframes result-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes result-glow {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes result-ribbon {
+  from {
+    opacity: 0;
+    transform: rotate(10deg) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(10deg) scale(1);
+  }
+}
+
+@keyframes tag-shine {
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes tag-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+.result-pop {
+  animation: result-pop 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.result-glow {
+  animation: result-glow 2.2s ease-in-out infinite;
+}
+
+.result-ribbon {
+  animation: result-ribbon 0.3s cubic-bezier(0.3, 1.4, 0.5, 1) forwards;
+}
+
+.tag-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.tag-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 55%) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: tag-shine 0.9s ease-out 0.5s forwards;
+}
+
+.tag-pulse {
+  animation: tag-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-pop,
+  .result-glow,
+  .result-ribbon,
+  .tag-pulse,
+  .tag-shine::after {
+    animation: none;
+  }
 }
 
 @layer base {
