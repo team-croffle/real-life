@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { clearConfetti, fireConfetti } from '@/lib/confetti';
 import { type RewardTag, rewardBreakdown } from '@/lib/questReward';
+import { type SoundKind, playSound } from '@/lib/sound';
 
 const props = defineProps<{
   result: QuestCompletionResult;
@@ -23,12 +24,27 @@ const isCrit = computed(() => breakdown.value.crit > 1);
 const isJackpot = computed(() => breakdown.value.crit === 3);
 const leveledUp = computed(() => props.result.ticketsGranted > 0);
 
+// 소리는 하나만 튼다. 크리티컬 > 레벨업 > 일반 보상 순으로 고른다.
+function rewardSound(): SoundKind {
+  if (isJackpot.value) {
+    return 'criticalX3';
+  }
+  if (isCrit.value) {
+    return 'criticalX2';
+  }
+  if (leveledUp.value) {
+    return 'levelUp';
+  }
+  return 'normalReward';
+}
+
 // 크리티컬이면 받은 금액을 0부터 올라가게 보여 준다.
 const displayGold = ref(props.result.gold);
 let frame = 0;
 
 onMounted(() => {
   fireConfetti(isJackpot.value ? 'jackpot' : isCrit.value ? 'crit' : 'basic');
+  playSound(rewardSound());
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!isCrit.value || reduceMotion) {
     return;
