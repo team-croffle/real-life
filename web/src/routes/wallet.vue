@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WalletEntry } from '@nest-vue/shared';
+import type { WalletEntry, WalletEntryKind } from '@nest-vue/shared';
 import { TriangleAlert, Wallet } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -40,6 +40,14 @@ function entryAmount(amount: number): string {
   const shown = amount > 0 ? `+${amount}` : String(amount);
   return t('wallet.entryAmount', { amount: shown });
 }
+
+/** 종류 이름표 색. 들어온 것은 녹색, 깎인 것은 빨간색, 나머지는 회색이다. */
+const KIND_CLASSES: Record<WalletEntryKind, string> = {
+  completion: 'bg-accent text-accent-foreground',
+  penalty: 'bg-destructive/10 text-destructive',
+  post_hoc_deduction: 'bg-muted text-secondary-foreground',
+  employment: 'bg-muted text-muted-foreground',
+};
 
 function amountClass(amount: number): string {
   if (amount > 0) {
@@ -119,13 +127,17 @@ onUnmounted(() => {
         class="bg-surface border-border flex flex-col items-center gap-3 rounded-[18px] border px-5 py-10 text-center"
       >
         <TriangleAlert class="text-destructive size-[34px]" />
-        <p class="text-secondary-foreground text-sm font-semibold">{{ t('wallet.loadError') }}</p>
+        <p class="text-secondary-foreground text-sm font-semibold">
+          {{ t('wallet.loadError') }}
+        </p>
         <Button type="button" variant="outline" size="sm" class="w-auto px-4" @click="loadBalance">
           {{ t('wallet.retry') }}
         </Button>
       </div>
       <div v-else class="bg-surface border-border rounded-[18px] border px-5 py-5">
-        <p class="text-secondary-foreground text-[12.5px] font-bold">{{ t('wallet.goldLabel') }}</p>
+        <p class="text-secondary-foreground text-[12.5px] font-bold">
+          {{ t('wallet.goldLabel') }}
+        </p>
         <p class="mt-1 text-[26px] font-bold tracking-tight">
           {{ t('wallet.goldAmount', { amount: balance }) }}
         </p>
@@ -146,7 +158,9 @@ onUnmounted(() => {
           class="flex flex-col items-center gap-3 px-5 py-[72px] text-center"
         >
           <TriangleAlert class="text-destructive size-[34px]" />
-          <p class="text-secondary-foreground text-sm font-semibold">{{ t('wallet.loadError') }}</p>
+          <p class="text-secondary-foreground text-sm font-semibold">
+            {{ t('wallet.loadError') }}
+          </p>
           <Button
             type="button"
             variant="outline"
@@ -173,7 +187,17 @@ onUnmounted(() => {
             class="flex items-center justify-between gap-3 py-3"
             :class="index < entries.length - 1 ? 'border-border border-b' : ''"
           >
-            <p class="text-muted-foreground text-[11px]">{{ formatCreatedAt(entry.createdAt) }}</p>
+            <div class="flex min-w-0 flex-col items-start gap-1">
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                :class="KIND_CLASSES[entry.kind]"
+              >
+                {{ t(`wallet.kinds.${entry.kind}`) }}
+              </span>
+              <p class="text-muted-foreground text-[11px]">
+                {{ formatCreatedAt(entry.createdAt) }}
+              </p>
+            </div>
             <p class="text-[13px] font-bold" :class="amountClass(entry.amount)">
               {{ entryAmount(entry.amount) }}
             </p>
@@ -211,7 +235,9 @@ onUnmounted(() => {
         <h2 class="mb-3 text-sm font-bold">{{ t('wallet.debtTitle') }}</h2>
         <div class="bg-surface border-border rounded-[18px] border px-5 py-5">
           <div v-if="balance < 0" class="flex items-center justify-between gap-3">
-            <p class="text-secondary-foreground text-[13px]">{{ t('wallet.debtLabel') }}</p>
+            <p class="text-secondary-foreground text-[13px]">
+              {{ t('wallet.debtLabel') }}
+            </p>
             <p class="text-destructive text-[17px] font-bold">
               {{ t('wallet.goldAmount', { amount: balance }) }}
             </p>
