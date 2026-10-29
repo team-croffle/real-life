@@ -38,6 +38,7 @@
     "debtTitle": "Debt",
     "debtLabel": "Debt balance",
     "debtNone": "No debt",
+    "debtRule": "When you complete a quest, the gold you earn pays off debt first. Debt can go down to -{limit}G, and critical hits are off while in debt.",
     "entriesTitle": "Transactions",
     "entriesEmpty": "No transactions yet.",
     "kinds": {
@@ -45,6 +46,19 @@
       "penalty": "Quest penalty",
       "post_hoc_deduction": "Self-reported deduction",
       "employment": "Job reward (legacy)"
+    },
+    "postHoc": {
+      "title": "Self-reported deduction",
+      "body": "If you got a reward but didn't really do the quest, give the gold back yourself. It stays in your transactions as a self-reported deduction.",
+      "placeholder": "Gold to deduct",
+      "submit": "Deduct",
+      "invalid": "Enter 1G or more",
+      "overLimit": "You can't go below the debt limit (-{limit}G)",
+      "failed": "Could not register the deduction. Please try again",
+      "confirmTitle": "Deduct {amount}G?",
+      "confirmBody": "This can't be undone. Your balance will be {after}G.",
+      "cancel": "Cancel",
+      "confirm": "Deduct"
     },
     "entryAmount": "{amount} G",
     "loadError": "Could not load the wallet",
