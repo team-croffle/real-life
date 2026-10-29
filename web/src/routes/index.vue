@@ -49,6 +49,10 @@ const progress = ref<Progress | null>(null);
 const registerOpen = ref(false);
 const registerBusy = ref(false);
 
+// 홈 배너. 정산과 진행도·지갑 조회가 끝나면 사라진다. 실패하면 한 번 더 시도한 뒤 실패를 띄운다.
+type HomeLoadState = 'ready' | 'settling' | 'retrying' | 'failed';
+const homeLoad = ref<HomeLoadState>('settling');
+
 const jobLabel = computed(() => {
   const jobClass = user.value?.jobClass;
   return jobClass ? t(`auth.jobs.${jobClass}`) : '';
@@ -76,29 +80,33 @@ async function loadStats(): Promise<void> {
   }
 }
 
-async function loadWallet(): Promise<void> {
+/** 성공하면 true. 실패하면 직전 값을 유지하고 false를 돌려준다. */
+async function loadWallet(): Promise<boolean> {
   const generation = ++walletGeneration;
   try {
     const next = await getWallet();
     if (generation !== walletGeneration || leftHome) {
-      return;
+      return true;
     }
     balance.value = next.balance;
+    return true;
   } catch {
-    // 실패한 조회는 직전 값을 유지한다.
+    return false;
   }
 }
 
-async function loadProgress(): Promise<void> {
+/** 성공하면 true. 실패하면 직전 값을 유지하고 false를 돌려준다. */
+async function loadProgress(): Promise<boolean> {
   const generation = ++progressGeneration;
   try {
     const next = await getProgress();
     if (generation !== progressGeneration || leftHome) {
-      return;
+      return true;
     }
     progress.value = next;
+    return true;
   } catch {
-    // 실패한 조회는 직전 값을 유지한다.
+    return false;
   }
 }
 
@@ -106,26 +114,48 @@ async function loadSummary(): Promise<void> {
   await Promise.all([loadStats(), loadWallet()]);
 }
 
-async function settleThenRead(): Promise<void> {
+async function settleThenRead(canRetry = true): Promise<void> {
   settleAbort?.abort();
   clearTimeout(settleTimer);
   const controller = new AbortController();
   settleAbort = controller;
   const timer = setTimeout(() => controller.abort(), SETTLE_TIMEOUT_MS);
   settleTimer = timer;
+  homeLoad.value = canRetry ? 'settling' : 'retrying';
+  let settled = true;
   try {
     await settleQuestPenalties(controller.signal);
   } catch (cause) {
     if (cause instanceof ApiError && cause.status === 401) {
       return;
     }
+    settled = false;
   } finally {
     clearTimeout(timer);
   }
   if (leftHome || settleAbort !== controller) {
     return;
   }
-  await Promise.all([loadProgress(), loadWallet()]);
+  const [progressRead, walletRead] = await Promise.all([loadProgress(), loadWallet()]);
+  if (leftHome || settleAbort !== controller) {
+    return;
+  }
+  if (settled && progressRead && walletRead) {
+    homeLoad.value = 'ready';
+    return;
+  }
+  if (canRetry) {
+    await settleThenRead(false);
+    return;
+  }
+  homeLoad.value = 'failed';
+}
+
+/** 실패 배너의 새로고침. 퀘스트 목록, 스탯, 정산을 처음부터 다시 한다. */
+function refreshHome(): void {
+  void load();
+  void loadStats();
+  void settleThenRead();
 }
 
 async function onHomeComplete(note: string): Promise<void> {
@@ -184,11 +214,36 @@ onUnmounted(() => {
           <h1 class="text-2xl font-bold">
             {{ t('home.greeting', { name: user?.nickname ?? '' }) }}
           </h1>
-          <p class="text-secondary-foreground mt-1 text-sm">{{ t('home.subtitle') }}</p>
+          <p class="text-secondary-foreground mt-1 text-sm">
+            {{ t('home.subtitle') }}
+          </p>
         </div>
         <Button type="button" class="w-auto shrink-0 gap-2 px-5" @click="registerOpen = true">
           <Plus class="size-4" />
           {{ t('quest.add') }}
+        </Button>
+      </div>
+
+      <div
+        v-if="homeLoad !== 'ready'"
+        class="mb-4 flex items-center justify-between gap-3 rounded-[14px] px-4 py-[11px] text-[12.5px] font-bold"
+        :class="
+          homeLoad === 'failed'
+            ? 'bg-destructive/10 text-destructive'
+            : 'bg-muted text-secondary-foreground'
+        "
+        role="status"
+      >
+        <span>{{ t(`home.load.${homeLoad}`) }}</span>
+        <Button
+          v-if="homeLoad === 'failed'"
+          type="button"
+          variant="outline"
+          size="sm"
+          class="w-auto px-3"
+          @click="refreshHome"
+        >
+          {{ t('home.load.refresh') }}
         </Button>
       </div>
 
@@ -214,7 +269,9 @@ onUnmounted(() => {
           class="flex flex-col items-center gap-3 px-5 py-12 text-center"
         >
           <TriangleAlert class="text-destructive size-[34px]" />
-          <p class="text-secondary-foreground text-sm font-semibold">{{ t('quest.loadError') }}</p>
+          <p class="text-secondary-foreground text-sm font-semibold">
+            {{ t('quest.loadError') }}
+          </p>
           <Button
             type="button"
             variant="outline"

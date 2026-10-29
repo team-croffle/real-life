@@ -30,7 +30,13 @@
     "tickets": "뽑기권",
     "reward": "+{xp}XP·{gold}G",
     "emptyValue": "—",
-    "characterLabel": "캐릭터"
+    "characterLabel": "캐릭터",
+    "load": {
+      "settling": "정산 중이에요",
+      "retrying": "다시 불러오는 중이에요",
+      "failed": "불러오지 못했어요",
+      "refresh": "새로고침"
+    }
   },
   "wallet": {
     "goldLabel": "보유 골드",
