@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { BarChart3, Briefcase, Home, ListChecks, Wallet } from 'lucide-vue-next';
+import { BarChart3, Briefcase, Home, ListChecks, Settings, Wallet } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import type { Component } from 'vue';
+import { type Component, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute } from 'vue-router';
 
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
+import SettingsDialog from '@/components/settings/SettingsDialog.vue';
 import { Button } from '@/components/ui/button';
 import { router } from '@/router';
 import { useAuthStore } from '@/stores/auth';
@@ -34,6 +35,7 @@ const { t } = useI18n();
 const route = useRoute();
 const auth = useAuthStore();
 const { user, pending } = storeToRefs(auth);
+const settingsOpen = ref(false);
 
 function isCurrent(item: NavItem): boolean {
   if (item.exact) {
@@ -100,6 +102,16 @@ async function onLogout(): Promise<void> {
         </p>
       </div>
 
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        class="mb-2 justify-start gap-2.5"
+        @click="settingsOpen = true"
+      >
+        <Settings />
+        {{ t('settings.open') }}
+      </Button>
       <div class="mb-2">
         <LocaleSwitcher />
       </div>
@@ -112,6 +124,15 @@ async function onLogout(): Promise<void> {
       <header class="border-border flex items-center justify-between border-b px-4 py-3 md:hidden">
         <RouterLink to="/" class="text-primary text-lg font-bold">{{ t('app.title') }}</RouterLink>
         <div class="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            :aria-label="t('settings.open')"
+            @click="settingsOpen = true"
+          >
+            <Settings />
+          </Button>
           <LocaleSwitcher />
           <Button
             type="button"
@@ -145,5 +166,7 @@ async function onLogout(): Promise<void> {
         {{ t(item.label) }}
       </RouterLink>
     </nav>
+
+    <SettingsDialog v-if="settingsOpen" @close="settingsOpen = false" />
   </div>
 </template>

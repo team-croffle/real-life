@@ -81,6 +81,19 @@
     "heading": "이 프로젝트에 대해",
     "body": "타입은 shared 패키지에서 정의하고 server 와 web 이 소스 그대로 참조합니다."
   },
+  "settings": {
+    "title": "설정",
+    "open": "설정",
+    "close": "닫기",
+    "display": "화면",
+    "theme": "테마",
+    "themeLight": "라이트",
+    "themeDark": "다크",
+    "sound": "효과음",
+    "soundOn": "효과음 켜기",
+    "volume": "음량",
+    "storedNote": "테마와 효과음 설정은 이 기기(브라우저)에만 저장돼요."
+  },
   "locale": {
     "label": "언어"
   },
