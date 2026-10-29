@@ -81,6 +81,19 @@
     "heading": "About this project",
     "body": "Types live in the shared package and are consumed as source by both server and web."
   },
+  "settings": {
+    "title": "Settings",
+    "open": "Settings",
+    "close": "Close",
+    "display": "Display",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "sound": "Sound effects",
+    "soundOn": "Sound effects",
+    "volume": "Volume",
+    "storedNote": "Theme and sound settings are saved only on this device (browser)."
+  },
   "locale": {
     "label": "Language"
   },
