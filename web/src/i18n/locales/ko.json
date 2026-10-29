@@ -38,6 +38,7 @@
     "debtTitle": "외상",
     "debtLabel": "외상 잔액",
     "debtNone": "외상 없음",
+    "debtRule": "퀘스트를 완료하면 받은 골드로 외상이 먼저 채워져요. 외상은 -{limit}G까지 가능하고, 외상 중에는 크리티컬이 터지지 않아요.",
     "entriesTitle": "거래 내역",
     "entriesEmpty": "거래 내역이 없어요",
     "kinds": {
@@ -45,6 +46,19 @@
       "penalty": "퀘스트 패널티",
       "post_hoc_deduction": "사후 차감",
       "employment": "취업 보상 (예전)"
+    },
+    "postHoc": {
+      "title": "사후 차감",
+      "body": "보상을 받았지만 제대로 하지 못했다면 골드를 직접 돌려놓아요. 거래 내역에 사후 차감으로 남아요.",
+      "placeholder": "차감할 골드",
+      "submit": "차감하기",
+      "invalid": "1G 이상 입력해 주세요",
+      "overLimit": "외상 한도(-{limit}G)를 넘어서 등록할 수 없어요",
+      "failed": "사후 차감을 등록하지 못했어요. 다시 시도해 주세요",
+      "confirmTitle": "{amount}G를 사후 차감할까요?",
+      "confirmBody": "등록하면 되돌릴 수 없어요. 잔액이 {after}G가 돼요.",
+      "cancel": "취소",
+      "confirm": "차감"
     },
     "entryAmount": "{amount} G",
     "loadError": "지갑을 불러오지 못했어요",

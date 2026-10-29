@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { WalletEntry, WalletEntryKind } from '@nest-vue/shared';
+import { WALLET_DEBT_LIMIT, type WalletEntry, type WalletEntryKind } from '@nest-vue/shared';
 import { TriangleAlert, Wallet } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AppShell from '@/components/layouts/AppShell.vue';
 import { Button } from '@/components/ui/button';
+import PostHocDeduction from '@/components/wallet/PostHocDeduction.vue';
 import { ApiError } from '@/composables/useApi';
 import { getWallet, getWalletEntries } from '@/lib/wallet';
 
@@ -41,11 +42,11 @@ function entryAmount(amount: number): string {
   return t('wallet.entryAmount', { amount: shown });
 }
 
-/** 종류 이름표 색. 들어온 것은 녹색, 깎인 것은 빨간색, 나머지는 회색이다. */
+/** 종류 이름표 색. 완료는 녹색, 패널티는 빨간색, 사후 차감은 파란색, 예전 내역은 회색이다. */
 const KIND_CLASSES: Record<WalletEntryKind, string> = {
   completion: 'bg-accent text-accent-foreground',
   penalty: 'bg-destructive/10 text-destructive',
-  post_hoc_deduction: 'bg-muted text-secondary-foreground',
+  post_hoc_deduction: 'bg-intel/15 text-intel',
   employment: 'bg-muted text-muted-foreground',
 };
 
@@ -103,10 +104,12 @@ async function loadEntries(nextPage: number): Promise<void> {
   }
 }
 
-onMounted(() => {
+function reloadWallet(): void {
   void loadBalance();
   void loadEntries(1);
-});
+}
+
+onMounted(reloadWallet);
 
 onUnmounted(() => {
   leftWallet = true;
@@ -245,8 +248,17 @@ onUnmounted(() => {
           <p v-else class="text-secondary-foreground text-sm font-semibold">
             {{ t('wallet.debtNone') }}
           </p>
+          <p class="text-muted-foreground mt-2 text-[11.5px] leading-normal">
+            {{ t('wallet.debtRule', { limit: WALLET_DEBT_LIMIT }) }}
+          </p>
         </div>
       </section>
+
+      <PostHocDeduction
+        v-if="balanceState === 'ready' && balance !== null"
+        :balance="balance"
+        @deducted="reloadWallet"
+      />
     </div>
   </AppShell>
 </template>
