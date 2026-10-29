@@ -40,6 +40,12 @@
     "debtNone": "No debt",
     "entriesTitle": "Transactions",
     "entriesEmpty": "No transactions yet.",
+    "kinds": {
+      "completion": "Quest completed",
+      "penalty": "Quest penalty",
+      "post_hoc_deduction": "Self-reported deduction",
+      "employment": "Job reward (legacy)"
+    },
     "entryAmount": "{amount} G",
     "loadError": "Could not load the wallet",
     "retry": "Try again",

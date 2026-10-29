@@ -40,6 +40,12 @@
     "debtNone": "외상 없음",
     "entriesTitle": "거래 내역",
     "entriesEmpty": "거래 내역이 없어요",
+    "kinds": {
+      "completion": "퀘스트 완료",
+      "penalty": "퀘스트 패널티",
+      "post_hoc_deduction": "사후 차감",
+      "employment": "취업 보상 (예전)"
+    },
     "entryAmount": "{amount} G",
     "loadError": "지갑을 불러오지 못했어요",
     "retry": "다시 시도",
