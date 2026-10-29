@@ -30,7 +30,13 @@
     "tickets": "Draw tickets",
     "reward": "+{xp}XP·{gold}G",
     "emptyValue": "—",
-    "characterLabel": "Character"
+    "characterLabel": "Character",
+    "load": {
+      "settling": "Settling your records...",
+      "retrying": "Trying again...",
+      "failed": "Could not load",
+      "refresh": "Refresh"
+    }
   },
   "wallet": {
     "goldLabel": "Gold",
