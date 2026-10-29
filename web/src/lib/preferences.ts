@@ -28,9 +28,13 @@ function write(key: string, value: string): void {
   }
 }
 
-/** 저장된 값이 없으면 라이트로 시작한다. */
+/** 고른 적이 없으면 OS 설정을 따른다. */
 export function getTheme(): Theme {
-  return read(THEME_KEY) === 'dark' ? 'dark' : 'light';
+  const saved = read(THEME_KEY);
+  if (saved === 'light' || saved === 'dark') {
+    return saved;
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export function applyTheme(theme: Theme): void {
