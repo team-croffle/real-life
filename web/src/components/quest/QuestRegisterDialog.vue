@@ -72,6 +72,24 @@ const routineReward = computed(() => {
     xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
   };
 });
+// 기한 퀘스트는 기한날에 끝내고 매일 체크했을 때의 최대 보상을 보여 준다.
+const deadlineMaxReward = computed(() => {
+  const jobClass = auth.user?.jobClass;
+  if (schedule.value !== 'deadline' || !jobClass || !isCalendarDate(endsOn.value)) {
+    return null;
+  }
+  const daySpan = calendarDaysBetween(seoulToday(), endsOn.value);
+  if (daySpan < 0) {
+    return null;
+  }
+  const table = completionTableAmount(difficulty.value, daySpan, daySpan + 1);
+  const multiplier = jobRewardMultiplier(jobClass, category.value);
+  return {
+    days: table.elapsedDays,
+    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
+    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
+  };
+});
 
 watch(pending, (value) => {
   emit('busy', value);
@@ -244,6 +262,7 @@ async function onSubmit(): Promise<void> {
           v-model="title"
           type="text"
           :placeholder="t('quest.titlePlaceholder')"
+          @keydown.enter.prevent
         />
       </div>
 
@@ -299,7 +318,7 @@ async function onSubmit(): Promise<void> {
 
       <div v-if="schedule === 'routine'" class="mb-4">
         <p class="text-muted-foreground mb-2 text-[11.5px]">
-          {{ t('quest.weekdays') }}
+          {{ t('quest.weekdaysLabel') }}
         </p>
         <div class="mb-3 flex flex-wrap gap-1.5">
           <Button
@@ -335,9 +354,18 @@ async function onSubmit(): Promise<void> {
           })
         }}
       </p>
-      <p v-else-if="schedule === 'deadline'" class="text-muted-foreground mb-4 text-[12px]">
-        {{ t('quest.deadlineRewardLater') }}
-      </p>
+      <div v-else-if="deadlineMaxReward" class="text-muted-foreground mb-4 text-[12px]">
+        <p>
+          {{
+            t('quest.deadlineRewardMax', {
+              days: deadlineMaxReward.days,
+              xp: deadlineMaxReward.xp,
+              gold: deadlineMaxReward.gold,
+            })
+          }}
+        </p>
+        <p class="mt-0.5 text-[11px]">{{ t('quest.deadlineRewardNote') }}</p>
+      </div>
 
       <p v-if="error" class="text-destructive mb-3 text-[12px]">{{ error }}</p>
 

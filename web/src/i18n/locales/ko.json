@@ -258,7 +258,7 @@
     "useTemplate": "제목에 넣기",
     "difficulty": "난이도",
     "schedule": "일정",
-    "weekdays": "요일",
+    "weekdaysLabel": "요일",
     "biweekly": "격주",
     "endsOn": "기한",
     "submit": "등록",
@@ -269,7 +269,8 @@
     "retry": "다시 시도",
     "notToday": "오늘은 쉬어요",
     "rewardCard": "예상 +{xp}XP·{gold}G",
-    "deadlineRewardLater": "완료할 때 기간과 체크 수에 따라 정해져요.",
+    "deadlineRewardMax": "{days}일 모두 체크하면 +{xp}XP·{gold}G",
+    "deadlineRewardNote": "체크한 날만큼 나눠서 받아요",
     "tabs": {
       "today": "오늘 할 것",
       "done": "오늘 완료",

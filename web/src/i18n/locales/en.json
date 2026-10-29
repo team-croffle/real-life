@@ -258,7 +258,7 @@
     "useTemplate": "Use title",
     "difficulty": "Difficulty",
     "schedule": "Schedule",
-    "weekdays": "Weekdays",
+    "weekdaysLabel": "Weekdays",
     "biweekly": "Every other week",
     "endsOn": "Due date",
     "submit": "Save",
@@ -269,7 +269,8 @@
     "retry": "Try again",
     "notToday": "Not today ·",
     "rewardCard": "est. +{xp}XP·{gold}G",
-    "deadlineRewardLater": "The reward is set when you finish, from the duration and how many days you check in.",
+    "deadlineRewardMax": "Check in all {days} days for +{xp}XP·{gold}G",
+    "deadlineRewardNote": "You get a share for each day you check in",
     "tabs": {
       "today": "To do today",
       "done": "Done today",
