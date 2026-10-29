@@ -23,6 +23,8 @@
   --gold-soft: rgb(176 132 48 / 14%);
   --jackpot: #ad3a75;
   --jackpot-glow: rgb(173 58 117 / 40%);
+  --overlay: rgb(34 32 27 / 50%);
+  --overlay-strong: rgb(34 32 27 / 72%);
 }
 
 :root.dark {
@@ -45,6 +47,8 @@
   --gold-soft: rgb(217 164 65 / 18%);
   --jackpot: #e586b3;
   --jackpot-glow: rgb(229 134 179 / 45%);
+  --overlay: rgb(15 14 12 / 60%);
+  --overlay-strong: rgb(15 14 12 / 78%);
 }
 
 @theme {
@@ -75,6 +79,8 @@
   --color-gold-soft: var(--gold-soft);
   --color-jackpot: var(--jackpot);
   --color-jackpot-glow: var(--jackpot-glow);
+  --color-overlay: var(--overlay);
+  --color-overlay-strong: var(--overlay-strong);
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;

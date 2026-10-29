@@ -188,7 +188,7 @@ async function onSubmit(): Promise<void> {
   <div v-if="open" class="fixed inset-0 z-30 flex items-center justify-center px-4">
     <button
       type="button"
-      class="bg-foreground/40 absolute inset-0"
+      class="bg-overlay absolute inset-0"
       :aria-label="t('quest.close')"
       @click="requestClose"
     />
@@ -247,7 +247,9 @@ async function onSubmit(): Promise<void> {
         />
       </div>
 
-      <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.templates') }}</p>
+      <p class="text-muted-foreground mb-2 text-[11.5px]">
+        {{ t('quest.templates') }}
+      </p>
       <div class="mb-4 flex flex-col gap-2">
         <button
           v-for="template in templates"
@@ -261,7 +263,9 @@ async function onSubmit(): Promise<void> {
         </button>
       </div>
 
-      <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.difficulty') }}</p>
+      <p class="text-muted-foreground mb-2 text-[11.5px]">
+        {{ t('quest.difficulty') }}
+      </p>
       <div class="mb-4 flex gap-2">
         <Button
           v-for="value in QUEST_DIFFICULTIES"
@@ -276,7 +280,9 @@ async function onSubmit(): Promise<void> {
         </Button>
       </div>
 
-      <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.schedule') }}</p>
+      <p class="text-muted-foreground mb-2 text-[11.5px]">
+        {{ t('quest.schedule') }}
+      </p>
       <div class="mb-4 flex gap-2">
         <Button
           v-for="value in QUEST_SCHEDULES"
@@ -292,7 +298,9 @@ async function onSubmit(): Promise<void> {
       </div>
 
       <div v-if="schedule === 'routine'" class="mb-4">
-        <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.weekdays') }}</p>
+        <p class="text-muted-foreground mb-2 text-[11.5px]">
+          {{ t('quest.weekdays') }}
+        </p>
         <div class="mb-3 flex flex-wrap gap-1.5">
           <Button
             v-for="day in QUEST_WEEKDAYS"
@@ -320,7 +328,12 @@ async function onSubmit(): Promise<void> {
       </div>
 
       <p v-if="routineReward" class="text-muted-foreground mb-4 text-[12px]">
-        {{ t('quest.rewardCard', { xp: routineReward.xp, gold: routineReward.gold }) }}
+        {{
+          t('quest.rewardCard', {
+            xp: routineReward.xp,
+            gold: routineReward.gold,
+          })
+        }}
       </p>
       <p v-else-if="schedule === 'deadline'" class="text-muted-foreground mb-4 text-[12px]">
         {{ t('quest.deadlineRewardLater') }}

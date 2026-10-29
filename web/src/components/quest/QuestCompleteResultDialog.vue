@@ -97,7 +97,7 @@ function tagClass(tag: RewardTag): string {
     <button
       type="button"
       class="absolute inset-0"
-      :class="isJackpot ? 'bg-foreground/60' : 'bg-foreground/40'"
+      :class="isJackpot ? 'bg-overlay-strong' : 'bg-overlay'"
       :aria-label="t('quest.close')"
       @click="emit('close')"
     />
