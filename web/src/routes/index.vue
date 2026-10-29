@@ -4,6 +4,7 @@ import { Plus, TriangleAlert } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { RouterLink } from 'vue-router';
 
 import CharacterStage from '@/components/home/CharacterStage.vue';
 import SummaryCard from '@/components/home/SummaryCard.vue';
@@ -14,8 +15,9 @@ import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDia
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
-import { useQuestBoard } from '@/composables/useQuestBoard';
+import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
 import { getProgress, settleQuestPenalties } from '@/lib/home';
+import type { QuestListItem } from '@/lib/quests';
 import { getStats } from '@/lib/stats';
 import { getWallet } from '@/lib/wallet';
 import { useAuthStore } from '@/stores/auth';
@@ -42,6 +44,8 @@ const {
 } = useQuestBoard();
 
 const SETTLE_TIMEOUT_MS = 10_000;
+/** 홈에 보여 줄 오늘 퀘스트 수. 나머지는 퀘스트 탭에서 본다. */
+const HOME_QUEST_LIMIT = 5;
 
 const stats = ref<Stats | null>(null);
 const balance = ref<number | null>(null);
@@ -58,7 +62,21 @@ const jobLabel = computed(() => {
   return jobClass ? t(`auth.jobs.${jobClass}`) : '';
 });
 
-const todayQuests = computed(() => items.value.filter((item) => item.dueToday));
+/** 오늘 몫을 이미 했으면 true. 완료했거나, 기한 퀘스트를 오늘 체크했을 때다. */
+function doneForToday(item: QuestListItem): boolean {
+  return isQuestDone(item) || item.markedToday === true;
+}
+
+// 오늘 할 퀘스트를 안 한 것부터 보여 준다. 같은 그룹 안에서는 원래 순서를 지킨다.
+const dueTodayQuests = computed(() => {
+  const dueToday = items.value.filter((item) => item.dueToday);
+  return [
+    ...dueToday.filter((item) => !doneForToday(item)),
+    ...dueToday.filter((item) => doneForToday(item)),
+  ];
+});
+const todayQuests = computed(() => dueTodayQuests.value.slice(0, HOME_QUEST_LIMIT));
+const hiddenQuestCount = computed(() => dueTodayQuests.value.length - todayQuests.value.length);
 
 let statsGeneration = 0;
 let walletGeneration = 0;
@@ -299,6 +317,13 @@ onUnmounted(() => {
             @complete="openComplete(item.id)"
             @mark="onMark(item.id)"
           />
+          <RouterLink
+            v-if="hiddenQuestCount > 0"
+            to="/quests"
+            class="text-secondary-foreground hover:text-foreground self-center py-1 text-[12.5px] font-semibold"
+          >
+            {{ t('home.moreQuests', { count: hiddenQuestCount }) }}
+          </RouterLink>
         </div>
       </section>
     </div>

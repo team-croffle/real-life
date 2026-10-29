@@ -31,6 +31,7 @@
     "reward": "+{xp}XP·{gold}G",
     "emptyValue": "—",
     "characterLabel": "캐릭터",
+    "moreQuests": "퀘스트 탭에서 {count}개 더 보기",
     "load": {
       "settling": "정산 중이에요",
       "retrying": "다시 불러오는 중이에요",
