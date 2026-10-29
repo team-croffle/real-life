@@ -26,7 +26,7 @@ onUnmounted(() => {
 
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
-    <div class="bg-foreground/40 absolute inset-0" />
+    <div class="bg-overlay absolute inset-0" />
     <div
       role="status"
       class="bg-surface border-accent relative z-10 flex w-full max-w-[300px] flex-col items-center gap-2 rounded-3xl border-2 px-8 py-8"

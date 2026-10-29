@@ -38,7 +38,7 @@ function requestCancel(): void {
   <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <button
       type="button"
-      class="bg-foreground/40 absolute inset-0"
+      class="bg-overlay absolute inset-0"
       :aria-label="t('jobChange.cancel')"
       :disabled="props.pending"
       @click="requestCancel"
@@ -48,7 +48,9 @@ function requestCancel(): void {
       aria-modal="true"
       class="bg-surface border-border relative z-10 w-full max-w-[340px] rounded-[22px] border p-7"
     >
-      <h2 class="mb-2.5 text-[15px] font-bold">{{ t('jobChange.confirmTitle') }}</h2>
+      <h2 class="mb-2.5 text-[15px] font-bold">
+        {{ t('jobChange.confirmTitle') }}
+      </h2>
       <p class="text-secondary-foreground mb-[18px] text-[12.5px] leading-relaxed">
         {{
           t('jobChange.confirmBody', {

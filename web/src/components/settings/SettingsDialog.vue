@@ -70,7 +70,7 @@ function themeClass(value: Theme): string {
   <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
     <button
       type="button"
-      class="bg-foreground/40 absolute inset-0"
+      class="bg-overlay absolute inset-0"
       :aria-label="t('settings.close')"
       @click="emit('close')"
     />
