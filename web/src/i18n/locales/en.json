@@ -31,6 +31,7 @@
     "reward": "+{xp}XP·{gold}G",
     "emptyValue": "—",
     "characterLabel": "Character",
+    "moreQuests": "See {count} more in Quests",
     "load": {
       "settling": "Settling your records...",
       "retrying": "Trying again...",
