@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
+import { AiQueueModule } from './ai-queue/ai-queue.module';
 import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
@@ -22,6 +23,7 @@ import { WalletModule } from './wallet/wallet.module';
     ScheduleModule.forRoot(),
     DatabaseModule,
     AiModule,
+    AiQueueModule,
     AuthModule,
     QuestsModule,
     ProgressModule,
