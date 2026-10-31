@@ -103,7 +103,8 @@ services:
       S3_FORCE_PATH_STYLE: 'true'
       S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      AI_TASKS_PER_MINUTE: ${AI_TASKS_PER_MINUTE:-12}
     ports:
       - '${SERVER_PORT:-3000}:3000'
     volumes:

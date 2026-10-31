@@ -45,6 +45,13 @@ wallet/                         balance, history, post-hoc deduction
 progress/                       level, XP, titles, streak, gacha tickets
 stats/                          stat totals
 job-change/                     job change
+ai/                             monster, battle log, difficulty recommendation, quest plan. The current implementation is Gemini
+  ai.ts                         interface. It does not decide gold or XP
+  gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite
+ai-queue/                       background monster tasks only
+  ai-queue.ts                   enqueue, dequeue, complete, fail
+  postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
+  ai-queue.worker.ts            claims one monster task and calls the AI interface
 database/schema/                Drizzle tables (one file per table)
 common/filters/                 filter that turns exceptions into HTTP responses
 ```
