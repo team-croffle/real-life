@@ -71,6 +71,9 @@ export class QuestsService {
       if (dto.endsOn !== undefined) {
         throw new BadRequestException('routine quests cannot have endsOn');
       }
+      if (dto.pace !== undefined) {
+        throw new BadRequestException('routine quests cannot have pace');
+      }
 
       const weekdays = uniqueSortedWeekdays(dto.weekdays ?? []);
       if (weekdays.length < 1) {
@@ -87,6 +90,7 @@ export class QuestsService {
             title,
             difficulty: dto.difficulty,
             schedule: 'routine',
+            pace: null,
             weekdays,
             biweekly: dto.biweekly,
             endsOn: null,
@@ -113,7 +117,10 @@ export class QuestsService {
       throw new BadRequestException(`endsOn must be today or later in ${APP_TIME_ZONE}`);
     }
 
+    const pace = dto.pace ?? 'steady';
     const period = rewardPeriodForRemainingDays(remainingDays);
+    const reward =
+      pace === 'once' ? QUEST_REWARDS[dto.difficulty].daily : QUEST_REWARDS[dto.difficulty][period];
     const [questRow] = await this.db
       .insert(quests)
       .values({
@@ -123,13 +130,14 @@ export class QuestsService {
         title,
         difficulty: dto.difficulty,
         schedule: 'deadline',
+        pace,
         weekdays: null,
         biweekly: null,
         endsOn,
       })
       .returning();
 
-    return toQuest(requireInserted(questRow), QUEST_REWARDS[dto.difficulty][period]);
+    return toQuest(requireInserted(questRow), reward);
   }
 
   async list(userId: string): Promise<QuestListItem[]> {
@@ -330,6 +338,7 @@ function toQuestListItem(
       title: questRow.title,
       difficulty: questRow.difficulty,
       schedule: 'routine',
+      pace: null,
       weekdays: questRow.weekdays ?? [],
       biweekly: questRow.biweekly ?? false,
       endsOn: null,
@@ -351,6 +360,7 @@ function toQuestListItem(
   }
 
   const endsOn = questRow.endsOn ?? '';
+  const pace = questRow.pace ?? 'steady';
   const inPeriod = endsOn.length > 0 && isDeadlineInPeriod(createdOn, endsOn, today);
   const daySpan = calendarDaysBetween(createdOn, today);
   const markedDayCount = mark?.markedDayCount ?? 0;
@@ -363,6 +373,7 @@ function toQuestListItem(
         daySpan > 0 ? markedDayCount : 0,
         multiplier,
         comboMultiplier,
+        pace,
       )
     : null;
 
@@ -373,6 +384,7 @@ function toQuestListItem(
     title: questRow.title,
     difficulty: questRow.difficulty,
     schedule: 'deadline',
+    pace,
     weekdays: null,
     biweekly: null,
     endsOn,
@@ -384,7 +396,7 @@ function toQuestListItem(
     completed,
     canComplete,
     canAbandon: !completed,
-    canMarkToday: endsOn !== createdOn && inPeriod && !completed && !markedToday,
+    canMarkToday: pace !== 'once' && endsOn !== createdOn && inPeriod && !completed && !markedToday,
     markedDayCount,
     markedToday,
     elapsedDays: inPeriod ? (daySpan <= 0 ? 1 : daySpan + 1) : null,
@@ -399,8 +411,9 @@ function rewardPayout(
   markedDayCount: number,
   multiplier: number,
   comboMultiplier: number,
+  pace: 'steady' | 'once' = 'steady',
 ): { gold: number; xp: number } {
-  const table = completionTableAmount(difficulty, daySpan, markedDayCount);
+  const table = completionTableAmount(difficulty, daySpan, markedDayCount, pace);
   return {
     gold: grantAmount(
       table.gold,
@@ -439,6 +452,7 @@ function toQuest(questRow: QuestRow, reward: { gold: number; xp: number }): Ques
     return {
       ...base,
       schedule: 'routine',
+      pace: null,
       weekdays: questRow.weekdays ?? [],
       biweekly: questRow.biweekly ?? false,
       endsOn: null,
@@ -450,6 +464,7 @@ function toQuest(questRow: QuestRow, reward: { gold: number; xp: number }): Ques
   return {
     ...base,
     schedule: 'deadline',
+    pace: questRow.pace ?? 'steady',
     weekdays: null,
     biweekly: null,
     endsOn: questRow.endsOn ?? '',

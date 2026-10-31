@@ -69,9 +69,11 @@ export class QuestCompletionService {
       const createdOn = seoulCalendarDate(questRow.createdAt);
       await assertCompletable(tx, questRow, createdOn, today);
 
+      const pace = questRow.pace ?? 'steady';
       const daySpan = questRow.schedule === 'deadline' ? calendarDaysBetween(createdOn, today) : 0;
-      const markedDayCount = daySpan > 0 ? await lockedMarkCount(tx, questRow.id, userId) : 0;
-      const table = completionTableAmount(questRow.difficulty, daySpan, markedDayCount);
+      const markedDayCount =
+        pace === 'once' || daySpan <= 0 ? 0 : await lockedMarkCount(tx, questRow.id, userId);
+      const table = completionTableAmount(questRow.difficulty, daySpan, markedDayCount, pace);
       // 직업 변경은 users, 지갑, 진행도 순으로 잠근다. 오늘 첫 완료인지는 그 잠금 뒤에서만 본다.
       const jobClass = await requireJobClass(tx, userId);
       const balanceBefore = await lockWallet(tx, userId);
@@ -151,7 +153,11 @@ export class QuestCompletionService {
     return this.db.transaction(async (tx) => {
       const questRow = await lockQuest(tx, userId, questId);
       const today = seoulCalendarDate();
-      if (questRow.schedule !== 'deadline' || questRow.endsOn === null) {
+      if (
+        questRow.schedule !== 'deadline' ||
+        questRow.endsOn === null ||
+        questRow.pace === 'once'
+      ) {
         throw new BadRequestException('only weekly and long quests can mark a day');
       }
 

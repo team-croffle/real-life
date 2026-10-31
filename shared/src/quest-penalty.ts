@@ -1,5 +1,5 @@
 import { QUEST_DEADLINE_PENALTIES } from './constants/quest-penalty';
-import type { QuestDifficulty } from './constants/quests';
+import type { QuestDifficulty, QuestPace } from './constants/quests';
 import { WALLET_DEBT_LIMIT } from './constants/wallet';
 import { rewardPeriodForDaySpan } from './quest-completion';
 
@@ -20,10 +20,12 @@ export function appliedXpPenalty(levelXp: number, loss: number): number {
   return Math.min(loss, Math.max(0, levelXp));
 }
 
-/** 만든 날부터 마감일까지의 날짜 차이로 표의 열을 고르고, 그 차감액을 돌려준다. */
+/** 만든 날부터 마감일까지의 날짜 차이로 표의 열을 고르고, 그 차감액을 돌려준다. once는 일일 열이다. */
 export function deadlinePenaltyAmount(
   difficulty: QuestDifficulty,
   daySpan: number,
+  pace: QuestPace = 'steady',
 ): { gold: number; xp: number } {
-  return QUEST_DEADLINE_PENALTIES[difficulty][rewardPeriodForDaySpan(daySpan)];
+  const period = pace === 'once' ? 'daily' : rewardPeriodForDaySpan(daySpan);
+  return QUEST_DEADLINE_PENALTIES[difficulty][period];
 }

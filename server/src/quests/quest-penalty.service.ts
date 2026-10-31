@@ -98,6 +98,7 @@ export class QuestPenaltyService {
             table: deadlinePenaltyAmount(
               questRow.difficulty,
               calendarDaysBetween(seoulCalendarDate(questRow.createdAt), day),
+              questRow.pace ?? 'steady',
             ),
           })),
         ];
