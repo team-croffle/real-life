@@ -93,7 +93,7 @@ Main call relations:
 - Settlement is committed first. If the completion fails, settlement stays.
 - A routine gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
 - Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
-- With a gap of 1 day or more and no check-ins, gold and XP are 0. The completion record stays, and that deadline quest can no longer be given up.
+- For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be given up.
 - Completing a routine clears the status effect. Completing a deadline quest leaves it.
 
 ### Failures
@@ -120,7 +120,7 @@ A routine uses a gap of 0 days, which gives the full daily amount.
 
 A steady deadline quest uses the gap between its creation day and the completion day. 0 is the daily table, 1 to 7 is the weekly table, 8 or more is the long-term table. A deadline done all at once uses the daily table and a ratio of 1, so the result's checked days and elapsed days are both 1.
 
-With a gap of 1 or more, elapsed days count both ends. Check-ins never exceed that count. The reward is the table amount × check-ins / elapsed days.
+For a steady deadline quest, a gap of 1 or more counts both ends as elapsed days. Check-ins never exceed that count. The reward is the table amount × check-ins / elapsed days. A deadline done all at once pays the full daily amount whether or not there are check-ins.
 
 A multiplier applies by job and the category's stat. Exercise and daily life are stamina, study and work are intellect, creative and mind are sense.
 
