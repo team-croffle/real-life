@@ -91,8 +91,8 @@ Main call relations:
 ### Worth noting
 
 - Settlement is committed first. If the completion fails, settlement stays.
-- A routine gets the full daily amount. A deadline quest gets the check-in ratio. A same-day deadline quest gets the full daily amount with no ratio.
-- Only deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`.
+- A routine gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
+- Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
 - With a gap of 1 day or more and no check-ins, gold and XP are 0. The completion record stays, and that deadline quest can no longer be given up.
 - Completing a routine clears the status effect. Completing a deadline quest leaves it.
 
@@ -118,7 +118,7 @@ The filter answers with the exception's status code as it is.
 
 A routine uses a gap of 0 days, which gives the full daily amount.
 
-A deadline quest uses the gap between its creation day and the completion day. 0 is the daily table, 1 to 7 is the weekly table, 8 or more is the long-term table.
+A steady deadline quest uses the gap between its creation day and the completion day. 0 is the daily table, 1 to 7 is the weekly table, 8 or more is the long-term table. A deadline done all at once uses the daily table and a ratio of 1, so the result's checked days and elapsed days are both 1.
 
 With a gap of 1 or more, elapsed days count both ends. Check-ins never exceed that count. The reward is the table amount × check-ins / elapsed days.
 
@@ -160,13 +160,13 @@ Yesterday is the day before today on the Seoul calendar. If the last settled dat
 
 ### Rules
 
-| Rule                   | Value                                                                                                                                                                                                      |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                               |
-| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                             |
-| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                             |
-| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                             |
-| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                   |
-| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                |
-| Lethargy               | Becomes `lethargy` when a routine is missed. A day with no scheduled routine leaves the status effect as it is                                                                                             |
-| Deadline quest penalty | Chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. Same number for gold and XP. Streak and lethargy do not change |
+| Rule                   | Value                                                                                                                                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                                                                                                               |
+| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                                                                                                             |
+| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                                                                                                             |
+| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                                                                                                             |
+| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                                                                                                   |
+| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                                                                                                |
+| Lethargy               | Becomes `lethargy` when a routine is missed. A day with no scheduled routine leaves the status effect as it is                                                                                                                                                                             |
+| Deadline quest penalty | A steady deadline is chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. All at once uses the daily column however long the gap is. Same number for gold and XP. Streak and lethargy do not change |

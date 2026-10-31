@@ -6,7 +6,7 @@
 
 The aim is to keep you doing the things that are easy to put off alone, through game rules that show the reward and the cost right away.
 
-- **Quests** — registered as a routine (repeats on chosen weekdays) or a deadline (done once by a due date). You pick a category, a difficulty and a title template. A deadline quest records the days you worked on it with "check today"
+- **Quests** — registered as a routine (repeats on chosen weekdays) or a deadline (done by a due date). You pick a category, a difficulty and a title template. A deadline is steady or all at once. Steady records the days you worked on it with "check today". All at once has no check today, and its reward and penalty stay on the daily column however long the gap is
 - **Rewards** — a base amount set by difficulty and duration, multiplied by the share of checked days, the job multiplier, the streak multiplier and a bonus for a completion note. The register form shows the expected amount; the result shows what was applied
 - **Critical hits** — each completion has a 10% chance to double the gold, and a tenth of those triple it. Bigger critical hits get bigger effects and sounds
 - **Streak** — completing at least one quest a day keeps it going, and a longer streak raises the reward multiplier
@@ -63,7 +63,7 @@ Completing a quest gives gold and XP. The base amount comes from the difficulty 
 | Normal     | 20G / 20XP | 50G / 50XP | 100G / 100XP |
 | Hard       | 30G / 30XP | 80G / 80XP | 150G / 150XP |
 
-A routine always uses the daily amount. A deadline quest picks the column from the gap between the day it was created and the day it was completed: the same day is daily, 1–7 days is weekly, 8 or more is long-term. That amount is multiplied by **checked days ÷ elapsed days**, where elapsed days count both the first and the last day. For example, a normal quest that took 6 days with 3 days checked gives 50G × 3/6 = 25G.
+A routine always uses the daily amount. A steady deadline quest picks the column from the gap between the day it was created and the day it was completed: the same day is daily, 1–7 days is weekly, 8 or more is long-term. That amount is multiplied by **checked days ÷ elapsed days**, where elapsed days count both the first and the last day. For example, a normal quest that took 6 days with 3 days checked gives 50G × 3/6 = 25G. A deadline done all at once always uses the daily amount, with no check-in ratio, however long the gap is.
 
 Then, in order:
 
@@ -74,7 +74,7 @@ Then, in order:
 
 Gold and XP are each rounded once, at the end.
 
-The register form shows the expected amount: the job multiplier is included, the note and critical hits are not. For a deadline quest it is the amount for checking in every day until the due date.
+The register form shows the expected amount: the job multiplier is included, the note and critical hits are not. For a steady deadline quest it is the amount for checking in every day until the due date. For one done all at once it is the daily amount, the same shape as a routine: expected gold and XP.
 
 On completion the app shows the amount received, what raised it (job, streak, note, critical hit) and how much it was reduced by missed check-ins.
 
@@ -104,7 +104,7 @@ The multiplier applies to both gold and XP, for routines and deadline quests ali
 Missing what you had to do costs gold and XP. Settlement runs every day just after midnight in Seoul (00:01), when the home page opens, and right before a completion. It goes through the missed days up to yesterday, one day at a time, and never looks at today. Running it again never charges the same day twice.
 
 - **A missed routine** costs easy -5, normal -10, hard -20 in both gold and XP per quest, and turns on **lethargy**. Lethargy ends when a routine is completed. A paused routine is not counted as missed
-- **A missed deadline** is charged once, at the first settlement after the due date. The amount depends on the duration
+- **A missed deadline** is charged once, at the first settlement after the due date. A steady deadline's amount depends on the gap from the day it was created to the due date. One done all at once uses the daily column: easy -5, normal -10, hard -20
 
 | Difficulty | Daily | Weekly | Long-term |
 | ---------- | ----- | ------ | --------- |
