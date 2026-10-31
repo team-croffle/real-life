@@ -213,7 +213,7 @@ pnpm dev:web
 
 ## 더 알아보기
 
-- 설계와 흐름(완료, 정산, 보상 계산): [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
+- 설계와 흐름(완료, 정산, 보상 계산): [`docs/ARCHITECTURE.ko.md`](./docs/ARCHITECTURE.ko.md)
 - 버전별 진행 상황: [`ROADMAP.md`](./ROADMAP.md)
 - 서버 상세(환경 변수, Drizzle, API 목록): [`server/README.md`](./server/README.md)
 - 클라이언트 상세(라우팅, i18n, 스타일): [`web/README.md`](./web/README.md)
