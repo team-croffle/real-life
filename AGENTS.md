@@ -2,37 +2,52 @@
 
 Reply to the user in Korean. Commit message bodies and PR text are also written in Korean.
 
-## Project Overview
+## 1. What This Is
 
-A web app where you register to-dos as quests and receive gold and XP when you complete them.
+**RealLife** turns everyday to-dos into game quests. You register a to-do as a quest and get gold and XP when you complete it; missing it costs gold and XP. Gold buys real-life rewards the user sets. AI turns to-dos into monsters and big goals into bosses, but gold and XP are always set by the rules, never by AI.
 
-A quest is registered as either a routine or a deadline. Completing it adds gold to the wallet and raises XP in the progress. If a routine whose scheduled day has passed is not completed, gold and XP are deducted at settlement.
+The repository is one pnpm workspace with three parts:
 
-- Frontend: Vue, Vite (`web`)
-- Server: NestJS (`server`)
-- DB: PostgreSQL, Drizzle ORM
-- Package manager: pnpm workspace (`shared`, `server`, `web`)
-- Deployment: the API server is built as a Docker image and started together with Postgres by Docker Compose (`docker/docker-compose.yaml`, `docker/Dockerfile`)
+| Part           | Location  | Stack and role                                                                                          |
+| -------------- | --------- | ------------------------------------------------------------------------------------------------------- |
+| Web            | `web/`    | Vue 3, Vite, Pinia, vue-i18n, Tailwind CSS v4. Screens (in development `/api` is proxied to the server) |
+| Server         | `server/` | NestJS, Drizzle, PostgreSQL, Better Auth. API: auth, quests, wallet, progress, stats, job change        |
+| Shared         | `shared/` | Types, constants and the reward/penalty calculation, used by both the server and the web                |
+| Infrastructure | `docker/` | Compose (postgres, server)                                                                              |
 
-## Project Structure
+Scripts at the root: `pnpm dev` (`dev:server`, `dev:web`), `pnpm build`, `pnpm typecheck`, `pnpm lint` (`lint:fix`), `pnpm format` (`format:check`).
 
-| Part           | Location  | Stack and role                                                                                                                            |
-| -------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Web            | `web/`    | Vue 3, Vite. Screens (during development `/api` is proxied to the server)                                                                 |
-| Server         | `server/` | NestJS, Drizzle, PostgreSQL. API (auth, quests, wallet, stats, job change)                                                                |
-| Shared         | `shared/` | Types and constants shared by the server and the web. It also has the reward and penalty functions, but only the server uses them for now |
-| Infrastructure | `docker/` | Compose (postgres, server)                                                                                                                |
+Reading order for a new task — stop once you know enough, and do not search the code to learn what the project is:
 
-Root `package.json` scripts:
+1. [README.md](./README.md): what the app does and its rules
+2. [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): how completion, settlement and reward calculation flow through the server
+3. `.ai/AGENTS.md` (local instructions), the roadmap, and the spec section the task points to. If `.ai/AGENTS.md` does not exist, tell the user
+4. The code the task touches
 
-- Run: `pnpm dev`, `pnpm dev:server`, `pnpm dev:web`
-- Build: `pnpm build`
-- Typecheck: `pnpm typecheck`
-- Lint: `pnpm lint`, `pnpm lint:fix`
+## 2. Architecture Rules
 
-Before working, read `.ai/AGENTS.md` (local instructions), the roadmap, and the spec. If `.ai/AGENTS.md` does not exist, tell the user.
+- Gold, XP and penalties come only from the calculation in `shared`. The server computes what is paid; the web uses the same functions only to show estimates. AI never decides an amount.
+- Dates are Seoul calendar dates (`Asia/Seoul`), not the server's local time.
+- Settlement can run any number of times with the same result. A completion commits settlement first, then completes in its own transaction.
+- When several rows of one user change together, lock them in this order: user, wallet, progress.
+- Types and constants used by both sides live in `shared`. Do not copy them into `server` or `web`.
+- AI and the job queue are used only through their interfaces. The current implementations (Gemini, a Postgres-backed queue) must be replaceable through Nest DI without touching the callers.
 
-## Branches and Commits
+## 3. Design Rules (web)
+
+- Colors, overlays and other tokens come from `web/src/assets/main.css`. No ad-hoc colors in components.
+- Light and dark themes both work. The theme follows the OS until the user picks one.
+- Loading, error and empty states are never left out.
+- Every user-facing string goes through vue-i18n with both `ko` and `en` entries.
+- Icons come from lucide. No emoji in the UI, since they look different on every device.
+- The design reference is the web (desktop) artboard; nothing breaks at phone width.
+
+## 4. Keeping README Current
+
+- When a change alters what the app does, update both `README.md` (English) and `README.ko.md` (Korean) in the same branch.
+- README states rules a user cannot know without using the app: numbers, conditions and order. It does not describe screen layout (where things are, how many are shown).
+
+## 5. Branches and Commits
 
 **The user** creates and switches branches. The agent does not create branches with `git checkout`, `git switch`, or `git branch`, and works **only on the branch that is currently checked out**.
 
@@ -81,7 +96,13 @@ feat: add user list API
 
 The title is an English imperative.
 
-## Naming Rules
+## 6. Testing
+
+- There is no test framework yet. The minimum before every commit is `pnpm typecheck`, `pnpm lint` and `pnpm format:check`.
+- Behaviour is checked on the running app (`pnpm dev`) and with API calls.
+- Say plainly what was not verified.
+
+## 7. Naming Rules
 
 - A name must describe what it actually does. When the behavior changes, change the name too.
   Example: the store that holds only the temporary values of the sign-up flow is `authFlow`, and the login session is the `session` table in the DB. Do not mix the two when calling them.
