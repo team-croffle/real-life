@@ -2,6 +2,7 @@ import {
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
   QUEST_KINDS,
+  QUEST_PACES,
   QUEST_SCHEDULES,
   QUEST_WEEKDAYS,
 } from '@nest-vue/shared';
@@ -22,6 +23,7 @@ import { users } from './users';
 
 export const questKindEnum = pgEnum('quest_kind', QUEST_KINDS);
 export const questScheduleEnum = pgEnum('quest_schedule', QUEST_SCHEDULES);
+export const questPaceEnum = pgEnum('quest_pace', QUEST_PACES);
 export const questCategoryEnum = pgEnum('quest_category', QUEST_CATEGORIES);
 export const questDifficultyEnum = pgEnum('quest_difficulty', QUEST_DIFFICULTIES);
 export const questWeekdayEnum = pgEnum('quest_weekday', QUEST_WEEKDAYS);
@@ -38,6 +40,8 @@ export const quests = pgTable(
     title: text().notNull(),
     difficulty: questDifficultyEnum().notNull(),
     schedule: questScheduleEnum().notNull(),
+    /** 기한만 steady | once. 루틴은 null */
+    pace: questPaceEnum(),
     weekdays: questWeekdayEnum().array(),
     biweekly: boolean(),
     endsOn: date({ mode: 'string' }),
@@ -68,6 +72,14 @@ export const quests = pgTable(
           AND ${table.weekdays} IS NULL
           AND ${table.biweekly} IS NULL
         )
+      )`,
+    ),
+    check(
+      'quests_pace',
+      sql`(
+        (${table.schedule} = 'routine' AND ${table.pace} IS NULL)
+        OR
+        (${table.schedule} = 'deadline' AND ${table.pace} IS NOT NULL)
       )`,
     ),
     check(
