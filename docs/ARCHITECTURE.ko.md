@@ -43,6 +43,13 @@ wallet/                         잔액, 내역, 사후 차감
 progress/                       레벨, 경험치, 칭호, 연속, 뽑기권
 stats/                          스탯 합계
 job-change/                     직업 변경
+ai/                             몬스터, 전투 기록, 난이도 추천, 계획 제안. 지금 구현은 Gemini
+  ai.ts                         인터페이스. 골드와 경험치는 정하지 않는다
+  gemini-ai.ts                  Gemini 호출. 기본 모델 gemini-3.5-flash-lite
+ai-queue/                       뒤에서 만드는 몬스터 작업만
+  ai-queue.ts                   넣기, 꺼내기, 완료, 실패
+  postgres-ai-queue.ts          Postgres 큐. 분당 12회, 재시도, FOR UPDATE SKIP LOCKED
+  ai-queue.worker.ts            몬스터 작업을 하나 집어 AI 인터페이스를 부른다
 database/schema/                Drizzle 테이블 (테이블마다 파일 하나)
 common/filters/                 예외를 HTTP 응답으로 바꾸는 필터
 ```

@@ -63,12 +63,20 @@ Gmail SMTP: Google 계정에서 2단계 인증을 켠 뒤 [앱 비밀번호](htt
 
 ### Gemini API
 
-`@google/genai` 를 사용한다.
+`@google/genai` 를 사용한다. 기본 모델은 `gemini-3.5-flash-lite`다.
+키가 없어도 서버는 뜬다. 호출할 때만 실패한다.
 
-| 변수             | 필수 | 기본값             | 설명                       |
-| ---------------- | ---- | ------------------ | -------------------------- |
-| `GEMINI_API_KEY` | O    | -                  | Google AI Studio 에서 발급 |
-| `GEMINI_MODEL`   | X    | `gemini-3.7-flash` | 사용할 모델 ID             |
+몬스터 생성만 작업 큐에 넣는다. 큐는 분당 12회까지 꺼낸다.
+무료 한도 15 가운데 3은 전투 기록처럼 요청 안에서 바로 부르는 호출에 남긴다.
+그 3은 큐가 세지 않는다. 실패하면 최대 3번까지 다시 넣는다.
+1번 실패 뒤 15초, 2번 실패 뒤 30초, 3번 실패면 끝이다.
+한도를 넘기면 60초 뒤에 다시 시도한다.
+
+| 변수                  | 필수 | 기본값                  | 설명                                           |
+| --------------------- | ---- | ----------------------- | ---------------------------------------------- |
+| `GEMINI_API_KEY`      | X    | -                       | Google AI Studio 에서 발급. 없으면 호출만 실패 |
+| `GEMINI_MODEL`        | X    | `gemini-3.5-flash-lite` | 사용할 모델 ID                                 |
+| `AI_TASKS_PER_MINUTE` | X    | `12`                    | 큐가 1분에 꺼내는 최대 횟수                    |
 
 ### 예시
 
@@ -101,7 +109,8 @@ S3_FORCE_PATH_STYLE=true
 S3_PUBLIC_URL=http://localhost:9000/nest-vue
 
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-3.7-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
+AI_TASKS_PER_MINUTE=12
 ```
 
 ## Drizzle
