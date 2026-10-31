@@ -1,55 +1,61 @@
-브랜치 작업이 끝난 뒤 코드를 리뷰한다.
+Review the current branch once its work is done. Report problems only; do not fix anything. Report to the user in Korean.
 
-## 절차
+## 1. Scope (read as little as possible)
 
-1. `git diff master...HEAD --stat`으로 변경 범위를 확인한다.
-2. 로컬 기능명세(`.ai/specs/features.md`)가 있으면 해당 기능 항목을 읽는다.
-3. 아래 관점으로 점검한다.
-4. 문제만 보고한다. 고치지 않는다.
+1. `git diff master...HEAD --stat` to see which files changed. This covers committed work only; if `git status` shows uncommitted changes, tell the user and ask whether to wait for a commit.
+2. Skip files that need no review: `pnpm-lock.yaml`, `server/drizzle/meta/**` snapshots, images and sounds. For `web/src/i18n/locales/*.json` check only that `ko` and `en` have the same keys.
+3. Read the diff of each remaining file (`git diff master...HEAD -- <file>`). Open the full file or another file only when a check below needs it (for example, to see the transaction a changed line runs in). Do not search the repository.
+4. Read once, before checking:
+   - `.ai/roadmap/README.md` → the current version file → the line for this branch, and the spec file that line points to (`.ai/specs/README.md` maps chapters to files)
+   - The area of `.ai/known-issues/open.md` this branch touches. Do not report an issue that is already there
+   - `.ai/decisions/<topic>.md` only if the branch touches that topic
+5. Run only the checks for what changed: server checks if `server/` or `shared/` changed, web checks if `web/` changed, docs checks always.
 
-## 관점
+## 2. Checks
 
-### 보안
+### Server and shared
 
-- 인증 없이 접근 가능한 엔드포인트가 있는가
-- ID만 바꿔서 남의 데이터를 조회·수정할 수 있는가
-- 클라이언트가 보낸 값을 검증 없이 신뢰하는가
-- 비밀번호·토큰·시크릿이 응답이나 로그에 노출되는가
+- Security: an endpoint reachable without a session; another user's data reachable by changing an id; a client value trusted without validation; a secret, token or session value in a response or log.
+- Consistency: several tables changed outside one transaction; rows locked in an order other than user → wallet → progress; a request that does damage when sent twice; settlement that gives a different result when run again; an off-by-one at a boundary (dates, floors such as gold -30, the 80% boss line).
+- Rules: a gold, XP or penalty amount computed anywhere but `shared`; a date taken from the server clock instead of the Seoul calendar (`Asia/Seoul`); a type or constant that both sides use defined outside `shared`; AI or the job queue called directly instead of through its interface; a schema change without a migration.
+- API shape: a `{ data }` envelope; a token in JSON; a body on a success that should be 204.
 
-### 정합성
+### Web
 
-- 여러 테이블을 바꾸는데 트랜잭션으로 묶이지 않은 곳이 있는가
-- 같은 요청이 두 번 오면 중복 처리되는가
-- 경계값에서 어긋나는 계산이 있는가
+- Logic that decides an outcome on the client. Showing an estimate with the `shared` functions is allowed.
+- A server call that does not go through `useApi`.
+- A color outside the `main.css` tokens; a screen that breaks in dark mode; a missing loading, error or empty state; an emoji; a user-facing string not in i18n.
 
-### 명세 대조
+### Spec
 
-- 명세와 다르게 동작하는 부분이 있는가
-- 명세에 있는데 구현되지 않은 것이 있는가
-- 명세에 없는데 임의로 추가된 것이 있는가
+- Behavior that differs from the spec, something in the spec that is missing, or something added that the spec does not have.
 
-### 아키텍처
+### Docs and dependencies
 
-- 공용 타입이 `shared` 밖에 중복 정의됐는가
-- 클라이언트에서 판정·가공하는 로직이 있는가
-- DB 스키마 변경에 마이그레이션이 빠졌는가
+- Behavior changed but `README.md` and `README.ko.md` were not both updated.
+- An endpoint added or changed but the `server/README.md` API table was not.
+- A package added, removed or replaced without an entry in `.ai/decisions/deps.md`; a runtime package in `devDependencies` or a dev tool in `dependencies`.
 
-### 네이밍
+### Names
 
-- 파일명·함수명·타입명이 실제 동작과 다른가 (예: 가입 흐름의 임시값만 담는 저장소 `authFlow`와 로그인 세션인 DB `session` 테이블을 섞어 부르는 경우)
+- A file, function or type name that does not match what it does; a query result named `row` instead of its table (`userRow`).
 
-## 출력
+## 3. Output
 
-문제마다:
+Start with one line: the number of findings per severity. If there are none, say so and stop.
 
-- 파일과 라인
-- 무엇이 문제인지
-- 어떤 상황에서 드러나는지
-- 심각도: 막음(머지 불가) / 고쳐야 함(다음 브랜치 전) / 알아둘 것(당장은 괜찮음)
+Then one block per finding, most severe first:
 
-## 원칙
+- **심각도**: 막음 (do not merge) / 고쳐야 함 (fix before the branch closes) / 알아둘 것 (fine for now, goes to known-issues)
+- **위치**: file and line
+- **문제**: what is wrong, in one or two sentences
+- **드러나는 상황**: the input or situation that shows it
 
-- 잘 된 점은 쓰지 않는다.
-- 코드 근거를 든다. 추측으로 쓰지 않는다.
-- 문제가 없으면 없다고 말한다.
-- 수정은 사용자 확인 후에 한다. 리뷰에서 바로 고치지 않는다.
+For 알아둘 것, one line each is enough.
+
+## 4. Principles
+
+- No praise and no summary of what the branch does.
+- Every finding cites code. If you are not sure, either check it or leave it out.
+- Do not fix anything. Fixes happen after the user confirms.
+- After fixes, review only the changed lines again with the same checks.

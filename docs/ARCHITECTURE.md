@@ -1,120 +1,172 @@
-# 아키텍처
+# Architecture
 
-할 일을 퀘스트로 등록하고, 완료하면 골드와 경험치를 받는 웹앱이다. 퀘스트는 루틴 또는 기한으로 등록하고, 예정일이 지난 루틴이나 마감이 지난 기한 퀘스트를 완료하지 않으면 정산할 때 골드와 경험치를 깎는다.
+<p align="center"><a href="./ARCHITECTURE.ko.md">한국어</a></p>
 
-## 핵심 설계
+A web app where you register to-dos as quests and receive gold and XP when you complete them. A quest is registered as a routine or a deadline quest. If a routine's scheduled day or a deadline quest's due date passes without completion, settlement deducts gold and XP.
 
-1. 패널티는 밀린 날짜를 한꺼번에 정산한다. 마지막 정산일을 기록해 두고, 홈 화면을 열 때와 완료 직전에 호출된다. 서버는 매일 서울 자정 직후에도 모든 사용자를 정산한다. 이유: 앱을 열지 않은 사용자도 그날 안에 정산해서 지갑과 스탯 화면의 값이 정확하게 하려는 것이다. 호출이 겹쳐도 마지막 정산일과 사용자별 잠금 때문에 같은 패널티가 두 번 들어가지 않는다.
-2. 완료 요청은 정산을 먼저 커밋한 뒤 완료를 시작한다. 둘은 트랜잭션이 따로다. 이유: 쌓인 패널티를 먼저 반영해야 잔액과 경험치가 정확하고, 완료가 실패해도 정산 결과는 남기려는 것이다.
-3. 골드 하한은 -30이다. 이유: 빚이 끝없이 쌓이지 않게 하려는 것이다.
-4. 경험치는 현재 레벨의 0까지만 깎고 레벨은 내리지 않는다. 이유: 레벨이 떨어지는 일을 막으려는 것이다.
-5. 날짜는 서울 달력으로 센다. 이유: 사용자가 체감하는 하루에 맞추려는 것이다.
-6. 구글 계정이 생긴 뒤, 또는 세션이 생긴 뒤에 확인한다. 사용자가 있고 이메일이 아직 인증되지 않았으며 구글 계정이 있을 때만, 이메일을 인증된 것으로 표시하고 이메일 계정(credential)의 비밀번호를 비운다. 비밀번호가 있는지는 보지 않는다. 이유: 미인증 이메일로 먼저 가입해 둔 사람이 나중에 그 계정에 들어오는 일을 막으려는 것이다.
-7. 잔액이 바뀔 때마다 종류(완료, 패널티, 사후 차감)와 금액이 지갑 내역에 남는다. 내역에는 어떤 퀘스트 때문인지는 남지 않는다.
-8. 로그인은 better-auth이고 세션은 DB의 session 테이블에 저장된다.
+## Core design
 
-## 시스템 구성 (개발 환경 기준)
+1. Penalties are settled for all missed days at once. The last settled date is stored, and settlement is called when the home page opens and right before a completion. The server also settles every user just after midnight in Seoul. Why: so that wallet and stats values are correct the same day even for users who do not open the app. Overlapping calls never apply the same penalty twice, because of the last settled date and a per-user lock.
+2. A completion commits settlement first, then starts the completion. They are separate transactions. Why: accumulated penalties must be applied first for the balance and XP to be right, and settlement should stay even if the completion fails.
+3. The gold floor is -30. Why: to keep debt from growing without end.
+4. XP is deducted only down to 0 within the current level, and the level never drops. Why: to avoid losing levels.
+5. Days are counted on the Seoul calendar. Why: to match the day the user actually lives.
+6. After a Google account is created, or after a session is created, the server checks: only when the user exists, the email is not verified yet, and a Google account is linked, it marks the email verified and clears the password of the email (credential) account. It does not check whether a password exists. Why: to stop someone who signed up first with an unverified email from later getting into that account.
+7. Every balance change leaves a kind (completion, penalty, post-hoc deduction) and an amount in the wallet history. The history does not record which quest caused it.
+8. Sign-in is Better Auth, and sessions are stored in the `session` table.
 
-![시스템 구성](img/dev_env_architecture.png)
+## System (development)
 
-### 그림에서 안 보이는 점
+![System](img/dev_env_architecture.png)
 
-- 구글 id 토큰은 브라우저가 구글에서 직접 받아 서버 `/api/auth`로 보낸다.
-- 이메일 로그인은 메일 인증이 필요하다.
-- 개발 중 `/api` 요청은 Vite 개발 서버가 서버로 프록시한다.
-- 배포용 Compose는 postgres와 server를 올리고 web은 Compose에 없다.
+### Not shown in the diagram
 
-## 서버 내부 구조
+- The browser gets the Google ID token from Google directly and sends it to the server's `/api/auth`.
+- Email sign-in needs email verification.
+- In development, Vite's dev server proxies `/api` requests to the server.
+- The production Compose starts postgres and server; web is not in Compose.
 
-주요 호출 관계는 다음과 같다.
+## Code structure
 
-- 퀘스트 완료는 정산을 호출한 다음 지갑에 골드를 넣는다.
-- 정산은 지갑에서 골드를 깎는다.
-- 직업 변경은 지갑에 골드를 넣지 않는다. 레벨과 경험치만 1과 0으로 되돌리고, 마지막 변경 시각부터 7×24시간이 지나기 전에는 다시 바꾸지 못한다.
+### Server (`server/src/`)
 
-## 퀘스트 완료 흐름
+```
+auth/                           sign-up, sign-in (Better Auth), email verification, onboarding, account deletion
+  auth.ts                       Better Auth configuration
+  job-class.guard.ts            global guard that blocks app APIs for accounts without a job
+quests/                         every quest rule
+  quests.service.ts             register, list, check today, routine pause/resume, give up
+  quest-completion.service.ts   completion: settle → compute reward → update wallet and progress
+  quest-penalty.service.ts      settle missed days (missed routines, passed deadlines)
+  quest-settlement.scheduler.ts settle everyone at 00:01 Seoul
+  quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
+  quest-calendar.ts             Seoul date helpers
+wallet/                         balance, history, post-hoc deduction
+progress/                       level, XP, titles, streak, gacha tickets
+stats/                          stat totals
+job-change/                     job change
+database/schema/                Drizzle tables (one file per table)
+common/filters/                 filter that turns exceptions into HTTP responses
+```
 
-<a href="img/quest_complete_flow.png"><img src="img/quest_complete_flow.png" alt="퀘스트 완료 흐름" width="500"></a>
+### Shared (`shared/src/`)
 
-### 눈여겨볼 점
+```
+quest-completion.ts   reward table amounts, job and streak multipliers, final amount, level-up
+quest-penalty.ts      penalty amounts, gold and XP floors
+constants/            reward table, penalty table, critical-hit odds, jobs and other constants
+types/                response types exchanged by the server and the web
+```
 
-- 정산이 먼저 커밋된다. 완료가 실패해도 정산은 남는다.
-- 루틴은 보상표의 일일 전액이다. 기한은 체크 횟수 비율이다. 당일 기한은 비율 없이 보상표의 일일 전액이다.
-- 만든 날과 끝나는 날이 다른 기한 퀘스트만 `POST /api/quests/:id/day-marks`로 체크 횟수가 쌓인다.
-- 날짜 차이가 1 이상이고 체크가 없으면 골드와 경험치는 0이다. 완료 기록은 남는다. 그 기한 퀘스트는 포기할 수 없다.
-- 루틴을 완료하면 상태이상을 지운다. 기한 퀘스트를 완료하면 그대로 둔다.
+### Web (`web/src/`)
 
-### 실패
+```
+routes/        pages (the file name is the URL): home, quests, stats, wallet, job, sign-up/sign-in/onboarding
+components/    a folder per page (home, quest, wallet, stats, job, settings, auth) and shared ui/
+lib/           server calls (quests, wallet, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings
+composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state)
+stores/        sign-in state and account API calls (Pinia)
+auth/          Better Auth client
+i18n/          Korean and English copy
+```
 
-필터는 예외의 상태 코드를 그대로 응답한다.
+### Rules the code keeps
 
-| 조건                               | 상태 코드 |
-| ---------------------------------- | --------- |
-| 메모가 500자를 넘는다              | 400       |
-| 만든 날보다 앞에서 완료한다        | 400       |
-| 루틴인데 오늘이 지정 요일이 아니다 | 400       |
-| 루틴인데 오늘이 쉬는 주다          | 400       |
-| 기한 밖이다                        | 400       |
-| 정산 단계에서 직업이 없다          | 403       |
-| 보상 계산 단계에서 직업이 없다     | 403       |
-| 퀘스트 id 형식이 아니다            | 404       |
-| 내 퀘스트가 아니다                 | 404       |
-| 루틴을 오늘 이미 완료했다          | 409       |
-| 기한 퀘스트를 이미 완료했다        | 409       |
+- Gold, XP and penalty amounts are computed only by functions in `shared`. The server pays with them; the web uses the same functions only to show estimates.
+- Controllers only take the request and call a service. Rules live in services.
+- Every server call from the web goes through `useApi`. Feature calls such as quests and wallet are collected in `lib/`; account APIs are called from `stores/auth.ts`.
 
-### 보상 계산
+## Inside the server
 
-루틴은 날짜 차이를 0으로 둔다. 그러면 보상표의 일일 전액이다.
+Main call relations:
 
-기한은 만든 날과 완료일의 날짜 차이다. 0이면 일일 보상표다. 1부터 7이면 주간 보상표다. 8 이상이면 장기 보상표다.
+- A quest completion calls settlement, then adds gold to the wallet.
+- Settlement deducts gold from the wallet.
+- A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
 
-날짜 차이가 1 이상이면 경과 일수는 양 끝을 포함한 날 수다. 체크 횟수는 그 일수를 넘지 않는다. 보상은 보상표 금액에 체크 횟수 / 경과 일수를 곱한다.
+## Quest completion flow
 
-직업과 카테고리 스탯에 따라 배율이 붙는다. 운동과 생활은 체력, 학습과 업무는 지성, 창작과 마음은 감성이다.
+<a href="img/quest_complete_flow.png"><img src="img/quest_complete_flow.png" alt="Quest completion flow" width="500"></a>
 
-연속 일수가 3일 이상이면 연속 배율도 골드와 경험치에 곱한다. `1~2`일은 1, `3~6`일은 1.1, `7~29`일은 1.2, `30`일 이상은 1.5다. 기한 퀘스트도 포함한다. 그날 첫 완료를 누르는 순간 일수가 오르고, 그 완료부터 새 일수로 계산한다.
+### Worth noting
 
-메모가 있으면 그 결과에 10%를 더해 반올림한다. 메모가 없으면 더하지 않는다.
+- Settlement is committed first. If the completion fails, settlement stays.
+- A routine gets the full daily amount. A deadline quest gets the check-in ratio. A same-day deadline quest gets the full daily amount with no ratio.
+- Only deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`.
+- With a gap of 1 day or more and no check-ins, gold and XP are 0. The completion record stays, and that deadline quest can no longer be given up.
+- Completing a routine clears the status effect. Completing a deadline quest leaves it.
 
-골드에는 크리티컬이 붙을 수 있다. 완료할 때마다 10% 확률로 터지고, 터지면 90%는 2배, 10%는 3배다. 전체로 보면 2배가 9%, 3배가 1%다. 경험치에는 적용하지 않는다. 완료 직전 잔액이 0보다 작으면 굴리지 않는다. 직업 배율, 연속 배율, 메모, 크리티컬은 각각 곱한 뒤 마지막에 한 번만 반올림한다.
+### Failures
 
-완료 응답의 `applied`에는 계산에 쓰인 기본 금액, 체크 횟수와 경과 일수, 직업 배율, 연속 배율, 메모 보너스, 크리티컬 배수가 담긴다.
+The filter answers with the exception's status code as it is.
 
-### 경험치와 레벨
+| Condition                                | Status |
+| ---------------------------------------- | ------ |
+| The note is longer than 500 characters   | 400    |
+| Completed before the creation day        | 400    |
+| A routine, and today is not a chosen day | 400    |
+| A routine, and this is a rest week       | 400    |
+| Outside the deadline period              | 400    |
+| No job at the settlement step            | 403    |
+| No job at the reward step                | 403    |
+| The quest id is malformed                | 404    |
+| Not the user's quest                     | 404    |
+| The routine was already completed today  | 409    |
+| The deadline quest was already completed | 409    |
 
-| 지금 레벨 | 다음 레벨까지 경험치                  |
-| --------- | ------------------------------------- |
-| 1–10      | 100                                   |
-| 11–30     | 200                                   |
-| 31–49     | 400                                   |
-| 50        | 더 오르지 않는다. 레벨 경험치는 0이다 |
+### Reward calculation
 
-레벨이 오를 때마다 뽑기권이 1장 늘어난다. 도달 레벨이 10, 20, 30, 40, 50이면 칭호를 준다.
+A routine uses a gap of 0 days, which gives the full daily amount.
 
-## 패널티 정산 흐름
+A deadline quest uses the gap between its creation day and the completion day. 0 is the daily table, 1 to 7 is the weekly table, 8 or more is the long-term table.
 
-<a href="img/penalty_flow.png"><img src="img/penalty_flow.png" alt="패널티 정산 흐름" width="500"></a>
+With a gap of 1 or more, elapsed days count both ends. Check-ins never exceed that count. The reward is the table amount × check-ins / elapsed days.
 
-어제는 서울 달력의 오늘에서 하루 전이다. 마지막 정산일이 어제와 같거나 그 뒤면 정산하지 않는다. 그보다 앞이면, 그 다음 날부터 어제까지 하루씩 본다. 오늘은 정산하지 않는다.
+A multiplier applies by job and the category's stat. Exercise and daily life are stamina, study and work are intellect, creative and mind are sense.
 
-### 눈여겨볼 점
+With a streak of 3 days or more, the streak multiplier also applies to gold and XP: `1–2` days is 1, `3–6` is 1.1, `7–29` is 1.2, `30` or more is 1.5. Deadline quests are included. The streak goes up the moment the day's first completion is made, and that completion already uses the new count.
 
-- 골드와 경험치 차감의 대상은 현재 루틴과, 마감일이 지난 기한 퀘스트다. 무기력은 루틴 미달에만 켜진다.
-- 예정 루틴이 없는 날은 상태이상을 바꾸지 않는다. 그 날 완료가 없으면 연속만 0이 된다.
-- 연속은 첫 완료에서만 오르고, 정산은 완료가 없는 지난날만 0으로 만든다.
-- 오늘은 정산하지 않는다.
-- 레벨은 이 정산에서 바뀌지 않는다.
-- 기한 퀘스트는 마감일에 완료하지 못했을 때 마감일 다음 날 이후 첫 정산에서 한 번만 깎는다. 완료한 퀘스트는 대상이 아니다.
+With a note, 10% is added to that result. Without one, nothing is added.
 
-### 규칙
+Gold can get a critical hit. Each completion has a 10% chance; a hit is ×2 nine times out of ten and ×3 one time in ten — 9% and 1% overall. XP is not affected. No roll happens when the balance just before completion is below 0. The job multiplier, streak multiplier, note and critical hit are all multiplied, then rounded once at the end.
 
-| 규칙               | 값                                                                                                                                                                |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 쉬움 패널티        | 골드 5, 경험치 5                                                                                                                                                  |
-| 보통 패널티        | 골드 10, 경험치 10                                                                                                                                                |
-| 어려움 패널티      | 골드 20, 경험치 20                                                                                                                                                |
-| 골드 하한          | -30. 쉬움 일일 골드 10에 3을 곱한 값이다. 넘는 차감은 버린다                                                                                                      |
-| 경험치 하한        | 현재 레벨 경험치의 0. 레벨 숫자는 내리지 않는다                                                                                                                   |
-| 연속 일수          | 그날 첫 완료에서 1이 오른다. 완료가 없는 지난날은 정산에서 0이 된다. 정산은 연속을 올리지 않는다                                                                  |
-| 무기력             | 놓친 루틴이 있으면 `lethargy`가 된다. 예정 루틴이 없는 날은 상태이상을 바꾸지 않는다                                                                              |
-| 기한 퀘스트 패널티 | 만든 날~~마감일 간격으로 고른다. 0일은 쉬움 5·보통 10·어려움 20, 1~~7일은 10·20·40, 8일 이상은 15·30·60. 골드와 경험치에 같은 수다. 연속과 무기력은 바꾸지 않는다 |
+The completion response's `applied` holds the base amount, check-ins and elapsed days, job multiplier, streak multiplier, note bonus and critical multiplier used in the calculation.
+
+### XP and levels
+
+| Current level | XP to the next level             |
+| ------------- | -------------------------------- |
+| 1–10          | 100                              |
+| 11–30         | 200                              |
+| 31–49         | 400                              |
+| 50            | no more levels; level XP stays 0 |
+
+Every level gained adds one gacha ticket. Reaching level 10, 20, 30, 40 or 50 gives a title.
+
+## Penalty settlement flow
+
+<a href="img/penalty_flow.png"><img src="img/penalty_flow.png" alt="Penalty settlement flow" width="500"></a>
+
+Yesterday is the day before today on the Seoul calendar. If the last settled date is yesterday or later, nothing is settled. Otherwise every day from the next day up to yesterday is checked one by one. Today is never settled.
+
+### Worth noting
+
+- Gold and XP are deducted for current routines and for deadline quests past their due date. Lethargy turns on only for missed routines.
+- A day with no scheduled routine leaves the status effect as it is. If that day had no completion, only the streak goes to 0.
+- The streak goes up only on a first completion; settlement only resets past days with no completion to 0.
+- Today is never settled.
+- Levels do not change in this settlement.
+- A deadline quest not completed by its due date is charged once, at the first settlement after the due date. Completed quests are not charged.
+
+### Rules
+
+| Rule                   | Value                                                                                                                                                                                                      |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                               |
+| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                             |
+| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                             |
+| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                             |
+| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                   |
+| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                |
+| Lethargy               | Becomes `lethargy` when a routine is missed. A day with no scheduled routine leaves the status effect as it is                                                                                             |
+| Deadline quest penalty | Chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. Same number for gold and XP. Streak and lethargy do not change |
