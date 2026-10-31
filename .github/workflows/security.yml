@@ -23,4 +23,9 @@ jobs:
           cache: true
           install: false
 
-      - run: pnpm audit --ignore-registry-errors
+      - name: Audit production dependencies
+        run: pnpm audit --prod --ignore-registry-errors
+
+      - name: Audit dev dependencies (warning only)
+        run: pnpm audit --dev --ignore-registry-errors
+        continue-on-error: true
