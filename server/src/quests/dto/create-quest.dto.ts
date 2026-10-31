@@ -2,6 +2,7 @@ import type {
   QuestCategory,
   QuestDifficulty,
   QuestKind,
+  QuestPace,
   QuestSchedule,
   QuestWeekday,
 } from '@nest-vue/shared';
@@ -9,6 +10,7 @@ import {
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
   QUEST_KINDS,
+  QUEST_PACES,
   QUEST_SCHEDULES,
   QUEST_WEEKDAYS,
 } from '@nest-vue/shared';
@@ -41,6 +43,11 @@ export class CreateQuestDto {
 
   @IsIn(QUEST_SCHEDULES)
   schedule!: QuestSchedule;
+
+  /** 기한만. 없으면 steady. 루틴에 있으면 거절한다 */
+  @ValidateIf((dto: CreateQuestDto) => dto.pace !== undefined)
+  @IsIn(QUEST_PACES)
+  pace?: QuestPace;
 
   @ValidateIf((dto: CreateQuestDto) => dto.schedule === 'routine')
   @IsDefined()

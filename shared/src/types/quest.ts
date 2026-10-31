@@ -2,6 +2,7 @@ import type {
   QuestCategory,
   QuestDifficulty,
   QuestKind,
+  QuestPace,
   QuestSchedule,
   QuestWeekday,
 } from '../constants/quests';
@@ -21,6 +22,7 @@ interface QuestFields {
 
 export interface RoutineQuest extends QuestFields {
   schedule: 'routine';
+  pace: null;
   weekdays: QuestWeekday[];
   biweekly: boolean;
   endsOn: null;
@@ -32,6 +34,8 @@ export interface RoutineQuest extends QuestFields {
 
 export interface DeadlineQuest extends QuestFields {
   schedule: 'deadline';
+  /** 꾸준히 또는 한 번에. 요청에 없으면 steady로 저장된다 */
+  pace: QuestPace;
   weekdays: null;
   biweekly: null;
   endsOn: string;
@@ -49,6 +53,8 @@ export interface QuestListItem {
   title: string;
   difficulty: QuestDifficulty;
   schedule: QuestSchedule;
+  /** 기한은 steady | once. 루틴은 null */
+  pace: QuestPace | null;
   weekdays: QuestWeekday[] | null;
   biweekly: boolean | null;
   endsOn: string | null;
@@ -90,6 +96,8 @@ export interface CreateRoutineQuestPayload extends CreateQuestFields {
 
 export interface CreateDeadlineQuestPayload extends CreateQuestFields {
   schedule: 'deadline';
+  /** 없으면 steady */
+  pace?: QuestPace;
   /** 한국 달력 날짜 `YYYY-MM-DD` */
   endsOn: string;
 }

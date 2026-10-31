@@ -1,6 +1,11 @@
 import type { JobClass } from './constants/jobs';
 import { JOB_CLASS_REWARD_MULTIPLIERS } from './constants/jobs';
-import type { QuestCategory, QuestDifficulty, QuestRewardPeriod } from './constants/quests';
+import type {
+  QuestCategory,
+  QuestDifficulty,
+  QuestPace,
+  QuestRewardPeriod,
+} from './constants/quests';
 import {
   QUEST_DEADLINE_DAILY_REMAINING_DAYS,
   QUEST_DEADLINE_WEEKLY_MAX_REMAINING_DAYS,
@@ -57,13 +62,15 @@ export function rewardPeriodForDaySpan(daySpan: number): QuestRewardPeriod {
 /**
  * 만든 날과 끝낸 날의 날짜 차이로 표를 고르고, 체크 횟수 / 걸린 일수를 곱한다.
  * 같은 날이면 일일 금액이고 비율은 1이다. 걸린 일수는 양 끝 날을 포함한다.
+ * once는 간격과 상관없이 일일 전액이고 비율은 1이다.
  */
 export function completionTableAmount(
   difficulty: QuestDifficulty,
   daySpan: number,
   markedDayCount: number,
+  pace: QuestPace = 'steady',
 ): { gold: number; xp: number; markedDays: number; elapsedDays: number } {
-  if (daySpan <= 0) {
+  if (pace === 'once' || daySpan <= 0) {
     const daily = QUEST_REWARDS[difficulty].daily;
     return { gold: daily.gold, xp: daily.xp, markedDays: 1, elapsedDays: 1 };
   }
