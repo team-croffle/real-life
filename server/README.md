@@ -137,6 +137,17 @@ constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 | POST   | `/api/account/onboarding`          | 세션 있는 계정의 닉네임·직업군 설정. 메일 인증 또는 Google 이후                  |
 | DELETE | `/api/account/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                   |
 | POST   | `/api/quests`                      | 퀘스트 등록 (세션). 루틴 또는 마감. 골드·XP는 서버가 표로 계산하고 본문에만 넣음 |
+| GET    | `/api/quests`                      | 내 퀘스트 목록 (세션). 오늘 수행, 완료 여부, 체크 횟수, 예상 보상                |
+| POST   | `/api/quests/:id/complete`         | 퀘스트 완료 (세션). 본문 `note` 선택. 정산을 먼저 한 뒤 보상 지급                |
+| POST   | `/api/quests/:id/day-marks`        | 기한 퀘스트 오늘 체크 (세션). 하루 한 번                                         |
+| POST   | `/api/quests/:id/rest`             | 루틴 끄기 (세션). 다음 서울 날짜부터 쉼                                          |
+| POST   | `/api/quests/:id/resume`           | 루틴 켜기 (세션). 오늘부터 다시 예정                                             |
+| DELETE | `/api/quests/:id`                  | 퀘스트 포기 (세션). 완료한 기한 퀘스트는 409                                     |
+| POST   | `/api/quest-penalties/settle`      | 밀린 날 정산 (세션). 여러 번 불러도 결과가 같음                                  |
 | GET    | `/api/wallet`                      | 골드 잔액 (세션). 지갑이 없으면 0                                                |
 | GET    | `/api/wallet/entries`              | 골드 내역과 종류 `kind` (세션). 최신순. `page` 기본 1, `size` 기본 20, 상한 100  |
 | POST   | `/api/wallet/post-hoc-deductions`  | 사후 차감 (세션). 본문 `amount`. 외상 한도를 넘으면 400                          |
+| GET    | `/api/progress`                    | 레벨, 경험치, 칭호, 연속 일수, 뽑기권, 상태이상 (세션)                           |
+| GET    | `/api/stats`                       | 체력·지성·감성 합계 (세션)                                                       |
+| GET    | `/api/job-class`                   | 직업 변경 가능 여부와 다음 변경 시각 (세션)                                      |
+| POST   | `/api/job-class`                   | 직업 변경 (세션). 본문 `jobClass`. 7일에 한 번                                   |
