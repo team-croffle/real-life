@@ -16,6 +16,16 @@ export const QUEST_SCHEDULE_LABELS: Record<QuestSchedule, string> = {
   deadline: '기한',
 };
 
+/** 기한 퀘스트만 고른다. 루틴은 null. 없으면 등록 시 steady. */
+export const QUEST_PACES = ['steady', 'once'] as const;
+
+export type QuestPace = (typeof QUEST_PACES)[number];
+
+export const QUEST_PACE_LABELS: Record<QuestPace, string> = {
+  steady: '꾸준히',
+  once: '한 번에',
+};
+
 export const QUEST_CATEGORIES = ['exercise', 'life', 'study', 'work', 'creation', 'mind'] as const;
 
 export type QuestCategory = (typeof QUEST_CATEGORIES)[number];
