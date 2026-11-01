@@ -4,6 +4,9 @@ export const AI = Symbol('AI');
 
 export const GEMINI_MODEL_DEFAULT = 'gemini-3.5-flash-lite';
 
+/** 이 시간을 넘기면 일반 실패로 친다. */
+export const AI_CALL_TIMEOUT_MS_DEFAULT = 30_000;
+
 /** 무료 한도에 걸렸을 때. 큐는 이때 60초 뒤에 다시 넣는다. */
 export class AiRateLimitError extends Error {
   constructor(message: string) {

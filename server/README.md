@@ -71,12 +71,17 @@ Gmail SMTP: Google 계정에서 2단계 인증을 켠 뒤 [앱 비밀번호](htt
 그 3은 큐가 세지 않는다. 실패하면 최대 3번까지 다시 넣는다.
 1번 실패 뒤 15초, 2번 실패 뒤 30초, 3번 실패면 끝이다.
 한도를 넘기면 60초 뒤에 다시 시도한다.
+한도는 상태와 상관없이 1분 안에 집은 시각으로 센다. 실패해도 그 시각은 남긴다.
+호출이 30초를 넘기면 일반 실패로 친다.
+집은 지 1분이 지나도 끝나지 않은 작업은 끊긴 것으로 본다. 시도가 남았으면 다시 넣고, 없으면 실패로 끝낸다.
 
 | 변수                  | 필수 | 기본값                  | 설명                                           |
 | --------------------- | ---- | ----------------------- | ---------------------------------------------- |
 | `GEMINI_API_KEY`      | X    | -                       | Google AI Studio 에서 발급. 없으면 호출만 실패 |
 | `GEMINI_MODEL`        | X    | `gemini-3.5-flash-lite` | 사용할 모델 ID                                 |
 | `AI_TASKS_PER_MINUTE` | X    | `12`                    | 큐가 1분에 꺼내는 최대 횟수                    |
+| `AI_CALL_TIMEOUT_MS`  | X    | `30000`                 | Gemini 호출 제한(밀리초). 넘으면 일반 실패     |
+| `AI_STALE_RUNNING_MS` | X    | `60000`                 | 이 시간 넘긴 running은 끊긴 것으로 본다        |
 
 ### 예시
 
@@ -111,6 +116,8 @@ S3_PUBLIC_URL=http://localhost:9000/nest-vue
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.5-flash-lite
 AI_TASKS_PER_MINUTE=12
+AI_CALL_TIMEOUT_MS=30000
+AI_STALE_RUNNING_MS=60000
 ```
 
 ## Drizzle

@@ -1,12 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, asc, eq, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, lt, lte, sql } from 'drizzle-orm';
 
 import type { MonsterDescription } from '../ai/ai';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { aiTasks } from '../database/schema/ai-tasks';
 import {
+  AI_STALE_RUNNING_MS_DEFAULT,
   AI_TASKS_PER_MINUTE_DEFAULT,
   type AiQueue,
   type ClaimedAiTask,
@@ -17,7 +18,6 @@ import {
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [15_000, 30_000, 60_000] as const;
 const RATE_LIMIT_DELAY_MS = 60_000;
-const STALE_RUNNING_MS = 2 * 60 * 1000;
 const ERROR_MAX = 500;
 
 @Injectable()
@@ -33,14 +33,14 @@ export class PostgresAiQueue implements AiQueue {
       throw new Error('monster payload is invalid');
     }
 
-    const [row] = await this.db
+    const [aiTaskRow] = await this.db
       .insert(aiTasks)
       .values({ userId: input.userId, kind: 'monster', payload })
       .returning({ id: aiTasks.id });
-    if (!row) {
+    if (!aiTaskRow) {
       throw new Error('ai task was not inserted');
     }
-    return { id: row.id };
+    return { id: aiTaskRow.id };
   }
 
   async dequeue(): Promise<ClaimedAiTask | null> {
@@ -49,15 +49,11 @@ export class PostgresAiQueue implements AiQueue {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext('ai_tasks_dequeue'))`);
       await this.reclaimStale(tx);
 
+      // 상태는 보지 않는다. 실패해도 started_at은 남겨 그 집기를 1분 동안 센다.
       const [countRow] = await tx
         .select({ count: sql<number>`count(*)::int` })
         .from(aiTasks)
-        .where(
-          and(
-            gt(aiTasks.startedAt, sql`now() - interval '1 minute'`),
-            inArray(aiTasks.status, ['running', 'succeeded', 'failed']),
-          ),
-        );
+        .where(gt(aiTasks.startedAt, sql`now() - interval '1 minute'`));
       if (Number(countRow?.count ?? 0) >= this.perMinute()) {
         return null;
       }
@@ -91,39 +87,31 @@ export class PostgresAiQueue implements AiQueue {
         .returning({
           id: aiTasks.id,
           userId: aiTasks.userId,
+          attempts: aiTasks.attempts,
           payload: aiTasks.payload,
         });
       return claimed ?? null;
     });
   }
 
-  async complete(id: string, result: MonsterDescription): Promise<void> {
+  async complete(id: string, attempts: number, result: MonsterDescription): Promise<void> {
     await this.db
       .update(aiTasks)
       .set({ status: 'succeeded', result, lastError: null, updatedAt: sql`now()` })
-      .where(and(eq(aiTasks.id, id), eq(aiTasks.status, 'running')));
+      .where(this.sameClaim(id, attempts));
   }
 
-  async fail(id: string, reason: string, rateLimited: boolean): Promise<void> {
-    const [row] = await this.db
-      .select({ attempts: aiTasks.attempts })
-      .from(aiTasks)
-      .where(and(eq(aiTasks.id, id), eq(aiTasks.status, 'running')))
-      .limit(1);
-    if (!row) {
-      return;
-    }
-
+  async fail(id: string, attempts: number, reason: string, rateLimited: boolean): Promise<void> {
     const lastError = reason.slice(0, ERROR_MAX);
-    if (row.attempts >= MAX_ATTEMPTS) {
+    if (attempts >= MAX_ATTEMPTS) {
       await this.db
         .update(aiTasks)
         .set({ status: 'failed', lastError, updatedAt: sql`now()` })
-        .where(and(eq(aiTasks.id, id), eq(aiTasks.status, 'running')));
+        .where(this.sameClaim(id, attempts));
       return;
     }
 
-    const delayMs = rateLimited ? RATE_LIMIT_DELAY_MS : retryDelayMs(row.attempts);
+    const delayMs = rateLimited ? RATE_LIMIT_DELAY_MS : retryDelayMs(attempts);
     await this.db
       .update(aiTasks)
       .set({
@@ -132,7 +120,7 @@ export class PostgresAiQueue implements AiQueue {
         lastError,
         updatedAt: sql`now()`,
       })
-      .where(and(eq(aiTasks.id, id), eq(aiTasks.status, 'running')));
+      .where(this.sameClaim(id, attempts));
   }
 
   private perMinute(): number {
@@ -147,9 +135,29 @@ export class PostgresAiQueue implements AiQueue {
     return parsed;
   }
 
+  /** 집을 때의 시도 횟수가 같은 running만 고친다. 다르면 갱신이 0건이다. */
+  private sameClaim(id: string, attempts: number) {
+    return and(eq(aiTasks.id, id), eq(aiTasks.status, 'running'), eq(aiTasks.attempts, attempts));
+  }
+
+  private staleRunningMs(): number {
+    const raw = this.config.get<string | number>(
+      'AI_STALE_RUNNING_MS',
+      AI_STALE_RUNNING_MS_DEFAULT,
+    );
+    const parsed = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      return AI_STALE_RUNNING_MS_DEFAULT;
+    }
+    return parsed;
+  }
+
   private async reclaimStale(tx: DrizzleTx): Promise<void> {
-    const staleBefore = new Date(Date.now() - STALE_RUNNING_MS);
-    const stale = and(eq(aiTasks.status, 'running'), lt(aiTasks.startedAt, staleBefore));
+    const staleMs = this.staleRunningMs();
+    const stale = and(
+      eq(aiTasks.status, 'running'),
+      lt(aiTasks.startedAt, sql`now() - (${staleMs}::int * interval '1 millisecond')`),
+    );
     await tx
       .update(aiTasks)
       .set({ status: 'failed', lastError: 'interrupted', updatedAt: sql`now()` })
