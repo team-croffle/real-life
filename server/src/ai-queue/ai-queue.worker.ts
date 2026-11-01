@@ -41,15 +41,15 @@ export class AiQueueWorker {
     try {
       const payload = monsterDraft(task.payload);
       if (!payload) {
-        await this.queue.fail(task.id, 'monster payload is invalid', false);
+        await this.queue.fail(task.id, task.attempts, 'monster payload is invalid', false);
         return;
       }
       const result = await this.ai.describeMonster(payload);
-      await this.queue.complete(task.id, result);
+      await this.queue.complete(task.id, task.attempts, result);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       try {
-        await this.queue.fail(task.id, reason, error instanceof AiRateLimitError);
+        await this.queue.fail(task.id, task.attempts, reason, error instanceof AiRateLimitError);
       } catch (failError) {
         this.logger.error(
           `ai task ${task.id} could not be updated`,

@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import {
+  AI_CALL_TIMEOUT_MS_DEFAULT,
   AiRateLimitError,
   GEMINI_MODEL_DEFAULT,
   type Ai,
@@ -188,6 +189,13 @@ export class GeminiAi implements Ai {
       throw new Error('GEMINI_API_KEY is not set');
     }
     const model = this.config.get<string>('GEMINI_MODEL')?.trim() || GEMINI_MODEL_DEFAULT;
+    const timeoutMs = this.callTimeoutMs();
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
 
     try {
       const response = await new GoogleGenAI({ apiKey }).models.generateContent({
@@ -196,6 +204,9 @@ export class GeminiAi implements Ai {
         config: {
           responseMimeType: 'application/json',
           responseJsonSchema: schema,
+          abortSignal: controller.signal,
+          // SDK 재시도는 1회로 둔다. 다시 넣기는 큐가 한다.
+          httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
         },
       });
       if (!response.text) {
@@ -203,6 +214,9 @@ export class GeminiAi implements Ai {
       }
       return parseJson(response.text);
     } catch (error) {
+      if (timedOut) {
+        throw new Error('Gemini call timed out', { cause: error });
+      }
       if (error instanceof AiRateLimitError) {
         throw error;
       }
@@ -210,7 +224,18 @@ export class GeminiAi implements Ai {
         throw new AiRateLimitError(error.message);
       }
       throw error;
+    } finally {
+      clearTimeout(timer);
     }
+  }
+
+  private callTimeoutMs(): number {
+    const raw = this.config.get<string | number>('AI_CALL_TIMEOUT_MS', AI_CALL_TIMEOUT_MS_DEFAULT);
+    const parsed = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      return AI_CALL_TIMEOUT_MS_DEFAULT;
+    }
+    return parsed;
   }
 }
 
