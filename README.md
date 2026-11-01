@@ -144,11 +144,11 @@ Settings are saved in this browser, not in the account.
 
 ## Stack
 
-- **Server**: NestJS 12, Drizzle ORM (PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer
+- **Server**: NestJS 12, Drizzle ORM (PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API (`@google/genai`, AI assistant)
 - **Web**: Vue 3, Vite 8, Vue Router 5 (file-based routing), Pinia, vue-i18n, Tailwind CSS v4, canvas-confetti, Howler
 - **Shared**: TypeScript. The `shared` workspace holds types, constants and the reward calculation used by both the server and the web
 - **Tooling**: pnpm workspace, oxlint, oxfmt, husky + lint-staged, Docker Compose
-- **Planned**: Gemini API (`@google/genai`, AI assistant), S3-compatible storage (AWS SDK v3 + MinIO, character images)
+- **Planned**: S3-compatible storage (AWS SDK v3 + MinIO, character images)
 
 ## Project structure
 
@@ -162,6 +162,8 @@ real-life/
 │   │   ├── progress/      # level, XP, titles, streak, gacha tickets
 │   │   ├── stats/         # stat totals
 │   │   ├── job-change/    # job change
+│   │   ├── ai/            # AI interface and Gemini implementation
+│   │   ├── ai-queue/      # AI job queue and worker
 │   │   ├── database/      # Drizzle schema
 │   │   └── common/        # shared filters
 │   └── drizzle/           # migrations
