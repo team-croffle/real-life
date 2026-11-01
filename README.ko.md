@@ -144,11 +144,11 @@
 
 ## 기술 스택
 
-- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer
+- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API(`@google/genai`, AI 도우미)
 - **웹**: Vue 3, Vite 8, Vue Router 5(파일 기반 라우팅), Pinia, vue-i18n, Tailwind CSS v4, canvas-confetti, Howler
 - **공용**: TypeScript. `shared` 워크스페이스에 타입, 상수, 보상 계산을 두고 서버와 웹이 같이 쓴다
 - **툴링**: pnpm workspace, oxlint, oxfmt, husky + lint-staged, Docker Compose
-- **예정**: Gemini API(`@google/genai`, AI 도우미), S3 호환 저장소(AWS SDK v3 + MinIO, 캐릭터 이미지)
+- **예정**: S3 호환 저장소(AWS SDK v3 + MinIO, 캐릭터 이미지)
 
 ## 프로젝트 구조
 
@@ -162,6 +162,8 @@ real-life/
 │   │   ├── progress/      # 레벨, 경험치, 칭호, 연속 일수, 뽑기권
 │   │   ├── stats/         # 스탯 합계
 │   │   ├── job-change/    # 직업 변경
+│   │   ├── ai/            # AI 인터페이스와 Gemini 구현
+│   │   ├── ai-queue/      # AI 작업 큐와 워커
 │   │   ├── database/      # Drizzle 스키마
 │   │   └── common/        # 공통 필터
 │   └── drizzle/           # 마이그레이션
