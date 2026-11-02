@@ -63,6 +63,9 @@ export const QUEST_WEEKDAY_LABELS: Record<QuestWeekday, string> = {
   sun: '일',
 };
 
+/** 등록 제목은 1자 이상 이 값 이하. */
+export const QUEST_TITLE_MAX = 50;
+
 /** 카테고리별 제목 템플릿. 사용자는 목록을 CRUD하지 않는다. */
 export const QUEST_TITLE_TEMPLATES: Record<QuestCategory, readonly string[]> = {
   exercise: ['스트레칭 10분', '걷기 30분'],
