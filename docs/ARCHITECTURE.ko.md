@@ -47,7 +47,7 @@ ai/                             몬스터, 전투 기록, 난이도 추천, 계�
   ai.ts                         인터페이스. 골드와 경험치는 정하지 않는다
   gemini-ai.ts                  Gemini 호출. 기본 모델 gemini-3.5-flash-lite
 ai-queue/                       뒤에서 만드는 몬스터 작업만
-  ai-queue.ts                   넣기, 꺼내기, 완료, 실패
+  ai-queue.ts                   넣기, 퀘스트별 조회, 꺼내기, 완료, 실패
   postgres-ai-queue.ts          Postgres 큐. 분당 12회, 재시도, FOR UPDATE SKIP LOCKED
   ai-queue.worker.ts            몬스터 작업을 하나 집어 AI 인터페이스를 부른다
 database/schema/                Drizzle 테이블 (테이블마다 파일 하나)
@@ -60,6 +60,7 @@ common/filters/                 예외를 HTTP 응답으로 바꾸는 필터
 quest-completion.ts   보상표 금액, 직업·연속 배율, 최종 금액, 레벨업
 quest-penalty.ts      패널티 금액, 골드·경험치 하한
 constants/            보상표, 패널티표, 크리티컬 확률, 직업과 그 밖의 상수
+  monsters.ts         몬스터 8종, 그림 키, 목록 상태
 types/                서버와 웹이 주고받는 응답 타입
 ```
 
@@ -88,6 +89,19 @@ i18n/          한국어와 영어 문구
 - 퀘스트 완료는 정산을 호출한 다음 지갑에 골드를 넣는다.
 - 정산은 지갑에서 골드를 깎는다.
 - 직업 변경은 지갑에 골드를 넣지 않는다. 레벨과 경험치만 1과 0으로 되돌리고, 마지막 변경 시각부터 7×24시간이 지나기 전에는 다시 바꾸지 못한다.
+
+## 몬스터 작업 흐름
+
+퀘스트를 등록하면 그 퀘스트의 몬스터 작업을 하나 넣고, 응답은 작업을 기다리지 않는다. 퀘스트 id는 작업 열에 저장되고 유일해서, 퀘스트당 작업은 하나다. 페이로드는 제목과 `shared/src/constants/monsters.ts`의 8종이다. 넣기에 실패해도 퀘스트 등록은 유지된다.
+
+워커가 작업을 하나 집어 AI 인터페이스를 부른다. 모델이 종류를 고르고 이름과 설명을 쓴다. 골드와 경험치는 정하지 않는다.
+
+퀘스트 목록은 `findMonsters`로 그 행의 큐 `status`와 `result`를 읽는다. 목록은 이것을 `monsterStatus`와 `monster`로 바꾼다.
+
+- 작업이 없으면 둘 다 null이다.
+- `pending` 또는 `running`이면 `generating`이고, `monster`는 null이다.
+- `failed`이거나, `succeeded`인데 결과가 알려진 종류와 이름·설명이 아니면 `failed`이고 `monster`는 null이다. 퀘스트 제목은 등록한 그대로다.
+- 결과가 맞는 `succeeded`이면 `ready`다. `monster.kind`는 slime, bat, goblin, wolf, orc, skeleton, golem, dragon 중 하나다. `imageKey`는 그 종류와 같다. `name`과 `description`은 결과에서 온다.
 
 ## 퀘스트 완료 흐름
 

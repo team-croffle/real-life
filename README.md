@@ -15,7 +15,8 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **Levels and titles** — XP raises your level, and every level-up gives a gacha ticket. Every tenth level gives a title
 - **Stats** — stamina, intellect and sense grow with the categories of the quests you complete, shown as a radar chart
 - **Jobs** — student, office worker or freelancer, each earning more in its own categories. More jobs will come
-- **AI monsters and bosses (planned)** — AI turns a to-do into a monster, writes a battle log from your completion note, and suggests a difficulty. A big goal such as an exam or a race becomes a boss, and AI suggests a plan up to the deadline. Each planned quest you complete wears down the boss's HP, and the boss is judged on the deadline. Gold and XP are set by the rules, not by AI
+- **AI monsters** — registering a quest turns the to-do into one monster in the background. The kind is one of eight, the picture key matches the kind, and AI writes the name and the description. The title stays as entered while that runs, and if it fails. Gold and XP are set by the rules, not by AI
+- **AI bosses (planned)** — AI writes a battle log from a completion note and can suggest a difficulty. A big goal such as an exam or a race becomes a boss, and AI suggests a plan up to the deadline. Each planned quest you complete wears down the boss's HP, and the boss is judged on the deadline
 - **Shop and character (planned)** — buy real-life rewards with gold, and dress up a cat character with accessories from the gacha
 - **Notifications (planned)** — due soon, a streak about to break, level-ups, friend and raid news, each one switchable
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
@@ -40,7 +41,7 @@ The job can be changed once every 7 days. Changing it resets the level and XP to
 
 ## Quests
 
-A quest is registered with a kind (normal or main), a category, a title, a difficulty and a schedule.
+A quest is registered with a kind (normal or main), a category, a title, a difficulty and a schedule. The title is 1 to 50 characters.
 
 - **Categories** are exercise, daily life, study, work, creative and mind. Each category has two title templates, which can be edited after picking
 - **Difficulty** is easy, normal or hard
@@ -52,6 +53,10 @@ The schedule is one of two.
 - **Deadline** — completed once by the due date. From the day after the due date it can no longer be completed; there is no grace period. Each day you work on it before then is recorded with **check today** — once a day, only on that day. Check-ins do not count toward the streak
 
 A quest can be given up. Giving up deletes it with no reward. A deadline quest that has already been completed cannot be given up.
+
+Registering a quest enqueues one monster and returns immediately, with the title that was sent. The kind is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon, and the picture key is that kind. AI picks the kind and writes the name and the description.
+
+The list reports where that work stands. While the task is waiting or running, the status is generating and there is no monster. When it succeeds, the status is ready and the monster has the kind, picture key, name and description. When it fails, or the result is not a valid monster, the status is failed and there is no monster. The title stays as registered. A quest with no task has no status and no monster.
 
 ## Rewards
 
