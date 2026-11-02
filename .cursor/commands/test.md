@@ -11,6 +11,7 @@ Run the manual test sheet for the current branch, after review fixes. Report res
 
 - Use the scripts in `.ai/scripts/` for repeated steps. If a repeated step has no script yet, write it there first and tell the user. Never commit them.
 - Run the steps in order. Run each step once; do not retry a failed step. If a step fails, keep running the steps that do not depend on it and mark the ones that do as skipped.
+- For a step that waits, check once right after the expected time in the sheet. Do not poll in between.
 - If the environment itself fails (the server does not start, the DB cannot be reached), stop and ask the user.
 - For each failure, name the likely cause in one or two lines, citing the file and line. Use only the response, the server log, and the one file the error points to. Do not search further.
 

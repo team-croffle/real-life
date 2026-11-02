@@ -6,7 +6,7 @@ Ask the user to confirm the branch was merged if this conversation does not alre
 
 ## 2. Update
 
-1. **Roadmap**: mark the branch's line `[x]` in its version file under `.ai/roadmap/`. If every line of that version is done, set the version status to `완료` in `.ai/roadmap/README.md`. Tell the user which line of the public `ROADMAP.md` should be checked and whether its status should change; do not edit the public file yourself.
+1. **Roadmap**: mark the branch's line `[x]` in its version file under `.ai/roadmap/`. If every line of that version is done, set the version status to `완료` in `.ai/roadmap/README.md`. The public `ROADMAP.md` is updated by `/docs` before the merge. Only check that its line for this branch is `[x]` and its status matches; if not, tell the user. Do not edit the public file yourself.
 2. **History**: if the branch changed design or structure (tables, APIs, flows, a spec rule), add one line to `.ai/history/summary.md` in English: `**date · branch.** what changed. why.` Point to a decision file if one exists. Screen copy, layout and review talk are not recorded. If nothing qualifies, add nothing.
 3. **Known issues**:
    - Issues this branch closed: remove them from `.ai/known-issues/open.md` and add a `### <branch> (<date>)` section at the top of `.ai/known-issues/closed.md` saying what was closed and how.
@@ -17,3 +17,7 @@ Ask the user to confirm the branch was merged if this conversation does not alre
 ## 3. Report
 
 List each file changed and the lines added or moved, in short items.
+
+## 4. Principles
+
+- Say something is missing or wrong only if you read it in this run. If you did not read it, say you did not check it instead of guessing.
