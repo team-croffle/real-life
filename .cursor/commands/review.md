@@ -30,10 +30,8 @@ Review the current branch once its work is done. Report problems only; do not fi
 
 - Behavior that differs from the spec, something in the spec that is missing, or something added that the spec does not have.
 
-### Docs and dependencies
+### Dependencies
 
-- Behavior changed but `README.md` and `README.ko.md` were not both updated.
-- An endpoint added or changed but the `server/README.md` API table was not.
 - A package added, removed or replaced without an entry in `.ai/decisions/deps.md`; a runtime package in `devDependencies` or a dev tool in `dependencies`.
 
 ### Names
