@@ -1,5 +1,16 @@
-import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
+import { quests } from './quests';
 import { users } from './users';
 
 export const AI_TASK_KINDS = ['monster'] as const;
@@ -19,6 +30,10 @@ export const aiTasks = pgTable(
     userId: uuid()
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    /** 몬스터 작업은 퀘스트당 하나. 페이로드에는 넣지 않는다. */
+    questId: uuid()
+      .notNull()
+      .references(() => quests.id, { onDelete: 'cascade' }),
     kind: aiTaskKindEnum().notNull(),
     payload: jsonb().notNull(),
     result: jsonb(),
@@ -34,6 +49,7 @@ export const aiTasks = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    unique('ai_tasks_quest_id_unique').on(table.questId),
     index('ai_tasks_status_run_at_idx').on(table.status, table.runAt),
     index('ai_tasks_user_id_idx').on(table.userId),
   ],

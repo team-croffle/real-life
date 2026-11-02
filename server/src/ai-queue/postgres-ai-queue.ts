@@ -27,7 +27,11 @@ export class PostgresAiQueue implements AiQueue {
     private readonly config: ConfigService,
   ) {}
 
-  async enqueue(input: { userId: string; payload: MonsterTaskPayload }): Promise<{ id: string }> {
+  async enqueue(input: {
+    userId: string;
+    questId: string;
+    payload: MonsterTaskPayload;
+  }): Promise<{ id: string }> {
     const payload = monsterPayload(input.payload);
     if (!payload) {
       throw new Error('monster payload is invalid');
@@ -35,7 +39,12 @@ export class PostgresAiQueue implements AiQueue {
 
     const [aiTaskRow] = await this.db
       .insert(aiTasks)
-      .values({ userId: input.userId, kind: 'monster', payload })
+      .values({
+        userId: input.userId,
+        questId: input.questId,
+        kind: 'monster',
+        payload,
+      })
       .returning({ id: aiTasks.id });
     if (!aiTaskRow) {
       throw new Error('ai task was not inserted');

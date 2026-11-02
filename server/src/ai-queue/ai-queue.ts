@@ -21,7 +21,10 @@ export type ClaimedAiTask = {
 };
 
 export interface AiQueue {
-  enqueue(input: { userId: string; payload: MonsterTaskPayload }): Promise<{ id: string }>;
+  /** questId는 열에만 저장한다. payload에는 넣지 않는다. */
+  enqueue(input: { userId: string; questId: string; payload: MonsterTaskPayload }): Promise<{
+    id: string;
+  }>;
   dequeue(): Promise<ClaimedAiTask | null>;
   complete(id: string, attempts: number, result: MonsterDescription): Promise<void>;
   fail(id: string, attempts: number, reason: string, rateLimited: boolean): Promise<void>;
