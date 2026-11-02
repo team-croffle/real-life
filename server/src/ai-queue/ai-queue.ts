@@ -1,4 +1,5 @@
 import type { MonsterDescription } from '../ai/ai';
+import type { AiTaskStatus } from '../database/schema/ai-tasks';
 
 export const AI_QUEUE = Symbol('AI_QUEUE');
 
@@ -10,6 +11,13 @@ export const AI_STALE_RUNNING_MS_DEFAULT = 60_000;
 export type MonsterTaskPayload = {
   title: string;
   kinds: string[];
+};
+
+/** 목록이 읽는 큐 행. 상태 변환은 호출부가 한다. */
+export type MonsterTaskState = {
+  questId: string;
+  status: AiTaskStatus;
+  result: unknown;
 };
 
 export type ClaimedAiTask = {
@@ -25,6 +33,8 @@ export interface AiQueue {
   enqueue(input: { userId: string; questId: string; payload: MonsterTaskPayload }): Promise<{
     id: string;
   }>;
+  /** 작업이 없는 퀘스트는 빠진다. */
+  findMonsters(questIds: string[]): Promise<MonsterTaskState[]>;
   dequeue(): Promise<ClaimedAiTask | null>;
   complete(id: string, attempts: number, result: MonsterDescription): Promise<void>;
   fail(id: string, attempts: number, reason: string, rateLimited: boolean): Promise<void>;

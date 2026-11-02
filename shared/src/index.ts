@@ -2,6 +2,7 @@ export * from './constants/api';
 export * from './constants/auth';
 export * from './constants/job-change';
 export * from './constants/jobs';
+export * from './constants/monsters';
 export * from './constants/quests';
 export * from './constants/quest-penalty';
 export * from './constants/quest-crit';
