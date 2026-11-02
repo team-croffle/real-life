@@ -1,3 +1,4 @@
+import type { MonsterKind, MonsterStatus } from '../constants/monsters';
 import type {
   QuestCategory,
   QuestDifficulty,
@@ -45,6 +46,13 @@ export interface DeadlineQuest extends QuestFields {
 
 export type Quest = RoutineQuest | DeadlineQuest;
 
+export interface QuestMonster {
+  kind: MonsterKind;
+  imageKey: string;
+  name: string;
+  description: string;
+}
+
 /** GET /api/quests. 골드·경험치는 수행 내용 없이 오늘 완료한다고 본 지급액이다. */
 export interface QuestListItem {
   id: string;
@@ -79,6 +87,10 @@ export interface QuestListItem {
   /** 오늘 완료할 수 없는 마감은 null. 루틴은 일일 금액 */
   expectedGold: number | null;
   expectedXp: number | null;
+  /** 작업을 넣지 않은 퀘스트는 null */
+  monsterStatus: MonsterStatus | null;
+  /** ready일 때만 값이 있다 */
+  monster: QuestMonster | null;
 }
 
 interface CreateQuestFields {

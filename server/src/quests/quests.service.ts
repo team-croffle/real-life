@@ -1,18 +1,23 @@
 import type {
   JobClass,
+  MonsterStatus,
   Quest,
   QuestDifficulty,
   QuestListItem,
+  QuestMonster,
   QuestRoutineRestResult,
   QuestWeekday,
 } from '@nest-vue/shared';
 import {
+  MONSTER_IMAGE_KEYS,
+  MONSTER_KINDS,
   QUEST_DEADLINE_DAILY_REMAINING_DAYS,
   QUEST_REWARDS,
   QUEST_WEEKDAYS,
   comboRewardMultiplier,
   completionTableAmount,
   grantAmount,
+  isMonsterKind,
   jobRewardMultiplier,
 } from '@nest-vue/shared';
 import {
@@ -22,10 +27,12 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
+import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { questCompletions } from '../database/schema/quest-completions';
@@ -56,8 +63,11 @@ const UNSETTLED_PROGRESS_DATE = '0001-01-01';
 
 @Injectable()
 export class QuestsService {
+  private readonly logger = new Logger(QuestsService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    @Inject(AI_QUEUE) private readonly queue: AiQueue,
     private readonly questPenaltyService: QuestPenaltyService,
   ) {}
 
@@ -100,7 +110,9 @@ export class QuestsService {
         return inserted;
       });
 
-      return toQuest(requireInserted(questRow), QUEST_REWARDS[dto.difficulty].daily);
+      const inserted = requireInserted(questRow);
+      await this.enqueueMonster(userId, inserted.id, title);
+      return toQuest(inserted, QUEST_REWARDS[dto.difficulty].daily);
     }
 
     if (dto.weekdays !== undefined || dto.biweekly !== undefined) {
@@ -137,7 +149,25 @@ export class QuestsService {
       })
       .returning();
 
-    return toQuest(requireInserted(questRow), reward);
+    const inserted = requireInserted(questRow);
+    await this.enqueueMonster(userId, inserted.id, title);
+    return toQuest(inserted, reward);
+  }
+
+  /** 큐에 넣지 못해도 등록 응답은 그대로 둔다. */
+  private async enqueueMonster(userId: string, questId: string, title: string): Promise<void> {
+    try {
+      await this.queue.enqueue({
+        userId,
+        questId,
+        payload: { title, kinds: [...MONSTER_KINDS] },
+      });
+    } catch (error) {
+      this.logger.error(
+        `monster enqueue failed for quest ${questId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   async list(userId: string): Promise<QuestListItem[]> {
@@ -153,7 +183,7 @@ export class QuestsService {
     }
 
     const questIds = questRows.map((questRow) => questRow.id);
-    const [userRows, completionRows, markRows, progressRows] = await Promise.all([
+    const [userRows, completionRows, markRows, progressRows, monsterTasks] = await Promise.all([
       this.db.select({ jobClass: users.jobClass }).from(users).where(eq(users.id, userId)).limit(1),
       this.db
         .select({
@@ -181,6 +211,7 @@ export class QuestsService {
         .from(userProgress)
         .where(eq(userProgress.userId, userId))
         .limit(1),
+      this.queue.findMonsters(questIds),
     ]);
 
     const jobClass = userRows[0]?.jobClass;
@@ -192,6 +223,7 @@ export class QuestsService {
       completionRows.map((row) => [row.questId, { completedToday: row.completedToday === true }]),
     );
     const markByQuest = new Map(markRows.map((row) => [row.questId, row]));
+    const monsterByQuest = new Map(monsterTasks.map((task) => [task.questId, task]));
     const progressRow = progressRows[0];
     const countedToday = (progressRow?.comboCountedOn ?? '') >= today;
     const streak = (progressRow?.comboDayCount ?? 0) + (countedToday ? 0 : 1);
@@ -205,6 +237,7 @@ export class QuestsService {
         comboMultiplier,
         completionByQuest.get(questRow.id),
         markByQuest.get(questRow.id),
+        monsterByQuest.get(questRow.id),
       ),
     );
   }
@@ -322,7 +355,9 @@ function toQuestListItem(
   comboMultiplier: number,
   completion: { completedToday: boolean } | undefined,
   mark: { doneOn: string[] | null; markedDayCount: number } | undefined,
+  monsterTask: MonsterTaskState | undefined,
 ): QuestListItem {
+  const monsterFields = monsterForList(monsterTask);
   const createdOn = seoulCalendarDate(questRow.createdAt);
   const multiplier = jobRewardMultiplier(jobClass, questRow.category);
   const completed = completion !== undefined;
@@ -356,6 +391,7 @@ function toQuestListItem(
       elapsedDays: null,
       expectedGold: payout.gold,
       expectedXp: payout.xp,
+      ...monsterFields,
     };
   }
 
@@ -402,6 +438,52 @@ function toQuestListItem(
     elapsedDays: inPeriod ? (daySpan <= 0 ? 1 : daySpan + 1) : null,
     expectedGold: payout?.gold ?? null,
     expectedXp: payout?.xp ?? null,
+    ...monsterFields,
+  };
+}
+
+function monsterForList(task: MonsterTaskState | undefined): {
+  monsterStatus: MonsterStatus | null;
+  monster: QuestMonster | null;
+} {
+  if (!task || task.status === 'pending' || task.status === 'running') {
+    return {
+      monsterStatus: task ? 'generating' : null,
+      monster: null,
+    };
+  }
+  if (task.status === 'failed') {
+    return { monsterStatus: 'failed', monster: null };
+  }
+
+  const monster = monsterFromResult(task.result);
+  if (!monster) {
+    return { monsterStatus: 'failed', monster: null };
+  }
+  return { monsterStatus: 'ready', monster };
+}
+
+function monsterFromResult(result: unknown): QuestMonster | null {
+  if (typeof result !== 'object' || result === null || Array.isArray(result)) {
+    return null;
+  }
+  const record = result as Record<string, unknown>;
+  if (typeof record.kind !== 'string' || !isMonsterKind(record.kind)) {
+    return null;
+  }
+  if (typeof record.name !== 'string' || typeof record.description !== 'string') {
+    return null;
+  }
+  const name = record.name.trim();
+  const description = record.description.trim();
+  if (!name || !description) {
+    return null;
+  }
+  return {
+    kind: record.kind,
+    imageKey: MONSTER_IMAGE_KEYS[record.kind],
+    name,
+    description,
   };
 }
 

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, asc, eq, gt, gte, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
 
 import type { MonsterDescription } from '../ai/ai';
 import { DRIZZLE } from '../database/database.constants';
@@ -12,6 +12,7 @@ import {
   type AiQueue,
   type ClaimedAiTask,
   type MonsterTaskPayload,
+  type MonsterTaskState,
 } from './ai-queue';
 
 /** 집기는 최대 3번. 1번 실패 뒤 15초, 2번 실패 뒤 30초, 3번 실패면 끝이다. 한도를 넘기면 60초 뒤다. */
@@ -50,6 +51,21 @@ export class PostgresAiQueue implements AiQueue {
       throw new Error('ai task was not inserted');
     }
     return { id: aiTaskRow.id };
+  }
+
+  async findMonsters(questIds: string[]): Promise<MonsterTaskState[]> {
+    if (questIds.length === 0) {
+      return [];
+    }
+
+    return this.db
+      .select({
+        questId: aiTasks.questId,
+        status: aiTasks.status,
+        result: aiTasks.result,
+      })
+      .from(aiTasks)
+      .where(and(eq(aiTasks.kind, 'monster'), inArray(aiTasks.questId, questIds)));
   }
 
   async dequeue(): Promise<ClaimedAiTask | null> {
