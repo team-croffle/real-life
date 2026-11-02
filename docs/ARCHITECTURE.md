@@ -49,7 +49,7 @@ ai/                             monster, battle log, difficulty recommendation, 
   ai.ts                         interface. It does not decide gold or XP
   gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite
 ai-queue/                       background monster tasks only
-  ai-queue.ts                   enqueue, dequeue, complete, fail
+  ai-queue.ts                   enqueue, find by quest, dequeue, complete, fail
   postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
   ai-queue.worker.ts            claims one monster task and calls the AI interface
 database/schema/                Drizzle tables (one file per table)
@@ -62,6 +62,7 @@ common/filters/                 filter that turns exceptions into HTTP responses
 quest-completion.ts   reward table amounts, job and streak multipliers, final amount, level-up
 quest-penalty.ts      penalty amounts, gold and XP floors
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
+  monsters.ts         eight monster kinds, picture keys and list statuses
 types/                response types exchanged by the server and the web
 ```
 
@@ -90,6 +91,19 @@ Main call relations:
 - A quest completion calls settlement, then adds gold to the wallet.
 - Settlement deducts gold from the wallet.
 - A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
+
+## Monster task flow
+
+Registering a quest enqueues one monster task for that quest and returns without waiting. The quest id is stored on the task, and it is unique, so a quest has one task. The payload is the title and the eight kinds from `shared/src/constants/monsters.ts`. If the enqueue fails, the quest is still registered.
+
+The worker claims one task and calls the AI interface. The model picks a kind and writes a name and a description. It does not set gold or XP.
+
+The quest list reads those rows with `findMonsters`, which returns each task's queue `status` and `result`. The list maps them to `monsterStatus` and `monster`:
+
+- No task: both are null.
+- `pending` or `running`: `generating`, and `monster` is null.
+- `failed`, or `succeeded` whose result is not a known kind with a name and a description: `failed`, and `monster` is null. The quest title stays as registered.
+- `succeeded` with a valid result: `ready`. `monster.kind` is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon. `imageKey` is that kind. `name` and `description` come from the result.
 
 ## Quest completion flow
 
