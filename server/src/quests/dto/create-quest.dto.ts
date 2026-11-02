@@ -12,6 +12,7 @@ import {
   QUEST_KINDS,
   QUEST_PACES,
   QUEST_SCHEDULES,
+  QUEST_TITLE_MAX,
   QUEST_WEEKDAYS,
 } from '@nest-vue/shared';
 import {
@@ -23,6 +24,7 @@ import {
   IsIn,
   IsString,
   Matches,
+  MaxLength,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -36,6 +38,7 @@ export class CreateQuestDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(QUEST_TITLE_MAX)
   title!: string;
 
   @IsIn(QUEST_DIFFICULTIES)
