@@ -9,7 +9,7 @@ Review the current branch once its work is done. Report problems only; do not fi
    - `.ai/roadmap/README.md` → the current version file → the line for this branch, and the spec file that line points to (`.ai/specs/README.md` maps chapters to files)
    - The area of `.ai/known-issues/open.md` this branch touches. Do not report an issue that is already there
    - `.ai/decisions/<topic>.md` only if the branch touches that topic
-5. Run only the checks for what changed: server checks if `server/` or `shared/` changed, web checks if `web/` changed, docs checks always.
+5. Run only the checks for what changed: server checks if `server/` or `shared/` changed, web checks if `web/` changed.
 
 ## 2. Checks
 
