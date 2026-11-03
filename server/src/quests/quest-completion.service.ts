@@ -5,6 +5,7 @@ import {
   comboRewardMultiplier,
   completionTableAmount,
   grantAmount,
+  isMonsterKind,
   jobRewardMultiplier,
   xpRequiredToLevelUp,
 } from '@nest-vue/shared';
@@ -19,6 +20,9 @@ import {
 } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 
+import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
+import { AI, type Ai } from '../ai/ai';
+import { AiCallLimiter } from '../ai/ai-call-limiter';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { questCompletions } from '../database/schema/quest-completions';
@@ -45,6 +49,9 @@ import { QuestPenaltyService } from './quest-penalty.service';
 const QUEST_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const BATTLE_LOG_TIMEOUT_MS = 3_000;
+const UNKNOWN_MONSTER_NAME = '이름 모를 몬스터';
+
 @Injectable()
 export class QuestCompletionService {
   constructor(
@@ -52,6 +59,9 @@ export class QuestCompletionService {
     private readonly walletService: WalletService,
     private readonly questPenaltyService: QuestPenaltyService,
     private readonly questCritRoller: QuestCritRoller,
+    @Inject(AI) private readonly ai: Ai,
+    @Inject(AI_QUEUE) private readonly queue: AiQueue,
+    private readonly aiCallLimiter: AiCallLimiter,
   ) {}
 
   async complete(
@@ -62,6 +72,8 @@ export class QuestCompletionService {
     assertQuestId(questId);
     const note = normalizeNote(dto.note);
     await this.questPenaltyService.settle(userId);
+    await this.assertCompletableNow(userId, questId);
+    const battleLog = await this.battleLog(questId, note);
 
     return this.db.transaction(async (tx) => {
       const questRow = await lockQuest(tx, userId, questId);
@@ -110,6 +122,7 @@ export class QuestCompletionService {
           userId,
           completedOn: today,
           note,
+          battleLog,
           gold,
           xp,
         });
@@ -133,6 +146,7 @@ export class QuestCompletionService {
         ticketCount: progress.ticketCount,
         titlesGranted: progress.titlesGranted,
         statusEffect,
+        battleLog,
         applied: {
           baseGold: table.gold,
           baseXp: table.xp,
@@ -207,6 +221,29 @@ export class QuestCompletionService {
       };
     });
   }
+
+  private async assertCompletableNow(userId: string, questId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const questRow = await readQuest(tx, userId, questId);
+      const today = seoulCalendarDate();
+      const createdOn = seoulCalendarDate(questRow.createdAt);
+      await assertCompletable(tx, questRow, createdOn, today);
+    });
+  }
+
+  private async battleLog(questId: string, note: string | null): Promise<string> {
+    const tasks = await this.queue.findMonsters([questId]);
+    const name = monsterName(tasks.find((task) => task.questId === questId));
+    const preset = presetBattleLog(name);
+    if (note === null || !this.aiCallLimiter.tryAcquire()) {
+      return preset;
+    }
+    try {
+      return await this.ai.writeBattleLog({ monsterName: name, note }, BATTLE_LOG_TIMEOUT_MS);
+    } catch {
+      return preset;
+    }
+  }
 }
 
 function assertQuestId(questId: string): void {
@@ -221,6 +258,49 @@ function normalizeNote(note: string | undefined): string | null {
     throw new BadRequestException('note must be at most 500 characters');
   }
   return trimmed.length > 0 ? trimmed : null;
+}
+
+async function readQuest(tx: DrizzleTx, userId: string, questId: string): Promise<QuestRow> {
+  const [questRow] = await tx
+    .select()
+    .from(quests)
+    .where(and(eq(quests.id, questId), eq(quests.userId, userId)));
+
+  if (!questRow) {
+    throw new NotFoundException();
+  }
+  return questRow;
+}
+
+function presetBattleLog(name: string): string {
+  return `싸움이 끝났다. 상대는 ${name}.\n오늘 할 일은 여기서 마친다.`;
+}
+
+function monsterName(task: MonsterTaskState | undefined): string {
+  if (task?.status !== 'succeeded') {
+    return UNKNOWN_MONSTER_NAME;
+  }
+  const name = readyMonsterName(task.result);
+  return name ?? UNKNOWN_MONSTER_NAME;
+}
+
+function readyMonsterName(result: unknown): string | null {
+  if (typeof result !== 'object' || result === null || Array.isArray(result)) {
+    return null;
+  }
+  const record = result as Record<string, unknown>;
+  if (typeof record.kind !== 'string' || !isMonsterKind(record.kind)) {
+    return null;
+  }
+  if (typeof record.name !== 'string' || typeof record.description !== 'string') {
+    return null;
+  }
+  const name = record.name.trim();
+  const description = record.description.trim();
+  if (!name || !description) {
+    return null;
+  }
+  return name;
 }
 
 async function lockQuest(tx: DrizzleTx, userId: string, questId: string): Promise<QuestRow> {

@@ -1,6 +1,7 @@
 import { ApiError, GoogleGenAI } from '@google/genai';
 import {
   QUEST_DIFFICULTIES,
+  QUEST_NOTE_MAX_LENGTH,
   QUEST_PACES,
   QUEST_SCHEDULES,
   type QuestDifficulty,
@@ -71,9 +72,9 @@ export class GeminiAi implements Ai {
     };
   }
 
-  async writeBattleLog(input: BattleLogDraft): Promise<string> {
+  async writeBattleLog(input: BattleLogDraft, timeoutMs?: number): Promise<string> {
     const monsterName = oneLine(input.monsterName, TEXT_MAX);
-    const note = oneLine(input.note, TEXT_MAX);
+    const note = noteText(input.note);
     const body = await this.generate(
       [
         '몬스터와 수행 메모를 보고 전투 기록을 한국어로 2줄 또는 3줄 써라.',
@@ -96,6 +97,7 @@ export class GeminiAi implements Ai {
           },
         },
       },
+      timeoutMs,
     );
     if (!isRecord(body) || !Array.isArray(body.lines)) {
       throw new Error('battle log response shape is invalid');
@@ -183,13 +185,16 @@ export class GeminiAi implements Ai {
     return body.quests.map((quest) => suggestedQuest(quest, input.deadlineOn));
   }
 
-  private async generate(prompt: string, schema: Record<string, unknown>): Promise<unknown> {
+  private async generate(
+    prompt: string,
+    schema: Record<string, unknown>,
+    timeoutMs = this.callTimeoutMs(),
+  ): Promise<unknown> {
     const apiKey = this.config.get<string>('GEMINI_API_KEY')?.trim();
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
     const model = this.config.get<string>('GEMINI_MODEL')?.trim() || GEMINI_MODEL_DEFAULT;
-    const timeoutMs = this.callTimeoutMs();
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -249,6 +254,17 @@ function parseJson(text: string): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function noteText(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new Error('expected text');
+  }
+  const line = value.replace(/\s+/g, ' ').trim();
+  if (!line || line.length > QUEST_NOTE_MAX_LENGTH) {
+    throw new Error('text length is out of range');
+  }
+  return line;
 }
 
 function oneLine(value: unknown, max: number): string {
