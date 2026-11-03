@@ -1,5 +1,11 @@
 import type { DifficultyRecommendation } from '@nest-vue/shared';
-import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 import { AI, type Ai } from './ai';
 import { AiCallLimiter } from './ai-call-limiter';
@@ -15,12 +21,17 @@ export class DifficultyService {
   ) {}
 
   async recommend(dto: RecommendDifficultyDto): Promise<DifficultyRecommendation> {
+    const title = dto.title.trim();
+    if (title.length < 1) {
+      throw new BadRequestException('title must not be empty');
+    }
+
     if (!this.aiCallLimiter.tryAcquire()) {
       this.logger.warn('difficulty recommendation skipped: direct call limit');
       throw new ServiceUnavailableException();
     }
     try {
-      return await this.ai.recommendDifficulty({ title: dto.title });
+      return await this.ai.recommendDifficulty({ title });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.logger.warn(`difficulty recommendation failed: ${reason}`);
