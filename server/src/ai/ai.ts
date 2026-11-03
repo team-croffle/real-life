@@ -1,4 +1,11 @@
-import type { QuestDifficulty, QuestPace, QuestSchedule } from '@nest-vue/shared';
+import type {
+  DifficultyRecommendation,
+  QuestDifficulty,
+  QuestPace,
+  QuestSchedule,
+} from '@nest-vue/shared';
+
+export type { DifficultyRecommendation };
 
 export const AI = Symbol('AI');
 
@@ -29,11 +36,6 @@ export type MonsterDescription = {
 export type BattleLogDraft = {
   monsterName: string;
   note: string;
-};
-
-export type DifficultyRecommendation = {
-  difficulty: QuestDifficulty;
-  reason: string;
 };
 
 /** 보스 마감까지의 하위 퀘스트. 금액은 담지 않는다. */
