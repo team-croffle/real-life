@@ -15,6 +15,7 @@ export const questCompletions = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     completedOn: date({ mode: 'string' }).notNull(),
     note: text(),
+    battleLog: text(),
     gold: integer().notNull(),
     xp: integer().notNull(),
   },
