@@ -56,7 +56,7 @@ export type QuestPlanDraft = {
 
 export interface Ai {
   describeMonster(input: MonsterDraft): Promise<MonsterDescription>;
-  writeBattleLog(input: BattleLogDraft): Promise<string>;
+  writeBattleLog(input: BattleLogDraft, timeoutMs?: number): Promise<string>;
   recommendDifficulty(input: { title: string }): Promise<DifficultyRecommendation>;
   suggestPlan(input: QuestPlanDraft): Promise<SuggestedQuest[]>;
 }

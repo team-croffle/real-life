@@ -29,6 +29,8 @@ export interface QuestCompletionResult {
   ticketCount: number;
   titlesGranted: number[];
   statusEffect: StatusEffect | null;
+  /** 완료 화면에 보여줄 전투 기록. 2~3줄이거나 정해 둔 두 줄 */
+  battleLog: string;
   applied: QuestRewardApplied;
 }
 
