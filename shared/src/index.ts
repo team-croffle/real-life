@@ -11,6 +11,7 @@ export * from './constants/wallet';
 export * from './quest-completion';
 export * from './quest-penalty';
 export * from './types/api';
+export * from './types/difficulty-recommendation';
 export * from './types/quest-completion';
 export * from './types/quest-penalty';
 export * from './types/auth';
