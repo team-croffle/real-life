@@ -1,5 +1,5 @@
 import type { DifficultyRecommendation } from '@nest-vue/shared';
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@thallesp/nestjs-better-auth';
 
 import { DifficultyService } from './difficulty.service';
@@ -10,6 +10,7 @@ export class DifficultyController {
   constructor(private readonly difficultyService: DifficultyService) {}
 
   @Post('difficulty-recommendations')
+  @HttpCode(200)
   @UseGuards(AuthGuard)
   recommend(@Body() dto: RecommendDifficultyDto): Promise<DifficultyRecommendation> {
     return this.difficultyService.recommend(dto);
