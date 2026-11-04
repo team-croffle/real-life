@@ -16,6 +16,7 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
@@ -54,6 +55,8 @@ const UNKNOWN_MONSTER_NAME = '이름 모를 몬스터';
 
 @Injectable()
 export class QuestCompletionService {
+  private readonly logger = new Logger(QuestCompletionService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly walletService: WalletService,
@@ -235,12 +238,17 @@ export class QuestCompletionService {
     const tasks = await this.queue.findMonsters([questId]);
     const name = monsterName(tasks.find((task) => task.questId === questId));
     const preset = presetBattleLog(name);
-    if (note === null || !this.aiCallLimiter.tryAcquire()) {
+    if (note === null) {
+      return preset;
+    }
+    if (!this.aiCallLimiter.tryAcquire()) {
+      this.logger.warn(`battle log fallback: direct call limit questId=${questId}`);
       return preset;
     }
     try {
       return await this.ai.writeBattleLog({ monsterName: name, note }, BATTLE_LOG_TIMEOUT_MS);
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(`battle log fallback questId=${questId} ${describeBattleLogError(error)}`);
       return preset;
     }
   }
@@ -274,6 +282,14 @@ async function readQuest(tx: DrizzleTx, userId: string, questId: string): Promis
 
 function presetBattleLog(name: string): string {
   return `싸움이 끝났다. 상대는 ${name}.\n오늘 할 일은 여기서 마친다.`;
+}
+
+function describeBattleLogError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return `Error: ${String(error)}`;
+  }
+  const cause = error.cause instanceof Error ? ` cause=${error.cause.message}` : '';
+  return `${error.name}: ${error.message}${cause}`;
 }
 
 function monsterName(task: MonsterTaskState | undefined): string {
