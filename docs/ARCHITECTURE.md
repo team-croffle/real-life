@@ -25,6 +25,7 @@ A web app where you register to-dos as quests and receive gold and XP when you c
 - Email sign-in needs email verification.
 - In development, Vite's dev server proxies `/api` requests to the server.
 - The production Compose starts postgres and server; web is not in Compose.
+- The monster queue is a Postgres table, and the worker runs inside the server. The server calls the battle log and recommendations directly, without the queue.
 
 ## Code structure
 
@@ -114,10 +115,17 @@ The quest list reads those rows with `findMonsters`, which returns each task's q
 
 <a href="img/quest_complete_flow.png"><img src="img/quest_complete_flow.png" alt="Quest completion flow" width="500"></a>
 
+### Battle log
+
+<a href="img/battle_log_flow.png"><img src="img/battle_log_flow.png" alt="Battle log" width="500"></a>
+
+This diagram expands 'make the battle log' in the completion flow.
+
+- The quest is checked once without a lock. When there is a note, the direct-call limit is checked and then the battle log is written, with a 3 second cut. The quest is locked and checked again, and the log is saved on the completion row. The battle log is made outside the lock.
+
 ### Worth noting
 
 - Settlement is committed first. If the completion fails, settlement stays.
-- The quest is checked once without a lock. When there is a note, the direct-call limit is checked and then the battle log is written, with a 3 second cut. The quest is locked and checked again, and the log is saved on the completion row. The battle log is made outside the lock.
 - A routine gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
 - Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
 - For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be given up.
