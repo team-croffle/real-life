@@ -67,21 +67,22 @@ Gmail SMTP: Google 계정에서 2단계 인증을 켠 뒤 [앱 비밀번호](htt
 키가 없어도 서버는 뜬다. 호출할 때만 실패한다.
 
 몬스터 생성만 작업 큐에 넣는다. 큐는 분당 12회까지 꺼낸다.
-무료 한도 15 가운데 3은 전투 기록처럼 요청 안에서 바로 부르는 호출에 남긴다.
-그 3은 큐가 세지 않는다. 실패하면 최대 3번까지 다시 넣는다.
+무료 한도 15 가운데 3은 요청 안에서 바로 부르는 호출이고, 그 3은 AiCallLimiter가 센다.
+큐는 그 3을 세지 않는다. 실패하면 최대 3번까지 다시 넣는다.
 1번 실패 뒤 15초, 2번 실패 뒤 30초, 3번 실패면 끝이다.
 한도를 넘기면 60초 뒤에 다시 시도한다.
 한도는 상태와 상관없이 1분 안에 집은 시각으로 센다. 실패해도 그 시각은 남긴다.
 호출이 30초를 넘기면 일반 실패로 친다.
 집은 지 1분이 지나도 끝나지 않은 작업은 끊긴 것으로 본다. 시도가 남았으면 다시 넣고, 없으면 실패로 끝낸다.
 
-| 변수                  | 필수 | 기본값                  | 설명                                           |
-| --------------------- | ---- | ----------------------- | ---------------------------------------------- |
-| `GEMINI_API_KEY`      | X    | -                       | Google AI Studio 에서 발급. 없으면 호출만 실패 |
-| `GEMINI_MODEL`        | X    | `gemini-3.5-flash-lite` | 사용할 모델 ID                                 |
-| `AI_TASKS_PER_MINUTE` | X    | `12`                    | 큐가 1분에 꺼내는 최대 횟수                    |
-| `AI_CALL_TIMEOUT_MS`  | X    | `30000`                 | Gemini 호출 제한(밀리초). 넘으면 일반 실패     |
-| `AI_STALE_RUNNING_MS` | X    | `60000`                 | 이 시간 넘긴 running은 끊긴 것으로 본다        |
+| 변수                         | 필수 | 기본값                  | 설명                                           |
+| ---------------------------- | ---- | ----------------------- | ---------------------------------------------- |
+| `GEMINI_API_KEY`             | X    | -                       | Google AI Studio 에서 발급. 없으면 호출만 실패 |
+| `GEMINI_MODEL`               | X    | `gemini-3.5-flash-lite` | 사용할 모델 ID                                 |
+| `AI_TASKS_PER_MINUTE`        | X    | `12`                    | 큐가 1분에 꺼내는 최대 횟수                    |
+| `AI_DIRECT_CALLS_PER_MINUTE` | X    | `3`                     | 요청 안에서 바로 부르는 AI 호출의 분당 최대    |
+| `AI_CALL_TIMEOUT_MS`         | X    | `30000`                 | Gemini 호출 제한(밀리초). 넘으면 일반 실패     |
+| `AI_STALE_RUNNING_MS`        | X    | `60000`                 | 이 시간 넘긴 running은 끊긴 것으로 본다        |
 
 ### 예시
 
@@ -116,6 +117,7 @@ S3_PUBLIC_URL=http://localhost:9000/nest-vue
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.5-flash-lite
 AI_TASKS_PER_MINUTE=12
+AI_DIRECT_CALLS_PER_MINUTE=3
 AI_CALL_TIMEOUT_MS=30000
 AI_STALE_RUNNING_MS=60000
 ```
@@ -144,26 +146,27 @@ constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
 ## API
 
-| 메서드 | 경로                               | 설명                                                                                                                                                                            |
-| ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/account/register`            | 이메일 가입. 세션 없음. 인증 메일 발송                                                                                                                                          |
-| GET    | `/api/auth/*`                      | Better Auth 핸들러. 로그인·로그아웃·세션·메일 인증·Google ID 토큰                                                                                                               |
-| POST   | `/api/account/resend-verification` | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                                                                                                                             |
-| GET    | `/api/account/me`                  | 현재 유저 (세션 쿠키)                                                                                                                                                           |
-| POST   | `/api/account/onboarding`          | 세션 있는 계정의 닉네임·직업군 설정. 메일 인증 또는 Google 이후                                                                                                                 |
-| DELETE | `/api/account/me`                  | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                                                                                                                  |
-| POST   | `/api/quests`                      | 퀘스트 등록 (세션). 제목 1~50자. 루틴 또는 기한. 기한 `pace`는 `steady`(없으면 이것) 또는 `once`. `once`의 골드·XP는 일일 열. 응답은 몬스터 작업을 기다리지 않음                |
-| GET    | `/api/quests`                      | 내 퀘스트 목록 (세션). 오늘 수행, 완료 여부, 체크 횟수, `pace`, 예상 보상, 몬스터와 상태. `monsterStatus`는 `generating`·`ready`·`failed` 또는 null. `monster`는 `ready`일 때만 |
-| POST   | `/api/quests/:id/complete`         | 퀘스트 완료 (세션). 본문 `note` 선택. 정산을 먼저 한 뒤 보상 지급                                                                                                               |
-| POST   | `/api/quests/:id/day-marks`        | 꾸준히 기한의 오늘 체크 (세션). 하루 한 번. `once`는 400                                                                                                                        |
-| POST   | `/api/quests/:id/rest`             | 루틴 끄기 (세션). 다음 서울 날짜부터 쉼                                                                                                                                         |
-| POST   | `/api/quests/:id/resume`           | 루틴 켜기 (세션). 오늘부터 다시 예정                                                                                                                                            |
-| DELETE | `/api/quests/:id`                  | 퀘스트 포기 (세션). 완료한 기한 퀘스트는 409                                                                                                                                    |
-| POST   | `/api/quest-penalties/settle`      | 밀린 날 정산 (세션). 여러 번 불러도 결과가 같음                                                                                                                                 |
-| GET    | `/api/wallet`                      | 골드 잔액 (세션). 지갑이 없으면 0                                                                                                                                               |
-| GET    | `/api/wallet/entries`              | 골드 내역과 종류 `kind` (세션). 최신순. `page` 기본 1, `size` 기본 20, 상한 100                                                                                                 |
-| POST   | `/api/wallet/post-hoc-deductions`  | 사후 차감 (세션). 본문 `amount`. 외상 한도를 넘으면 400                                                                                                                         |
-| GET    | `/api/progress`                    | 레벨, 경험치, 칭호, 연속 일수, 뽑기권, 상태이상 (세션)                                                                                                                          |
-| GET    | `/api/stats`                       | 체력·지성·감성 합계 (세션)                                                                                                                                                      |
-| GET    | `/api/job-class`                   | 직업 변경 가능 여부와 다음 변경 시각 (세션)                                                                                                                                     |
-| POST   | `/api/job-class`                   | 직업 변경 (세션). 본문 `jobClass`. 7일에 한 번                                                                                                                                  |
+| 메서드 | 경로                                 | 설명                                                                                                                                                                            |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/account/register`              | 이메일 가입. 세션 없음. 인증 메일 발송                                                                                                                                          |
+| GET    | `/api/auth/*`                        | Better Auth 핸들러. 로그인·로그아웃·세션·메일 인증·Google ID 토큰                                                                                                               |
+| POST   | `/api/account/resend-verification`   | 미인증 계정에 메일 재발송. 존재 여부는 응답에 안 남                                                                                                                             |
+| GET    | `/api/account/me`                    | 현재 유저 (세션 쿠키)                                                                                                                                                           |
+| POST   | `/api/account/onboarding`            | 세션 있는 계정의 닉네임·직업군 설정. 메일 인증 또는 Google 이후                                                                                                                 |
+| DELETE | `/api/account/me`                    | 회원 탈퇴. 비밀번호 계정이면 password, Google만 있으면 idToken                                                                                                                  |
+| POST   | `/api/quests`                        | 퀘스트 등록 (세션). 제목 1~50자. 루틴 또는 기한. 기한 `pace`는 `steady`(없으면 이것) 또는 `once`. `once`의 골드·XP는 일일 열. 응답은 몬스터 작업을 기다리지 않음                |
+| GET    | `/api/quests`                        | 내 퀘스트 목록 (세션). 오늘 수행, 완료 여부, 체크 횟수, `pace`, 예상 보상, 몬스터와 상태. `monsterStatus`는 `generating`·`ready`·`failed` 또는 null. `monster`는 `ready`일 때만 |
+| POST   | `/api/quests/:id/complete`           | 퀘스트 완료 (세션). 본문 `note` 선택. 정산을 먼저 한 뒤 보상 지급. 응답에 `battleLog`                                                                                           |
+| POST   | `/api/quests/:id/day-marks`          | 꾸준히 기한의 오늘 체크 (세션). 하루 한 번. `once`는 400                                                                                                                        |
+| POST   | `/api/quests/:id/rest`               | 루틴 끄기 (세션). 다음 서울 날짜부터 쉼                                                                                                                                         |
+| POST   | `/api/quests/:id/resume`             | 루틴 켜기 (세션). 오늘부터 다시 예정                                                                                                                                            |
+| DELETE | `/api/quests/:id`                    | 퀘스트 포기 (세션). 완료한 기한 퀘스트는 409                                                                                                                                    |
+| POST   | `/api/quest-penalties/settle`        | 밀린 날 정산 (세션). 여러 번 불러도 결과가 같음                                                                                                                                 |
+| GET    | `/api/wallet`                        | 골드 잔액 (세션). 지갑이 없으면 0                                                                                                                                               |
+| GET    | `/api/wallet/entries`                | 골드 내역과 종류 `kind` (세션). 최신순. `page` 기본 1, `size` 기본 20, 상한 100                                                                                                 |
+| POST   | `/api/wallet/post-hoc-deductions`    | 사후 차감 (세션). 본문 `amount`. 외상 한도를 넘으면 400                                                                                                                         |
+| GET    | `/api/progress`                      | 레벨, 경험치, 칭호, 연속 일수, 뽑기권, 상태이상 (세션)                                                                                                                          |
+| GET    | `/api/stats`                         | 체력·지성·감성 합계 (세션)                                                                                                                                                      |
+| GET    | `/api/job-class`                     | 직업 변경 가능 여부와 다음 변경 시각 (세션)                                                                                                                                     |
+| POST   | `/api/job-class`                     | 직업 변경 (세션). 본문 `jobClass`. 7일에 한 번                                                                                                                                  |
+| POST   | `/api/ai/difficulty-recommendations` | 난이도 추천 (세션). 본문 `title`. 성공 200. 빈 제목 400. 세션 없음 401. 실패는 이유와 상관없이 503                                                                              |

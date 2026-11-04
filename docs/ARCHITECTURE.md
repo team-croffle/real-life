@@ -36,7 +36,7 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
 quests/                         every quest rule
   quests.service.ts             register, list, check today, routine pause/resume, give up
-  quest-completion.service.ts   completion: settle → compute reward → update wallet and progress
+  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet and progress
   quest-penalty.service.ts      settle missed days (missed routines, passed deadlines)
   quest-settlement.scheduler.ts settle everyone at 00:01 Seoul
   quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
@@ -47,7 +47,11 @@ stats/                          stat totals
 job-change/                     job change
 ai/                             monster, battle log, difficulty recommendation, quest plan. The current implementation is Gemini
   ai.ts                         interface. It does not decide gold or XP
-  gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite
+  ai-call-limiter.ts            counts direct calls only (battle log, recommendation). The queue worker is not counted. It lives in this server's memory, so each extra server adds another full limit
+  gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite. Gemini is given a deadline of at least 10 seconds. We cut a battle log at 3 seconds
+  difficulty.controller.ts      POST /api/ai/difficulty-recommendations
+  difficulty.service.ts         title in, difficulty and one line of reason out
+  dto/recommend-difficulty.dto.ts
 ai-queue/                       background monster tasks only
   ai-queue.ts                   enqueue, find by quest, dequeue, complete, fail
   postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
@@ -64,6 +68,7 @@ quest-penalty.ts      penalty amounts, gold and XP floors
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
   monsters.ts         eight monster kinds, picture keys and list statuses
 types/                response types exchanged by the server and the web
+  difficulty-recommendation.ts
 ```
 
 ### Web (`web/src/`)
@@ -112,6 +117,7 @@ The quest list reads those rows with `findMonsters`, which returns each task's q
 ### Worth noting
 
 - Settlement is committed first. If the completion fails, settlement stays.
+- The quest is checked once without a lock. When there is a note, the direct-call limit is checked and then the battle log is written, with a 3 second cut. The quest is locked and checked again, and the log is saved on the completion row. The battle log is made outside the lock.
 - A routine gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
 - Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
 - For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be given up.

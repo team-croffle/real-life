@@ -34,7 +34,7 @@ auth/                           가입, 로그인 (Better Auth), 이메일 인�
   job-class.guard.ts            직업이 없는 계정의 앱 API를 막는 전역 가드
 quests/                         퀘스트 규칙 전부
   quests.service.ts             등록, 목록, 오늘 체크, 루틴 끄기·켜기, 포기
-  quest-completion.service.ts   완료: 정산 → 보상 계산 → 지갑과 진행도 갱신
+  quest-completion.service.ts   완료: 정산 → 잠금 없이 확인 → 전투 기록 → 잠그고 다시 확인 → 지갑과 진행도 갱신
   quest-penalty.service.ts      놓친 날 정산 (놓친 루틴, 지난 기한)
   quest-settlement.scheduler.ts 서울 00:01에 모든 사용자 정산
   quest-crit.roller.ts          크리티컬 판정 (CRIT_FORCE)
@@ -45,7 +45,11 @@ stats/                          스탯 합계
 job-change/                     직업 변경
 ai/                             몬스터, 전투 기록, 난이도 추천, 계획 제안. 지금 구현은 Gemini
   ai.ts                         인터페이스. 골드와 경험치는 정하지 않는다
-  gemini-ai.ts                  Gemini 호출. 기본 모델 gemini-3.5-flash-lite
+  ai-call-limiter.ts            바로 부르는 호출(전투 기록, 추천)만 센다. 큐 워커는 세지 않는다. 서버 메모리에 있어서 서버가 여러 대면 대수만큼 늘어난다
+  gemini-ai.ts                  Gemini 호출. 기본 모델 gemini-3.5-flash-lite. Gemini에는 마감을 최소 10초로 보내고, 3초는 우리 쪽에서 끊는다
+  difficulty.controller.ts      POST /api/ai/difficulty-recommendations
+  difficulty.service.ts         제목만 받아 난이도와 이유 한 줄을 준다
+  dto/recommend-difficulty.dto.ts
 ai-queue/                       뒤에서 만드는 몬스터 작업만
   ai-queue.ts                   넣기, 퀘스트별 조회, 꺼내기, 완료, 실패
   postgres-ai-queue.ts          Postgres 큐. 분당 12회, 재시도, FOR UPDATE SKIP LOCKED
@@ -62,6 +66,7 @@ quest-penalty.ts      패널티 금액, 골드·경험치 하한
 constants/            보상표, 패널티표, 크리티컬 확률, 직업과 그 밖의 상수
   monsters.ts         몬스터 8종, 그림 키, 목록 상태
 types/                서버와 웹이 주고받는 응답 타입
+  difficulty-recommendation.ts
 ```
 
 ### 웹 (`web/src/`)
@@ -110,6 +115,7 @@ i18n/          한국어와 영어 문구
 ### 눈여겨볼 점
 
 - 정산이 먼저 커밋된다. 완료가 실패해도 정산은 남는다.
+- 잠금 없이 먼저 확인한다. 메모가 있으면 바로 부르는 한도를 확인한 뒤 전투 기록을 만든다. 제한은 3초다. 그다음 잠그고 다시 확인한다. 전투 기록은 잠금 밖에서 만들어 완료 행에 저장한다.
 - 루틴은 보상표의 일일 전액이다. 꾸준히 기한은 체크 횟수 비율이다. 당일 기한과 한 번에 기한은 비율 없이 보상표의 일일 전액이다.
 - 만든 날과 끝나는 날이 다른 꾸준히 기한만 `POST /api/quests/:id/day-marks`로 체크 횟수가 쌓인다. 한 번에 기한은 오늘 체크를 할 수 없다.
 - 꾸준히 기한은 날짜 차이가 1 이상이고 체크가 없으면 골드와 경험치가 0이다. 한 번에 기한은 체크와 상관없이 일일 전액이다. 완료 기록은 남는다. 그 기한 퀘스트는 포기할 수 없다.
