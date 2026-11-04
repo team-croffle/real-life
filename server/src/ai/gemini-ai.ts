@@ -26,6 +26,7 @@ import {
 
 const TEXT_MAX = 200;
 const PLAN_MAX = 40;
+const GEMINI_MIN_DEADLINE_MS = 10_000;
 
 @Injectable()
 export class GeminiAi implements Ai {
@@ -211,7 +212,10 @@ export class GeminiAi implements Ai {
           responseJsonSchema: schema,
           abortSignal: controller.signal,
           // SDK 재시도는 1회로 둔다. 다시 넣기는 큐가 한다.
-          httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
+          httpOptions: {
+            timeout: Math.max(GEMINI_MIN_DEADLINE_MS, this.callTimeoutMs()),
+            retryOptions: { attempts: 1 },
+          },
         },
       });
       if (!response.text) {
