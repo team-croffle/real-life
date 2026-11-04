@@ -16,7 +16,7 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **Stats** — stamina, intellect and sense grow with the categories of the quests you complete, shown as a radar chart
 - **Jobs** — student, office worker or freelancer, each earning more in its own categories. More jobs will come
 - **AI monsters** — registering a quest turns the to-do into one monster in the background. The kind is one of eight, the picture key matches the kind, and AI writes the name and the description. The title stays as entered while that runs, and if it fails. Gold and XP are set by the rules, not by AI
-- **AI bosses (planned)** — AI writes a battle log from a completion note and can suggest a difficulty. A big goal such as an exam or a race becomes a boss, and AI suggests a plan up to the deadline. Each planned quest you complete wears down the boss's HP, and the boss is judged on the deadline
+- **AI bosses (planned)** — a big goal such as an exam or a race becomes a boss, and AI suggests a plan up to the deadline. Each planned quest you complete wears down the boss's HP, and the boss is judged on the deadline
 - **Shop and character (planned)** — buy real-life rewards with gold, and dress up a cat character with accessories from the gacha
 - **Notifications (planned)** — due soon, a streak about to break, level-ups, friend and raid news, each one switchable
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
@@ -44,7 +44,7 @@ The job can be changed once every 7 days. Changing it resets the level and XP to
 A quest is registered with a kind (normal or main), a category, a title, a difficulty and a schedule. The title is 1 to 50 characters.
 
 - **Categories** are exercise, daily life, study, work, creative and mind. Each category has two title templates, which can be edited after picking
-- **Difficulty** is easy, normal or hard
+- **Difficulty** is easy, normal or hard. A recommendation looks at the title only and returns one of those, plus one line of reason. It does not set an amount
 - A **main quest** is for a big goal. For now it behaves like a normal quest; in v0.3 it becomes a boss
 
 The schedule is one of two.
@@ -82,6 +82,8 @@ Gold and XP are each rounded once, at the end.
 The register form shows the expected amount: the job multiplier is included, the note and critical hits are not. For a steady deadline quest it is the amount for checking in every day until the due date. For one done all at once it is the daily amount, the same shape as a routine: expected gold and XP.
 
 On completion the app shows the amount received, what raised it (job, streak, note, critical hit) and how much it was reduced by missed check-ins.
+
+The completion record stores a battle log. When there is a note, AI writes 2 or 3 lines within 3 seconds. When there is no note, or it takes longer than 3 seconds, or it fails, or the limit on calls made inside the request is full, the log is two fixed lines. With no monster the name is "이름 모를 몬스터".
 
 ## Critical hits
 
