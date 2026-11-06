@@ -16,7 +16,7 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **Stats** — stamina, intellect and sense grow with the categories of the quests you complete, shown as a radar chart
 - **Jobs** — student, office worker or freelancer, each earning more in its own categories. More jobs will come
 - **AI monsters** — registering a quest turns the to-do into one monster in the background. The kind is one of eight, the picture key matches the kind, and AI writes the name and the description. The title stays as entered while that runs, and if it fails. Gold and XP are set by the rules, not by AI
-- **AI bosses (planned)** — a big goal such as an exam or a race becomes a boss, and AI suggests a plan up to the deadline. Each planned quest you complete wears down the boss's HP, and the boss is judged on the deadline
+- **AI bosses** — a big goal becomes a boss. Confirming a goal, a due date and a category creates the subquests and the boss HP in one step. At most three bosses are in progress. If naming the boss fails, the title stays the goal
 - **Shop and character (planned)** — buy real-life rewards with gold, and dress up a cat character with accessories from the gacha
 - **Notifications (planned)** — due soon, a streak about to break, level-ups, friend and raid news, each one switchable
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
@@ -45,7 +45,7 @@ A quest is registered with a kind (normal or main), a category, a title, a diffi
 
 - **Categories** are exercise, daily life, study, work, creative and mind. Each category has two title templates, which can be edited after picking
 - **Difficulty** is easy, normal or hard. A recommendation looks at the title only and returns one of those, plus one line of reason. It does not set an amount
-- A **main quest** is for a big goal. For now it behaves like a normal quest; in v0.3 it becomes a boss
+- A **main quest** is a boss for a big goal. The user sends a goal, a due date and a category. Subquests are routines and deadline quests. A deadline subquest counts as one time. A routine counts the days it is scheduled from the confirm day through the boss due date, including both ends. Easy is 1, normal is 2 and hard is 3. Boss HP is the sum of times × that score. A deadline subquest cannot end after the boss. Confirming creates the boss and the subquests in one transaction, and stores that HP. The request does not send times or HP. If the write fails, nothing is created. At most three bosses are in progress, and another confirm is rejected. After confirm, one task picks a boss kind and writes a name and a description. The kinds are minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. If that fails, the title stays the goal. A boss is not in the quest list, is not completed or given up as a quest, and is not charged the deadline penalty. Its subquests are, and the list includes the boss title. `POST /api/quests` does not accept `kind: main` or `bossQuestId`. A routine under a boss cannot be paused, so its HP stays on the days counted at confirm
 
 The schedule is one of two.
 

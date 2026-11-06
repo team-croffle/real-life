@@ -37,6 +37,8 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
 quests/                         every quest rule
   quests.service.ts             register, list, check today, routine pause/resume, give up
+  bosses.controller.ts          POST /api/bosses, GET /api/bosses
+  boss-plan.service.ts          confirm a plan into a boss and its subquests, list bosses still in progress
   quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet and progress
   quest-penalty.service.ts      settle missed days (missed routines, passed deadlines)
   quest-settlement.scheduler.ts settle everyone at 00:01 Seoul
@@ -48,11 +50,14 @@ stats/                          stat totals
 job-change/                     job change
 ai/                             monster, battle log, difficulty recommendation, quest plan. The current implementation is Gemini
   ai.ts                         interface. It does not decide gold or XP
-  ai-call-limiter.ts            counts direct calls only (battle log, recommendation). The queue worker is not counted. It lives in this server's memory, so each extra server adds another full limit
+  ai-call-limiter.ts            counts direct calls only (battle log, recommendation, quest plan). The queue worker is not counted. It lives in this server's memory, so each extra server adds another full limit
   gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite. Gemini is given a deadline of at least 10 seconds. We cut a battle log at 3 seconds
   difficulty.controller.ts      POST /api/ai/difficulty-recommendations
   difficulty.service.ts         title in, difficulty and one line of reason out
   dto/recommend-difficulty.dto.ts
+  quest-plan.controller.ts      POST /api/ai/quest-plans
+  quest-plan.service.ts         goal and deadline in, subquests with server-counted times and HP out
+  dto/suggest-quest-plan.dto.ts
 ai-queue/                       background monster tasks only
   ai-queue.ts                   enqueue, find by quest, dequeue, complete, fail
   postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
@@ -68,6 +73,8 @@ quest-completion.ts   reward table amounts, job and streak multipliers, final am
 quest-penalty.ts      penalty amounts, gold and XP floors
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
   monsters.ts         eight monster kinds, picture keys and list statuses
+  bosses.ts           eight boss kinds, picture keys, active cap of 3
+boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
 types/                response types exchanged by the server and the web
   difficulty-recommendation.ts
 ```
@@ -110,6 +117,8 @@ The quest list reads those rows with `findMonsters`, which returns each task's q
 - `pending` or `running`: `generating`, and `monster` is null.
 - `failed`, or `succeeded` whose result is not a known kind with a name and a description: `failed`, and `monster` is null. The quest title stays as registered.
 - `succeeded` with a valid result: `ready`. `monster.kind` is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon. `imageKey` is that kind. `name` and `description` come from the result.
+
+Confirming a boss enqueues one task for the boss quest after the transaction commits. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each subquest gets its own task with the monster kinds. If an enqueue fails, the boss and the subquests stay. `GET /api/bosses` maps that task the same way, checking boss kinds. A failed or invalid result leaves the title as the goal.
 
 ## Quest completion flow
 
