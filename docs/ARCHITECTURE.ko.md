@@ -35,6 +35,8 @@ auth/                           가입, 로그인 (Better Auth), 이메일 인�
   job-class.guard.ts            직업이 없는 계정의 앱 API를 막는 전역 가드
 quests/                         퀘스트 규칙 전부
   quests.service.ts             등록, 목록, 오늘 체크, 루틴 끄기·켜기, 포기
+  bosses.controller.ts          POST /api/bosses, GET /api/bosses
+  boss-plan.service.ts          계획을 보스와 하위 퀘스트로 확정하고, 판정 전 보스를 조회한다
   quest-completion.service.ts   완료: 정산 → 잠금 없이 확인 → 전투 기록 → 잠그고 다시 확인 → 지갑과 진행도 갱신
   quest-penalty.service.ts      놓친 날 정산 (놓친 루틴, 지난 기한)
   quest-settlement.scheduler.ts 서울 00:01에 모든 사용자 정산
@@ -46,11 +48,14 @@ stats/                          스탯 합계
 job-change/                     직업 변경
 ai/                             몬스터, 전투 기록, 난이도 추천, 계획 제안. 지금 구현은 Gemini
   ai.ts                         인터페이스. 골드와 경험치는 정하지 않는다
-  ai-call-limiter.ts            바로 부르는 호출(전투 기록, 추천)만 센다. 큐 워커는 세지 않는다. 서버 메모리에 있어서 서버가 여러 대면 대수만큼 늘어난다
+  ai-call-limiter.ts            바로 부르는 호출(전투 기록, 추천, 계획 제안)만 센다. 큐 워커는 세지 않는다. 서버 메모리에 있어서 서버가 여러 대면 대수만큼 늘어난다
   gemini-ai.ts                  Gemini 호출. 기본 모델 gemini-3.5-flash-lite. Gemini에는 마감을 최소 10초로 보내고, 3초는 우리 쪽에서 끊는다
   difficulty.controller.ts      POST /api/ai/difficulty-recommendations
   difficulty.service.ts         제목만 받아 난이도와 이유 한 줄을 준다
   dto/recommend-difficulty.dto.ts
+  quest-plan.controller.ts      POST /api/ai/quest-plans
+  quest-plan.service.ts         목표와 마감을 받아, 서버가 센 횟수와 체력이 붙은 하위 퀘스트를 준다
+  dto/suggest-quest-plan.dto.ts
 ai-queue/                       뒤에서 만드는 몬스터 작업만
   ai-queue.ts                   넣기, 퀘스트별 조회, 꺼내기, 완료, 실패
   postgres-ai-queue.ts          Postgres 큐. 분당 12회, 재시도, FOR UPDATE SKIP LOCKED
@@ -66,6 +71,8 @@ quest-completion.ts   보상표 금액, 직업·연속 배율, 최종 금액, �
 quest-penalty.ts      패널티 금액, 골드·경험치 하한
 constants/            보상표, 패널티표, 크리티컬 확률, 직업과 그 밖의 상수
   monsters.ts         몬스터 8종, 그림 키, 목록 상태
+  bosses.ts           보스 8종, 그림 키, 진행 상한 3
+boss-hp.ts            횟수와 난이도 점수로 하위 퀘스트 체력
 types/                서버와 웹이 주고받는 응답 타입
   difficulty-recommendation.ts
 ```
@@ -108,6 +115,8 @@ i18n/          한국어와 영어 문구
 - `pending` 또는 `running`이면 `generating`이고, `monster`는 null이다.
 - `failed`이거나, `succeeded`인데 결과가 알려진 종류와 이름·설명이 아니면 `failed`이고 `monster`는 null이다. 퀘스트 제목은 등록한 그대로다.
 - 결과가 맞는 `succeeded`이면 `ready`다. `monster.kind`는 slime, bat, goblin, wolf, orc, skeleton, golem, dragon 중 하나다. `imageKey`는 그 종류와 같다. `name`과 `description`은 결과에서 온다.
+
+보스를 확정하면 트랜잭션이 커밋된 뒤 보스 퀘스트의 작업을 하나 넣는다. 작업 종류는 `monster` 그대로다. 페이로드의 종류는 `shared/src/constants/bosses.ts`의 8종이다. minotaur, hydra, cerberus, kraken, chimera, vampire, giant, abyss_lord. 하위 퀘스트는 각자 몬스터 8종으로 작업을 넣는다. 넣기에 실패해도 보스와 하위 퀘스트는 남는다. `GET /api/bosses`는 그 작업을 같은 방식으로 읽고, 종류만 보스 8종으로 본다. 실패하거나 결과가 맞지 않으면 제목은 목표 문구 그대로다.
 
 ## 퀘스트 완료 흐름
 
