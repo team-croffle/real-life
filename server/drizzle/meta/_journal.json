@@ -113,6 +113,13 @@
       "when": 1793713647078,
       "tag": "0015_friendly_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793955613433,
+      "tag": "0016_brave_jack_flag",
+      "breakpoints": true
     }
   ]
 }

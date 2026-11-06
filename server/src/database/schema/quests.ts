@@ -8,6 +8,7 @@ import {
 } from '@nest-vue/shared';
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   boolean,
   check,
   date,
@@ -45,6 +46,8 @@ export const quests = pgTable(
     weekdays: questWeekdayEnum().array(),
     biweekly: boolean(),
     endsOn: date({ mode: 'string' }),
+    /** 하위 퀘스트만 보스를 가리킨다. 메인 퀘스트와 일반 퀘스트는 null */
+    bossQuestId: uuid().references((): AnyPgColumn => quests.id, { onDelete: 'cascade' }),
     restFrom: date({ mode: 'string' }),
     restUntil: date({ mode: 'string' }),
     createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
@@ -55,6 +58,14 @@ export const quests = pgTable(
   },
   (table) => [
     index('quests_user_id_idx').on(table.userId),
+    index('quests_boss_quest_id_idx').on(table.bossQuestId),
+    check(
+      'quests_boss_link',
+      sql`(
+        (${table.kind} = 'main' AND ${table.bossQuestId} IS NULL)
+        OR ${table.kind} = 'general'
+      )`,
+    ),
     check(
       'quests_schedule_xor',
       sql`(
