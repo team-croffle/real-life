@@ -144,17 +144,22 @@ export class GeminiAi implements Ai {
     if (!isSeoulDate(input.deadlineOn)) {
       throw new Error('deadline is not a calendar date');
     }
+    if (!isSeoulDate(input.today)) {
+      throw new Error('today is not a calendar date');
+    }
     const body = await this.generate(
       [
         '큰 목표를 마감일까지의 하위 퀘스트로 나눠라.',
+        '필요한 만큼만, 보통 3~7개.',
         '각 항목의 schedule은 routine 또는 deadline이다.',
         'category는 exercise, life, study, work, creation, mind 중 하나다.',
-        'deadline이면 pace는 steady 또는 once이고, endsOn은 마감일 이하의 YYYY-MM-DD다. weekdays와 biweekly는 null이다.',
+        'deadline이면 pace는 steady 또는 once이고, endsOn은 오늘 이상 마감일 이하의 YYYY-MM-DD다. weekdays와 biweekly는 null이다.',
         'routine이면 pace와 endsOn은 null이다. weekdays는 mon, tue, wed, thu, fri, sat, sun 중 하나 이상이고, biweekly는 true 또는 false다.',
         '횟수, 체력, 골드, 경험치, 보상 금액은 말하지 마라.',
         '제목은 한국어로 써라.',
         '',
         `목표: ${goal}`,
+        `오늘: ${input.today}`,
         `마감: ${input.deadlineOn}`,
       ].join('\n'),
       {
@@ -202,7 +207,7 @@ export class GeminiAi implements Ai {
     if (body.quests.length > BOSS_SUBQUEST_MAX) {
       throw new Error('plan has too many quests');
     }
-    return body.quests.map((quest) => suggestedQuest(quest, input.deadlineOn));
+    return body.quests.map((quest) => suggestedQuest(quest));
   }
 
   private async generate(
@@ -346,7 +351,7 @@ function isSeoulDate(value: string): boolean {
   );
 }
 
-function suggestedQuest(value: unknown, deadlineOn: string): SuggestedQuest {
+function suggestedQuest(value: unknown): SuggestedQuest {
   if (
     !isRecord(value) ||
     !isQuestCategory(value.category) ||
@@ -385,9 +390,6 @@ function suggestedQuest(value: unknown, deadlineOn: string): SuggestedQuest {
     value.biweekly !== null
   ) {
     throw new Error('a deadline quest needs a pace and a date');
-  }
-  if (value.endsOn > deadlineOn) {
-    throw new Error('a subquest deadline is after the boss deadline');
   }
   return {
     title,

@@ -44,25 +44,40 @@ export class QuestPlanService {
       this.logger.warn('quest plan skipped: direct call limit');
       throw new ServiceUnavailableException();
     }
+    let suggested: SuggestedQuest[];
     try {
-      const suggested = await this.ai.suggestPlan({ goal, deadlineOn: dto.deadlineOn });
-      const quests = suggested.map((quest) => toPlanQuest(quest, today, dto.deadlineOn));
-      return {
-        quests,
-        totalHp: quests.reduce((sum, quest) => sum + quest.hp, 0),
-      };
+      suggested = await this.ai.suggestPlan({
+        goal,
+        deadlineOn: dto.deadlineOn,
+        today,
+      });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.logger.warn(`quest plan failed: ${reason}`);
       throw new ServiceUnavailableException();
     }
+
+    const kept = suggested.filter((quest) => isDeadlineInsideWindow(quest, today, dto.deadlineOn));
+    if (kept.length === 0) {
+      this.logger.warn('quest plan had no quests inside the deadline');
+      throw new ServiceUnavailableException();
+    }
+    const quests = kept.map((quest) => toPlanQuest(quest, today, dto.deadlineOn));
+    return {
+      quests,
+      totalHp: quests.reduce((sum, quest) => sum + quest.hp, 0),
+    };
   }
 }
 
-function toPlanQuest(quest: SuggestedQuest, today: string, deadlineOn: string): QuestPlanQuest {
-  if (quest.schedule === 'deadline' && quest.endsOn !== null && quest.endsOn < today) {
-    throw new Error('a subquest deadline is before today');
+function isDeadlineInsideWindow(quest: SuggestedQuest, today: string, deadlineOn: string): boolean {
+  if (quest.schedule !== 'deadline' || quest.endsOn === null) {
+    return true;
   }
+  return quest.endsOn >= today && quest.endsOn <= deadlineOn;
+}
+
+function toPlanQuest(quest: SuggestedQuest, today: string, deadlineOn: string): QuestPlanQuest {
   const times = timesUntilDeadline(quest, today, deadlineOn);
   return { ...quest, times, hp: bossQuestHp(times, quest.difficulty) };
 }

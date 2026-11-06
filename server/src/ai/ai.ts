@@ -48,7 +48,7 @@ export type SuggestedQuest = {
   difficulty: QuestDifficulty;
   /** 루틴이면 null */
   pace: QuestPace | null;
-  /** 기한이면 보스 마감 이하의 서울 날짜. 루틴이면 null */
+  /** 기한이면 서울 날짜. 오늘보다 전이거나 보스 마감보다 뒤면 제안에서 뺀다. 루틴이면 null */
   endsOn: string | null;
   /** 루틴이면 하나 이상. 기한이면 null */
   weekdays: QuestWeekday[] | null;
@@ -60,6 +60,8 @@ export type QuestPlanDraft = {
   goal: string;
   /** 보스 마감. YYYY-MM-DD */
   deadlineOn: string;
+  /** 서울 오늘. YYYY-MM-DD */
+  today: string;
 };
 
 export interface Ai {
