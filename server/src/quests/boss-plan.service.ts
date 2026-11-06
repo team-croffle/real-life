@@ -128,8 +128,8 @@ export class BossPlanService {
           bossQuestId: null,
         })
         .returning();
-      const bossRow = requireInserted(bossQuest);
-      await tx.insert(bosses).values({ questId: bossRow.id, maxHp, hp: maxHp });
+      const bossQuestRow = requireInserted(bossQuest);
+      await tx.insert(bosses).values({ questId: bossQuestRow.id, maxHp, hp: maxHp });
 
       const subquestValues = planned.map((item) => ({
         id: randomUUID(),
@@ -143,7 +143,7 @@ export class BossPlanService {
         weekdays: item.schedule === 'routine' ? item.weekdays : null,
         biweekly: item.schedule === 'routine' ? item.biweekly : null,
         endsOn: item.schedule === 'deadline' ? item.endsOn : null,
-        bossQuestId: bossRow.id,
+        bossQuestId: bossQuestRow.id,
       }));
       const insertedSubquests = await tx.insert(quests).values(subquestValues).returning();
       const subquestById = new Map(insertedSubquests.map((questRow) => [questRow.id, questRow]));
@@ -151,15 +151,15 @@ export class BossPlanService {
         requireInserted(subquestById.get(value.id)),
       );
 
-      return { bossRow, subquestRows, maxHp, today };
+      return { bossQuestRow, subquestRows, maxHp, today };
     });
 
-    await this.enqueueAll(userId, title, created.bossRow.id, created.subquestRows);
+    await this.enqueueAll(userId, title, created.bossQuestRow.id, created.subquestRows);
     return {
-      id: created.bossRow.id,
-      category: created.bossRow.category,
-      title: created.bossRow.title,
-      endsOn: created.bossRow.endsOn ?? dto.deadlineOn,
+      id: created.bossQuestRow.id,
+      category: created.bossQuestRow.category,
+      title: created.bossQuestRow.title,
+      endsOn: created.bossQuestRow.endsOn ?? dto.deadlineOn,
       maxHp: created.maxHp,
       hp: created.maxHp,
       quests: created.subquestRows.map((questRow) => toQuest(questRow, created.today)),
@@ -167,22 +167,22 @@ export class BossPlanService {
   }
 
   async list(userId: string): Promise<BossSummary[]> {
-    const rows = await this.db
+    const bossQuestRows = await this.db
       .select({ questRow: quests, bossRow: bosses })
       .from(bosses)
       .innerJoin(quests, eq(bosses.questId, quests.id))
       .where(and(eq(quests.userId, userId), isNull(bosses.judgedAt)))
       .orderBy(desc(quests.createdAt), desc(quests.id));
 
-    if (rows.length === 0) {
+    if (bossQuestRows.length === 0) {
       return [];
     }
 
     const tasks = await this.queue.findMonsters(
-      rows.map((bossAndQuest) => bossAndQuest.questRow.id),
+      bossQuestRows.map((bossAndQuest) => bossAndQuest.questRow.id),
     );
     const taskByQuest = new Map(tasks.map((task) => [task.questId, task]));
-    return rows.map((bossAndQuest) =>
+    return bossQuestRows.map((bossAndQuest) =>
       toBossSummary(
         bossAndQuest.questRow,
         bossAndQuest.bossRow,
