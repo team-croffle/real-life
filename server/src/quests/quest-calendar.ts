@@ -62,6 +62,39 @@ export function isRestingOn(quest: RoutineRestDates, day: string): boolean {
   return quest.restUntil === null || day <= quest.restUntil;
 }
 
+/** 만든 날부터 throughOn까지, 양 끝 포함, 쉬는 날이 없을 때의 예정 횟수. */
+export function routineOccurrenceCount(
+  quest: {
+    weekdays: readonly QuestWeekday[] | null;
+    biweekly: boolean | null;
+  },
+  createdOn: string,
+  throughOn: string,
+): number {
+  if (throughOn < createdOn) {
+    return 0;
+  }
+  let count = 0;
+  for (let day = createdOn; day <= throughOn; day = addCalendarDays(day, 1)) {
+    if (
+      isRoutineDueOn(
+        {
+          schedule: 'routine',
+          weekdays: quest.weekdays,
+          biweekly: quest.biweekly,
+          restFrom: null,
+          restUntil: null,
+        },
+        createdOn,
+        day,
+      )
+    ) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 export function isRoutineDueOn(
   quest: {
     schedule: QuestSchedule;

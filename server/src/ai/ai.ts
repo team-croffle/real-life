@@ -1,8 +1,10 @@
 import type {
   DifficultyRecommendation,
+  QuestCategory,
   QuestDifficulty,
   QuestPace,
   QuestSchedule,
+  QuestWeekday,
 } from '@nest-vue/shared';
 
 export type { DifficultyRecommendation };
@@ -38,16 +40,20 @@ export type BattleLogDraft = {
   note: string;
 };
 
-/** 보스 마감까지의 하위 퀘스트. 금액은 담지 않는다. */
+/** 보스 마감까지의 하위 퀘스트. 횟수와 체력은 담지 않는다. */
 export type SuggestedQuest = {
   title: string;
+  category: QuestCategory;
   schedule: QuestSchedule;
   difficulty: QuestDifficulty;
   /** 루틴이면 null */
   pace: QuestPace | null;
   /** 기한이면 보스 마감 이하의 서울 날짜. 루틴이면 null */
   endsOn: string | null;
-  timesByDeadline: number;
+  /** 루틴이면 하나 이상. 기한이면 null */
+  weekdays: QuestWeekday[] | null;
+  /** 루틴이면 값. 기한이면 null */
+  biweekly: boolean | null;
 };
 
 export type QuestPlanDraft = {
