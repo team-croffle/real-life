@@ -77,6 +77,8 @@ constants/            reward table, penalty table, critical-hit odds, jobs and o
 boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
 types/                response types exchanged by the server and the web
   difficulty-recommendation.ts
+  boss.ts           boss list item
+  quest-plan.ts     suggested plan: subquests, times, HP
 ```
 
 ### Web (`web/src/`)
@@ -118,7 +120,13 @@ The quest list reads those rows with `findMonsters`, which returns each task's q
 - `failed`, or `succeeded` whose result is not a known kind with a name and a description: `failed`, and `monster` is null. The quest title stays as registered.
 - `succeeded` with a valid result: `ready`. `monster.kind` is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon. `imageKey` is that kind. `name` and `description` come from the result.
 
-Confirming a boss enqueues one task for the boss quest after the transaction commits. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each subquest gets its own task with the monster kinds. If an enqueue fails, the boss and the subquests stay. `GET /api/bosses` maps that task the same way, checking boss kinds. A failed or invalid result leaves the title as the goal.
+## Boss plan flow
+
+`POST /api/ai/quest-plans` calls the AI interface directly, on the direct-call limit. The model returns subquests and does not set times or HP. The server counts both with `bossQuestHp` in `shared`. A deadline before today in Seoul, or after the boss deadline, is dropped. If none remain, the call answers 503 and stores nothing.
+
+`POST /api/bosses` locks the user, then inserts the boss quest (`kind` main, a deadline done all at once), the HP row, and the subquests in one transaction. HP is counted again from the quests in the request. There are at most 10 subquests. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still awaiting judgment is 409. If the transaction fails, nothing is created.
+
+After that commit, one task is enqueued for the boss quest. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each subquest gets its own task with the monster kinds. If an enqueue fails, the boss and the subquests stay. `GET /api/bosses` maps that task the same way, checking boss kinds. A failed or invalid result leaves the title as the goal.
 
 ## Quest completion flow
 
@@ -146,6 +154,7 @@ The filter answers with the exception's status code as it is.
 
 | Condition                                | Status |
 | ---------------------------------------- | ------ |
+| The quest is a boss (`kind` main)        | 400    |
 | The note is longer than 500 characters   | 400    |
 | Completed before the creation day        | 400    |
 | A routine, and today is not a chosen day | 400    |
@@ -195,7 +204,7 @@ Yesterday is the day before today on the Seoul calendar. If the last settled dat
 
 ### Worth noting
 
-- Gold and XP are deducted for current routines and for deadline quests past their due date. Lethargy turns on only for missed routines.
+- Gold and XP are deducted for current routines and for deadline quests past their due date. Settlement reads only `kind` general, so a boss is not charged. Its subquests are. Lethargy turns on only for missed routines.
 - A day with no scheduled routine leaves the status effect as it is. If that day had no completion, only the streak goes to 0.
 - The streak goes up only on a first completion; settlement only resets past days with no completion to 0.
 - Today is never settled.
