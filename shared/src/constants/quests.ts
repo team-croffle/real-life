@@ -49,6 +49,13 @@ export const QUEST_DIFFICULTY_LABELS: Record<QuestDifficulty, string> = {
   hard: '어려움',
 };
 
+/** 보스 체력. 쉬움 1, 보통 2, 어려움 3. */
+export const QUEST_DIFFICULTY_SCORES: Record<QuestDifficulty, number> = {
+  easy: 1,
+  normal: 2,
+  hard: 3,
+};
+
 export const QUEST_WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 export type QuestWeekday = (typeof QUEST_WEEKDAYS)[number];
@@ -65,6 +72,9 @@ export const QUEST_WEEKDAY_LABELS: Record<QuestWeekday, string> = {
 
 /** 등록 제목은 1자 이상 이 값 이하. */
 export const QUEST_TITLE_MAX = 50;
+
+/** 계획 제안과 확정에서 하위 퀘스트 상한. */
+export const BOSS_SUBQUEST_MAX = 40;
 
 /** 카테고리별 제목 템플릿. 사용자는 목록을 CRUD하지 않는다. */
 export const QUEST_TITLE_TEMPLATES: Record<QuestCategory, readonly string[]> = {

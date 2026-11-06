@@ -1,12 +1,18 @@
 import { ApiError, GoogleGenAI } from '@google/genai';
 import {
+  BOSS_SUBQUEST_MAX,
+  QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
   QUEST_NOTE_MAX_LENGTH,
   QUEST_PACES,
   QUEST_SCHEDULES,
+  QUEST_TITLE_MAX,
+  QUEST_WEEKDAYS,
+  type QuestCategory,
   type QuestDifficulty,
   type QuestPace,
   type QuestSchedule,
+  type QuestWeekday,
 } from '@nest-vue/shared';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -25,7 +31,6 @@ import {
 } from './ai';
 
 const TEXT_MAX = 200;
-const PLAN_MAX = 40;
 const GEMINI_MIN_DEADLINE_MS = 10_000;
 
 @Injectable()
@@ -135,7 +140,7 @@ export class GeminiAi implements Ai {
   }
 
   async suggestPlan(input: QuestPlanDraft): Promise<SuggestedQuest[]> {
-    const goal = oneLine(input.goal, TEXT_MAX);
+    const goal = oneLine(input.goal, QUEST_TITLE_MAX);
     if (!isSeoulDate(input.deadlineOn)) {
       throw new Error('deadline is not a calendar date');
     }
@@ -143,11 +148,11 @@ export class GeminiAi implements Ai {
       [
         '큰 목표를 마감일까지의 하위 퀘스트로 나눠라.',
         '각 항목의 schedule은 routine 또는 deadline이다.',
-        'deadline이면 pace는 steady 또는 once이고, endsOn은 마감일 이하의 YYYY-MM-DD다.',
-        'routine이면 pace와 endsOn은 null이다.',
-        'timesByDeadline는 마감까지 할 횟수다.',
+        'category는 exercise, life, study, work, creation, mind 중 하나다.',
+        'deadline이면 pace는 steady 또는 once이고, endsOn은 마감일 이하의 YYYY-MM-DD다. weekdays와 biweekly는 null이다.',
+        'routine이면 pace와 endsOn은 null이다. weekdays는 mon, tue, wed, thu, fri, sat, sun 중 하나 이상이고, biweekly는 true 또는 false다.',
+        '횟수, 체력, 골드, 경험치, 보상 금액은 말하지 마라.',
         '제목은 한국어로 써라.',
-        '골드, 경험치, 보상 금액은 말하지 마라.',
         '',
         `목표: ${goal}`,
         `마감: ${input.deadlineOn}`,
@@ -159,18 +164,32 @@ export class GeminiAi implements Ai {
         properties: {
           quests: {
             type: 'array',
-            maxItems: PLAN_MAX,
+            maxItems: BOSS_SUBQUEST_MAX,
             items: {
               type: 'object',
               additionalProperties: false,
-              required: ['title', 'schedule', 'difficulty', 'pace', 'endsOn', 'timesByDeadline'],
+              required: [
+                'title',
+                'category',
+                'schedule',
+                'difficulty',
+                'pace',
+                'endsOn',
+                'weekdays',
+                'biweekly',
+              ],
               properties: {
                 title: { type: 'string' },
+                category: { type: 'string', enum: [...QUEST_CATEGORIES] },
                 schedule: { type: 'string', enum: [...QUEST_SCHEDULES] },
                 difficulty: { type: 'string', enum: [...QUEST_DIFFICULTIES] },
                 pace: { type: ['string', 'null'], enum: [...QUEST_PACES, null] },
                 endsOn: { type: ['string', 'null'] },
-                timesByDeadline: { type: 'integer', minimum: 1 },
+                weekdays: {
+                  type: ['array', 'null'],
+                  items: { type: 'string', enum: [...QUEST_WEEKDAYS] },
+                },
+                biweekly: { type: ['boolean', 'null'] },
               },
             },
           },
@@ -180,7 +199,7 @@ export class GeminiAi implements Ai {
     if (!isRecord(body) || !Array.isArray(body.quests)) {
       throw new Error('plan response shape is invalid');
     }
-    if (body.quests.length > PLAN_MAX) {
+    if (body.quests.length > BOSS_SUBQUEST_MAX) {
       throw new Error('plan has too many quests');
     }
     return body.quests.map((quest) => suggestedQuest(quest, input.deadlineOn));
@@ -282,6 +301,10 @@ function oneLine(value: unknown, max: number): string {
   return line;
 }
 
+function isQuestCategory(value: unknown): value is QuestCategory {
+  return QUEST_CATEGORIES.some((category) => category === value);
+}
+
 function isQuestDifficulty(value: unknown): value is QuestDifficulty {
   return QUEST_DIFFICULTIES.some((difficulty) => difficulty === value);
 }
@@ -292,6 +315,24 @@ function isQuestSchedule(value: unknown): value is QuestSchedule {
 
 function isQuestPace(value: unknown): value is QuestPace {
   return QUEST_PACES.some((pace) => pace === value);
+}
+
+function isQuestWeekday(value: unknown): value is QuestWeekday {
+  return QUEST_WEEKDAYS.some((weekday) => weekday === value);
+}
+
+function routineWeekdays(value: unknown): QuestWeekday[] | null {
+  if (!Array.isArray(value) || value.length < 1) {
+    return null;
+  }
+  if (!value.every(isQuestWeekday)) {
+    return null;
+  }
+  const selected = new Set(value);
+  if (selected.size !== value.length) {
+    return null;
+  }
+  return QUEST_WEEKDAYS.filter((weekday) => selected.has(weekday));
 }
 
 function isSeoulDate(value: string): boolean {
@@ -308,37 +349,41 @@ function isSeoulDate(value: string): boolean {
 function suggestedQuest(value: unknown, deadlineOn: string): SuggestedQuest {
   if (
     !isRecord(value) ||
+    !isQuestCategory(value.category) ||
     !isQuestSchedule(value.schedule) ||
     !isQuestDifficulty(value.difficulty)
   ) {
     throw new Error('suggested quest shape is invalid');
   }
-  const title = oneLine(value.title, TEXT_MAX);
-  const timesByDeadline = value.timesByDeadline;
-  if (
-    typeof timesByDeadline !== 'number' ||
-    !Number.isInteger(timesByDeadline) ||
-    timesByDeadline < 1 ||
-    timesByDeadline > 366
-  ) {
-    throw new Error('times by deadline is out of range');
-  }
+  const title = oneLine(value.title, QUEST_TITLE_MAX);
 
   if (value.schedule === 'routine') {
-    if (value.pace !== null || value.endsOn !== null) {
-      throw new Error('a routine quest has no pace or deadline');
+    const weekdays = routineWeekdays(value.weekdays);
+    if (value.pace !== null || value.endsOn !== null || weekdays === null) {
+      throw new Error('a routine quest needs weekdays and no deadline');
+    }
+    if (typeof value.biweekly !== 'boolean') {
+      throw new Error('a routine quest needs biweekly');
     }
     return {
       title,
+      category: value.category,
       schedule: 'routine',
       difficulty: value.difficulty,
       pace: null,
       endsOn: null,
-      timesByDeadline,
+      weekdays,
+      biweekly: value.biweekly,
     };
   }
 
-  if (!isQuestPace(value.pace) || typeof value.endsOn !== 'string' || !isSeoulDate(value.endsOn)) {
+  if (
+    !isQuestPace(value.pace) ||
+    typeof value.endsOn !== 'string' ||
+    !isSeoulDate(value.endsOn) ||
+    value.weekdays !== null ||
+    value.biweekly !== null
+  ) {
     throw new Error('a deadline quest needs a pace and a date');
   }
   if (value.endsOn > deadlineOn) {
@@ -346,10 +391,12 @@ function suggestedQuest(value: unknown, deadlineOn: string): SuggestedQuest {
   }
   return {
     title,
+    category: value.category,
     schedule: 'deadline',
     difficulty: value.difficulty,
     pace: value.pace,
     endsOn: value.endsOn,
-    timesByDeadline,
+    weekdays: null,
+    biweekly: null,
   };
 }
