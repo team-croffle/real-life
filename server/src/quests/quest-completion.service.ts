@@ -169,6 +169,9 @@ export class QuestCompletionService {
 
     return this.db.transaction(async (tx) => {
       const questRow = await lockQuest(tx, userId, questId);
+      if (questRow.kind === 'main') {
+        throw new BadRequestException('a boss cannot mark a day');
+      }
       const today = seoulCalendarDate();
       if (
         questRow.schedule !== 'deadline' ||
@@ -395,6 +398,9 @@ async function assertCompletable(
   createdOn: string,
   today: string,
 ): Promise<void> {
+  if (questRow.kind === 'main') {
+    throw new BadRequestException('a boss cannot be completed as a quest');
+  }
   if (today < createdOn) {
     throw new BadRequestException('quest cannot be completed before it was created');
   }

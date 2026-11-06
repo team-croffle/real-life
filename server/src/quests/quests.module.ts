@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { AiQueueModule } from '../ai-queue/ai-queue.module';
 import { AiModule } from '../ai/ai.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { BossPlanService } from './boss-plan.service';
+import { BossesController } from './bosses.controller';
 import { QuestCompletionService } from './quest-completion.service';
 import { QuestCritRoller } from './quest-crit.roller';
 import { QuestPenaltiesController } from './quest-penalties.controller';
@@ -13,9 +15,10 @@ import { QuestsService } from './quests.service';
 
 @Module({
   imports: [AiModule, AiQueueModule, WalletModule],
-  controllers: [QuestsController, QuestPenaltiesController],
+  controllers: [QuestsController, QuestPenaltiesController, BossesController],
   providers: [
     QuestsService,
+    BossPlanService,
     QuestCompletionService,
     QuestCritRoller,
     QuestPenaltyService,

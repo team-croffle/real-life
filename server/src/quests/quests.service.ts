@@ -76,6 +76,9 @@ export class QuestsService {
     if (title.length < 1) {
       throw new BadRequestException('title must not be empty');
     }
+    if (dto.kind === 'main') {
+      throw new BadRequestException('main quests are only created by confirming a plan');
+    }
 
     if (dto.schedule === 'routine') {
       if (dto.endsOn !== undefined) {
@@ -225,21 +228,26 @@ export class QuestsService {
     const markByQuest = new Map(markRows.map((row) => [row.questId, row]));
     const monsterByQuest = new Map(monsterTasks.map((task) => [task.questId, task]));
     const progressRow = progressRows[0];
+    const titleById = new Map(questRows.map((questRow) => [questRow.id, questRow.title]));
     const countedToday = (progressRow?.comboCountedOn ?? '') >= today;
     const streak = (progressRow?.comboDayCount ?? 0) + (countedToday ? 0 : 1);
     const comboMultiplier = comboRewardMultiplier(streak);
 
-    return questRows.map((questRow) =>
-      toQuestListItem(
-        questRow,
-        today,
-        jobClass,
-        comboMultiplier,
-        completionByQuest.get(questRow.id),
-        markByQuest.get(questRow.id),
-        monsterByQuest.get(questRow.id),
-      ),
-    );
+    return questRows
+      .filter((questRow) => questRow.kind !== 'main')
+      .map((questRow) =>
+        toQuestListItem(
+          questRow,
+          today,
+          jobClass,
+          comboMultiplier,
+          completionByQuest.get(questRow.id),
+          markByQuest.get(questRow.id),
+          monsterByQuest.get(questRow.id),
+          questRow.bossQuestId,
+          questRow.bossQuestId ? (titleById.get(questRow.bossQuestId) ?? null) : null,
+        ),
+      );
   }
 
   async rest(userId: string, questId: string): Promise<QuestRoutineRestResult> {
@@ -284,13 +292,16 @@ export class QuestsService {
 
     await this.db.transaction(async (tx) => {
       const [questRow] = await tx
-        .select({ id: quests.id, schedule: quests.schedule })
+        .select({ id: quests.id, kind: quests.kind, schedule: quests.schedule })
         .from(quests)
         .where(and(eq(quests.id, questId), eq(quests.userId, userId)))
         .for('update');
 
       if (!questRow) {
         throw new NotFoundException();
+      }
+      if (questRow.kind === 'main') {
+        throw new BadRequestException('a boss cannot be abandoned');
       }
 
       if (questRow.schedule === 'deadline') {
@@ -316,6 +327,9 @@ export class QuestsService {
   ): Promise<QuestRoutineRestResult | 'need-settle'> {
     return this.db.transaction(async (tx) => {
       const questRow = await lockOwnedQuest(tx, userId, questId);
+      if (questRow.bossQuestId !== null) {
+        throw new BadRequestException('a boss routine cannot be paused');
+      }
       if (questRow.schedule !== 'routine') {
         throw new BadRequestException('only routines can rest');
       }
@@ -356,6 +370,8 @@ function toQuestListItem(
   completion: { completedToday: boolean } | undefined,
   mark: { doneOn: string[] | null; markedDayCount: number } | undefined,
   monsterTask: MonsterTaskState | undefined,
+  bossId: string | null,
+  bossTitle: string | null,
 ): QuestListItem {
   const monsterFields = monsterForList(monsterTask);
   const createdOn = seoulCalendarDate(questRow.createdAt);
@@ -392,6 +408,8 @@ function toQuestListItem(
       expectedGold: payout.gold,
       expectedXp: payout.xp,
       ...monsterFields,
+      bossId,
+      bossTitle,
     };
   }
 
@@ -439,6 +457,8 @@ function toQuestListItem(
     expectedGold: payout?.gold ?? null,
     expectedXp: payout?.xp ?? null,
     ...monsterFields,
+    bossId,
+    bossTitle,
   };
 }
 
