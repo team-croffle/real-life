@@ -73,8 +73,8 @@ export const QUEST_WEEKDAY_LABELS: Record<QuestWeekday, string> = {
 /** 등록 제목은 1자 이상 이 값 이하. */
 export const QUEST_TITLE_MAX = 50;
 
-/** 계획 제안과 확정에서 하위 퀘스트 상한. */
-export const BOSS_SUBQUEST_MAX = 40;
+/** 계획 제안과 확정에서 하위 퀘스트 상한. 11개면 확정은 400. */
+export const BOSS_SUBQUEST_MAX = 10;
 
 /** 카테고리별 제목 템플릿. 사용자는 목록을 CRUD하지 않는다. */
 export const QUEST_TITLE_TEMPLATES: Record<QuestCategory, readonly string[]> = {

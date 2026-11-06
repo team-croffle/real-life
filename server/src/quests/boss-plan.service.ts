@@ -178,10 +178,16 @@ export class BossPlanService {
       return [];
     }
 
-    const tasks = await this.queue.findMonsters(rows.map((row) => row.questRow.id));
+    const tasks = await this.queue.findMonsters(
+      rows.map((bossAndQuest) => bossAndQuest.questRow.id),
+    );
     const taskByQuest = new Map(tasks.map((task) => [task.questId, task]));
-    return rows.map((row) =>
-      toBossSummary(row.questRow, row.bossRow, taskByQuest.get(row.questRow.id)),
+    return rows.map((bossAndQuest) =>
+      toBossSummary(
+        bossAndQuest.questRow,
+        bossAndQuest.bossRow,
+        taskByQuest.get(bossAndQuest.questRow.id),
+      ),
     );
   }
 
