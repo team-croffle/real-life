@@ -48,7 +48,13 @@ export class QuestPenaltyService {
       const routineRows = await tx
         .select()
         .from(quests)
-        .where(and(eq(quests.userId, userId), eq(quests.schedule, 'routine')));
+        .where(
+          and(
+            eq(quests.userId, userId),
+            eq(quests.kind, 'general'),
+            eq(quests.schedule, 'routine'),
+          ),
+        );
       const fromDate = addCalendarDays(progress.penaltiesSettledOn, 1);
       const completed = await completedDays(tx, userId, fromDate, yesterday);
       // 마감일이 이번 정산 범위에 있는 기한 퀘스트. 완료 기록은 날짜와 상관없이 본다.
@@ -58,6 +64,7 @@ export class QuestPenaltyService {
         .where(
           and(
             eq(quests.userId, userId),
+            eq(quests.kind, 'general'),
             eq(quests.schedule, 'deadline'),
             gte(quests.endsOn, fromDate),
             lte(quests.endsOn, yesterday),

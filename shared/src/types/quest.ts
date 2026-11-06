@@ -91,6 +91,10 @@ export interface QuestListItem {
   monsterStatus: MonsterStatus | null;
   /** ready일 때만 값이 있다 */
   monster: QuestMonster | null;
+  /** 보스 하위 퀘스트만. 아니면 null */
+  bossId: string | null;
+  /** 보스 하위 퀘스트만. 아니면 null */
+  bossTitle: string | null;
 }
 
 interface CreateQuestFields {
