@@ -12,6 +12,7 @@ import { QuestPenaltyService } from './quest-penalty.service';
 import { QuestSettlementScheduler } from './quest-settlement.scheduler';
 import { QuestsController } from './quests.controller';
 import { QuestsService } from './quests.service';
+import { RoutineSpawnService } from './routine-spawn.service';
 
 @Module({
   imports: [AiModule, AiQueueModule, WalletModule],
@@ -23,6 +24,7 @@ import { QuestsService } from './quests.service';
     QuestCritRoller,
     QuestPenaltyService,
     QuestSettlementScheduler,
+    RoutineSpawnService,
   ],
 })
 export class QuestsModule {}

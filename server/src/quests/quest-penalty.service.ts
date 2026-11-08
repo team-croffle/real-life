@@ -7,11 +7,10 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
-import { questCompletions } from '../database/schema/quest-completions';
 import { questPenalties } from '../database/schema/quest-penalties';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
@@ -19,12 +18,7 @@ import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
-import {
-  addCalendarDays,
-  calendarDaysBetween,
-  isRoutineDueOn,
-  seoulCalendarDate,
-} from './quest-calendar';
+import { addCalendarDays, calendarDaysBetween, seoulCalendarDate } from './quest-calendar';
 
 @Injectable()
 export class QuestPenaltyService {
@@ -45,35 +39,19 @@ export class QuestPenaltyService {
         return settlement(progress, balance, []);
       }
 
-      const routineRows = await tx
-        .select()
-        .from(quests)
-        .where(
-          and(
-            eq(quests.userId, userId),
-            eq(quests.kind, 'general'),
-            eq(quests.schedule, 'routine'),
-          ),
-        );
       const fromDate = addCalendarDays(progress.penaltiesSettledOn, 1);
-      const completed = await completedDays(tx, userId, fromDate, yesterday);
-      // 마감일이 이번 정산 범위에 있는 기한 퀘스트. 완료 기록은 날짜와 상관없이 본다.
-      const deadlineRows = await tx
+      const completedDays = await completedOnDays(tx, userId, fromDate, yesterday);
+      const openRows = await tx
         .select()
         .from(quests)
         .where(
           and(
             eq(quests.userId, userId),
-            eq(quests.kind, 'general'),
-            eq(quests.schedule, 'deadline'),
+            isNull(quests.completedOn),
             gte(quests.endsOn, fromDate),
             lte(quests.endsOn, yesterday),
           ),
         );
-      const completedDeadlineIds = await completedQuestIds(
-        tx,
-        deadlineRows.map((questRow) => questRow.id),
-      );
       const penalties: QuestPenaltyApplied[] = [];
       let comboDayCount = progress.comboDayCount;
       let statusEffect = progress.statusEffect;
@@ -81,34 +59,24 @@ export class QuestPenaltyService {
       let nextBalance = balance;
 
       for (let day = fromDate; day <= yesterday; day = addCalendarDays(day, 1)) {
-        const due = routineRows.filter((questRow) =>
-          isRoutineDueOn(questRow, seoulCalendarDate(questRow.createdAt), day),
-        );
-        const misses = due
-          .filter((questRow) => !completed.keys.has(completionKey(questRow.id, day)))
+        const misses = openRows
+          .filter((questRow) => questRow.endsOn === day)
           .toSorted((left, right) => left.id.localeCompare(right.id));
-        if (misses.length > 0) {
+        if (misses.some((questRow) => questRow.routineId !== null)) {
           statusEffect = 'lethargy';
         }
 
-        // 기한 퀘스트는 마감일이 이 날이고 완료하지 못한 것만 깎는다. 무기력은 켜지 않는다.
-        const deadlineMisses = deadlineRows
-          .filter((questRow) => questRow.endsOn === day && !completedDeadlineIds.has(questRow.id))
-          .toSorted((left, right) => left.id.localeCompare(right.id));
-        const targets = [
-          ...misses.map((questRow) => ({
-            questRow,
-            table: QUEST_PENALTIES[questRow.difficulty],
-          })),
-          ...deadlineMisses.map((questRow) => ({
-            questRow,
-            table: deadlinePenaltyAmount(
-              questRow.difficulty,
-              calendarDaysBetween(seoulCalendarDate(questRow.createdAt), day),
-              questRow.pace ?? 'steady',
-            ),
-          })),
-        ];
+        const targets = misses.map((questRow) => ({
+          questRow,
+          table:
+            questRow.routineId !== null
+              ? QUEST_PENALTIES[questRow.difficulty]
+              : deadlinePenaltyAmount(
+                  questRow.difficulty,
+                  calendarDaysBetween(seoulCalendarDate(questRow.createdAt), day),
+                  questRow.pace,
+                ),
+        }));
         // 잔액과 경험치 바닥은 앞 페널티를 반영한 뒤에 계산한다.
         /* oxlint-disable no-await-in-loop */
         for (const { questRow, table } of targets) {
@@ -125,7 +93,7 @@ export class QuestPenaltyService {
         /* oxlint-enable no-await-in-loop */
 
         // 연속 +1은 그날 첫 완료가 한다. 정산은 완료가 없는 날만 0으로 만든다.
-        if (!completed.days.has(day)) {
+        if (!completedDays.has(day)) {
           comboDayCount = 0;
         }
       }
@@ -164,8 +132,11 @@ export class QuestPenaltyService {
     const xpLoss = appliedXpPenalty(levelXp, table.xp);
     await tx.insert(questPenalties).values({
       questId: questRow.id,
+      questTitle: questRow.title,
+      bossId: questRow.bossId,
       userId,
       missedOn,
+      reason: 'missed',
       gold: -gold.applied,
       xp: -xpLoss,
     });
@@ -244,43 +215,23 @@ async function lockProgress(tx: DrizzleTx, userId: string) {
   return progressRow;
 }
 
-async function completedDays(
+async function completedOnDays(
   tx: DrizzleTx,
   userId: string,
   fromDate: string,
   toDate: string,
-): Promise<{ keys: Set<string>; days: Set<string> }> {
+): Promise<Set<string>> {
   const completionRows = await tx
-    .select({
-      questId: questCompletions.questId,
-      completedOn: questCompletions.completedOn,
-    })
-    .from(questCompletions)
+    .select({ completedOn: quests.completedOn })
+    .from(quests)
     .where(
       and(
-        eq(questCompletions.userId, userId),
-        gte(questCompletions.completedOn, fromDate),
-        lte(questCompletions.completedOn, toDate),
+        eq(quests.userId, userId),
+        isNotNull(quests.completedOn),
+        gte(quests.completedOn, fromDate),
+        lte(quests.completedOn, toDate),
       ),
     );
 
-  return {
-    keys: new Set(completionRows.map((row) => completionKey(row.questId, row.completedOn))),
-    days: new Set(completionRows.map((row) => row.completedOn)),
-  };
-}
-
-function completionKey(questId: string, completedOn: string): string {
-  return `${questId}:${completedOn}`;
-}
-
-async function completedQuestIds(tx: DrizzleTx, questIds: string[]): Promise<Set<string>> {
-  if (questIds.length === 0) {
-    return new Set();
-  }
-  const completionRows = await tx
-    .select({ questId: questCompletions.questId })
-    .from(questCompletions)
-    .where(inArray(questCompletions.questId, questIds));
-  return new Set(completionRows.map((row) => row.questId));
+  return new Set(completionRows.flatMap((row) => (row.completedOn ? [row.completedOn] : [])));
 }
