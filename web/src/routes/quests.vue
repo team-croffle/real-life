@@ -82,6 +82,14 @@ const abandonTitle = computed(() => {
   return source.find((item) => item.id === abandonId.value)?.title ?? '';
 });
 
+const abandonCost = computed(() => {
+  if (abandonKind.value !== 'quest') {
+    return { gold: 0, xp: 0 };
+  }
+  const item = items.value.find((quest) => quest.id === abandonId.value);
+  return { gold: item?.abandonGold ?? 0, xp: item?.abandonXp ?? 0 };
+});
+
 const restTitle = computed(
   () => routines.value.find((item) => item.id === restId.value)?.title ?? '',
 );
@@ -412,6 +420,8 @@ onUnmounted(() => {
       v-if="abandonId"
       :title="abandonTitle"
       :routine="abandonKind === 'routine'"
+      :gold="abandonCost.gold"
+      :xp="abandonCost.xp"
       :pending="abandonPending"
       :error="abandonError"
       @cancel="closeAbandon"
