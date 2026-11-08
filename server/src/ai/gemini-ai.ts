@@ -38,6 +38,27 @@ export class GeminiAi implements Ai {
   constructor(private readonly config: ConfigService) {}
 
   async describeMonster(input: MonsterDraft): Promise<MonsterDescription> {
+    return this.nameCreature(input, [
+      '할 일을 몬스터로 바꿔라.',
+      '종류는 목록 안에서만 고르고, 그 종류에 맞는 이름과 한 줄 설명을 한국어로 지어라.',
+      '골드, 경험치, 보상 금액은 말하지 마라.',
+    ]);
+  }
+
+  async describeBoss(input: MonsterDraft): Promise<MonsterDescription> {
+    return this.nameCreature(input, [
+      '목표를 보스로 바꿔라.',
+      '이름은 무겁고 웅장하게 한국어로 지어라.',
+      '설명은 같은 톤으로 한 줄만 써라.',
+      '종류는 목록 안에서만 고르고, 그 종류에 맞게 지어라.',
+      '골드, 경험치, 보상 금액은 말하지 마라.',
+    ]);
+  }
+
+  private async nameCreature(
+    input: MonsterDraft,
+    instructions: readonly string[],
+  ): Promise<MonsterDescription> {
     const title = oneLine(input.title, TEXT_MAX);
     const kinds = input.kinds.map((kind) => oneLine(kind, TEXT_MAX));
     if (kinds.length === 0) {
@@ -45,14 +66,7 @@ export class GeminiAi implements Ai {
     }
 
     const body = await this.generate(
-      [
-        '할 일을 몬스터로 바꿔라.',
-        '종류는 목록 안에서만 고르고, 그 종류에 맞는 이름과 한 줄 설명을 한국어로 지어라.',
-        '골드, 경험치, 보상 금액은 말하지 마라.',
-        '',
-        `할 일: ${title}`,
-        `종류 목록: ${kinds.join(', ')}`,
-      ].join('\n'),
+      [...instructions, '', `문구: ${title}`, `종류 목록: ${kinds.join(', ')}`].join('\n'),
       {
         type: 'object',
         additionalProperties: false,

@@ -136,6 +136,7 @@ export class PostgresAiQueue implements AiQueue {
           userId: aiTasks.userId,
           attempts: aiTasks.attempts,
           payload: aiTasks.payload,
+          bossId: aiTasks.bossId,
         });
       return claimed ?? null;
     });

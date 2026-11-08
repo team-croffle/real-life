@@ -33,6 +33,7 @@ export type ClaimedAiTask = {
   /** 이번 집기에서 올린 시도 횟수. 완료와 실패는 이 값과 같을 때만 행을 고친다. */
   attempts: number;
   payload: unknown;
+  bossId: string | null;
 };
 
 export interface AiQueue {

@@ -44,7 +44,9 @@ export class AiQueueWorker {
         await this.queue.fail(task.id, task.attempts, 'monster payload is invalid', false);
         return;
       }
-      const result = await this.ai.describeMonster(payload);
+      const result = task.bossId
+        ? await this.ai.describeBoss(payload)
+        : await this.ai.describeMonster(payload);
       await this.queue.complete(task.id, task.attempts, result);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
