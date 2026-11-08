@@ -1,10 +1,12 @@
 import type {
   CreateQuestPayload,
+  CreateRoutinePayload,
   Quest,
   QuestCompletionResult,
   QuestDayMarkResult,
   QuestListItem,
   QuestRoutineRestResult,
+  Routine,
 } from '@nest-vue/shared';
 
 import { apiFetch } from '@/composables/useApi';
@@ -39,6 +41,29 @@ export async function markQuestToday(questId: string): Promise<QuestDayMarkResul
 
 export async function abandonQuest(questId: string): Promise<void> {
   await apiFetch<void>(`/quests/${questId}`, { method: 'DELETE' });
+}
+
+export async function getRoutines(): Promise<Routine[]> {
+  return apiFetch<Routine[]>('/routines');
+}
+
+export async function createRoutine(payload: CreateRoutinePayload): Promise<Routine> {
+  return apiFetch<Routine>('/routines', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function pauseRoutine(routineId: string): Promise<Routine> {
+  return apiFetch<Routine>(`/routines/${routineId}/pause`, { method: 'POST' });
+}
+
+export async function resumeRoutine(routineId: string): Promise<Routine> {
+  return apiFetch<Routine>(`/routines/${routineId}/resume`, { method: 'POST' });
+}
+
+export async function deleteRoutine(routineId: string): Promise<void> {
+  await apiFetch<void>(`/routines/${routineId}`, { method: 'DELETE' });
 }
 
 export async function restQuest(questId: string): Promise<QuestRoutineRestResult> {

@@ -1,4 +1,9 @@
-import type { QuestCategory, QuestDifficulty, QuestWeekday } from '@nest-vue/shared';
+import type {
+  CreateRoutinePayload,
+  QuestCategory,
+  QuestDifficulty,
+  QuestWeekday,
+} from '@nest-vue/shared';
 import {
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
@@ -16,7 +21,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class CreateRoutineDto {
+export class CreateRoutineDto implements CreateRoutinePayload {
   @IsIn(QUEST_CATEGORIES)
   category!: QuestCategory;
 
