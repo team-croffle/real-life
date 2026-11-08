@@ -139,10 +139,16 @@ export class RoutinesService {
 
   async remove(userId: string, routineId: string): Promise<void> {
     assertRoutineId(routineId);
-    const deleted = await this.db
-      .delete(routines)
-      .where(and(eq(routines.id, routineId), eq(routines.userId, userId)))
-      .returning({ id: routines.id });
+    const deleted = await this.db.transaction(async (tx) => {
+      const routineRow = await lockOwnedRoutine(tx, userId, routineId);
+      if (routineRow.bossId !== null) {
+        throw new BadRequestException('a boss routine cannot be deleted');
+      }
+      return tx
+        .delete(routines)
+        .where(eq(routines.id, routineRow.id))
+        .returning({ id: routines.id });
+    });
     if (deleted.length === 0) {
       throw new NotFoundException();
     }
