@@ -1,15 +1,8 @@
 <script setup lang="ts">
-import type {
-  QuestCategory,
-  QuestDifficulty,
-  QuestKind,
-  QuestSchedule,
-  QuestWeekday,
-} from '@nest-vue/shared';
+import type { QuestCategory, QuestDifficulty, QuestSchedule, QuestWeekday } from '@nest-vue/shared';
 import {
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
-  QUEST_KINDS,
   QUEST_SCHEDULES,
   QUEST_TITLE_TEMPLATES,
   QUEST_WEEKDAYS,
@@ -25,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
-import { createQuest } from '@/lib/quests';
+import { createQuest, createRoutine } from '@/lib/quests';
 import {
   calendarDaysBetween,
   isCalendarDate,
@@ -48,7 +41,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const auth = useAuthStore();
 
-const kind = ref<QuestKind>('general');
 const category = ref<QuestCategory>('exercise');
 const title = ref('');
 const difficulty = ref<QuestDifficulty>('normal');
@@ -108,7 +100,6 @@ watch(
     if (!open) {
       return;
     }
-    kind.value = 'general';
     category.value = 'exercise';
     title.value = '';
     difficulty.value = 'normal';
@@ -169,27 +160,22 @@ async function onSubmit(): Promise<void> {
 
   pending.value = true;
   try {
-    const quest = await createQuest(
+    const created =
       schedule.value === 'routine'
-        ? {
-            kind: kind.value,
+        ? await createRoutine({
             category: category.value,
             title: trimmed,
             difficulty: difficulty.value,
-            schedule: 'routine',
             weekdays: weekdays.value,
             biweekly: biweekly.value,
-          }
-        : {
-            kind: kind.value,
+          })
+        : await createQuest({
             category: category.value,
             title: trimmed,
             difficulty: difficulty.value,
-            schedule: 'deadline',
             endsOn: endsOn.value,
-          },
-    );
-    emit('created', quest.title);
+          });
+    emit('created', created.title);
     emit('close');
   } catch (cause) {
     const message = questErrorMessage(cause);
@@ -225,20 +211,6 @@ async function onSubmit(): Promise<void> {
         >
           <X class="size-3.5" />
         </button>
-      </div>
-
-      <div class="mb-4 flex gap-2">
-        <Button
-          v-for="value in QUEST_KINDS"
-          :key="value"
-          type="button"
-          size="sm"
-          class="w-auto flex-1"
-          :variant="kind === value ? 'default' : 'outline'"
-          @click="kind = value"
-        >
-          {{ t(`quest.kinds.${value}`) }}
-        </Button>
       </div>
 
       <div class="mb-4 flex flex-wrap gap-2">
