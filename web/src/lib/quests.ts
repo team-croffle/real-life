@@ -53,6 +53,16 @@ export async function createRoutine(payload: CreateRoutinePayload): Promise<Rout
   });
 }
 
+export async function updateRoutine(
+  routineId: string,
+  payload: Partial<CreateRoutinePayload>,
+): Promise<Routine> {
+  return apiFetch<Routine>(`/routines/${routineId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function pauseRoutine(routineId: string): Promise<Routine> {
   return apiFetch<Routine>(`/routines/${routineId}/pause`, { method: 'POST' });
 }

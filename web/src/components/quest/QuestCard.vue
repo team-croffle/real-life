@@ -20,6 +20,7 @@ const emit = defineEmits<{
   abandon: [];
   rest: [];
   resume: [];
+  edit: [];
 }>();
 
 const { t } = useI18n();
@@ -48,6 +49,8 @@ const scheduleText = computed(() => {
   return days;
 });
 
+const canEdit = computed(() => routine.value !== null && routine.value.bossId === null);
+const monsterGenerating = computed(() => routine.value?.monsterStatus === 'generating');
 const canPause = computed(
   () => routine.value !== null && routine.value.bossId === null && routine.value.active,
 );
@@ -164,8 +167,29 @@ const difficultyClass = computed(() => {
       </button>
       <div
         v-if="menuOpen"
-        class="bg-surface border-border absolute top-9 right-0 z-10 w-[110px] overflow-hidden rounded-[10px] border shadow-lg"
+        class="bg-surface border-border absolute top-9 right-0 z-10 overflow-hidden rounded-[10px] border shadow-lg"
+        :class="canEdit && monsterGenerating ? 'w-max' : 'w-[110px]'"
       >
+        <div v-if="canEdit && monsterGenerating" class="flex items-center">
+          <button
+            type="button"
+            class="text-muted-foreground cursor-not-allowed px-3.5 py-2.5 text-left text-[12.5px] font-bold"
+            disabled
+          >
+            {{ t('quest.edit') }}
+          </button>
+          <span class="text-muted-foreground pr-3.5 text-[10.5px] whitespace-nowrap">
+            {{ t('quest.monsterGenerating') }}
+          </span>
+        </div>
+        <button
+          v-else-if="canEdit"
+          type="button"
+          class="block w-full px-3.5 py-2.5 text-left text-[12.5px] font-bold"
+          @click="emit('edit')"
+        >
+          {{ t('quest.edit') }}
+        </button>
         <button
           v-if="canPause"
           type="button"
