@@ -101,6 +101,7 @@ export class RoutinesService {
       if (routineRow.bossId !== null) {
         throw new BadRequestException('a boss routine cannot be updated');
       }
+      const enqueueTitle = title !== undefined && title !== routineRow.title ? title : null;
       const [updated] = await tx
         .update(routines)
         .set({
@@ -109,13 +110,13 @@ export class RoutinesService {
           difficulty: dto.difficulty ?? routineRow.difficulty,
           weekdays: weekdays ?? routineRow.weekdays,
           biweekly: dto.biweekly ?? routineRow.biweekly,
+          ...(enqueueTitle ? { monsterId: null } : {}),
         })
         .where(eq(routines.id, routineRow.id))
         .returning();
       if (!updated) {
         throw new InternalServerErrorException('routine update returned no row');
       }
-      const enqueueTitle = title !== undefined && title !== routineRow.title ? title : null;
       return { row: updated, enqueueTitle };
     });
 
