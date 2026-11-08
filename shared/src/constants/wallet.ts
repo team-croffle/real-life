@@ -5,6 +5,9 @@ export const WALLET_ENTRY_KINDS = [
   'post_hoc_deduction',
   'penalty',
   'employment',
+  'boss_clear',
+  'boss_fail',
+  'boss_abandon',
 ] as const;
 
 export type WalletEntryKind = (typeof WALLET_ENTRY_KINDS)[number];

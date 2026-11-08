@@ -1,4 +1,4 @@
-import type { BossKind } from '../constants/bosses';
+import type { BossKind, BossResult } from '../constants/bosses';
 import type { MonsterStatus } from '../constants/monsters';
 import type { QuestCategory } from '../constants/quests';
 import type { Quest } from './quest';
@@ -9,6 +9,16 @@ export interface BossAppearance {
   imageKey: string;
   name: string;
   description: string;
+}
+
+/** POST /api/bosses/:id/abandon. 골드는 적용된 차감액의 부호를 가진다. */
+export interface AbandonedBoss {
+  id: string;
+  result: Extract<BossResult, 'abandoned'>;
+  gold: number;
+  xp: number;
+  tickets: number;
+  balance: number;
 }
 
 /** GET /api/bosses. 판정 전만. 제목은 목표 문구이고, 이름은 ready일 때만 있다. */

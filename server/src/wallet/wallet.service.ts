@@ -17,6 +17,12 @@ import type { ListWalletEntriesQueryDto } from './dto/list-wallet-entries-query.
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
 
+/** 퀘스트와 보스 중 하나만 가리키거나, 둘 다 비운다. */
+export type WalletEntryCause = {
+  questId: string | null;
+  bossId: string | null;
+};
+
 @Injectable()
 export class WalletService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
@@ -45,7 +51,10 @@ export class WalletService {
       .select({
         id: walletEntries.id,
         amount: walletEntries.amount,
+        tickets: walletEntries.tickets,
         kind: walletEntries.kind,
+        questId: walletEntries.questId,
+        bossId: walletEntries.bossId,
         createdAt: walletEntries.createdAt,
       })
       .from(walletEntries)
@@ -58,7 +67,10 @@ export class WalletService {
       items: entryRows.map((entryRow) => ({
         id: entryRow.id,
         amount: entryRow.amount,
+        tickets: entryRow.tickets,
         kind: entryRow.kind,
+        questId: entryRow.questId,
+        bossId: entryRow.bossId,
         createdAt: entryRow.createdAt.toISOString(),
       })),
       page,
@@ -73,7 +85,11 @@ export class WalletService {
     dto: CreatePostHocDeductionDto,
   ): Promise<WalletBalance> {
     return this.db.transaction(async (tx) => {
-      const balance = await this.applyBalanceDelta(tx, userId, -dto.amount, 'post_hoc_deduction');
+      const balance = await this.applyBalanceDelta(tx, userId, -dto.amount, 'post_hoc_deduction', {
+        questId: null,
+        bossId: null,
+        tickets: 0,
+      });
       return { balance };
     });
   }
@@ -83,6 +99,7 @@ export class WalletService {
     userId: string,
     amount: number,
     kind: WalletEntryKind,
+    cause: WalletEntryCause & { tickets: number },
   ): Promise<number> {
     await tx.insert(wallets).values({ userId }).onConflictDoNothing();
 
@@ -96,7 +113,7 @@ export class WalletService {
       throw new InternalServerErrorException('wallet row missing after insert');
     }
 
-    if (amount === 0) {
+    if (amount === 0 && cause.tickets === 0) {
       return walletRow.balance;
     }
 
@@ -105,9 +122,18 @@ export class WalletService {
       throw new BadRequestException('deduction would exceed the debt limit');
     }
 
-    await tx.insert(walletEntries).values({ userId, amount, kind });
-    await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
-    return nextBalance;
+    await tx.insert(walletEntries).values({
+      userId,
+      amount,
+      tickets: cause.tickets,
+      kind,
+      questId: cause.questId,
+      bossId: cause.bossId,
+    });
+    if (amount !== 0) {
+      await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
+    }
+    return amount === 0 ? walletRow.balance : nextBalance;
   }
 
   /** 외상 한도까지만 깎는다. 적용액이 0이면 내역을 넣지 않고 잔액도 바꾸지 않는다. */
@@ -115,6 +141,8 @@ export class WalletService {
     tx: DrizzleTx,
     userId: string,
     loss: number,
+    cause: WalletEntryCause,
+    kind: WalletEntryKind = 'penalty',
   ): Promise<{ balance: number; applied: number }> {
     await tx.insert(wallets).values({ userId }).onConflictDoNothing();
 
@@ -134,7 +162,14 @@ export class WalletService {
     }
 
     const nextBalance = walletRow.balance - applied;
-    await tx.insert(walletEntries).values({ userId, amount: -applied, kind: 'penalty' });
+    await tx.insert(walletEntries).values({
+      userId,
+      amount: -applied,
+      tickets: 0,
+      kind,
+      questId: cause.questId,
+      bossId: cause.bossId,
+    });
     await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
     return { balance: nextBalance, applied };
   }

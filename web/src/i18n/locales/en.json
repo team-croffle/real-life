@@ -52,7 +52,10 @@
       "completion": "Quest completed",
       "penalty": "Quest penalty",
       "post_hoc_deduction": "Self-reported deduction",
-      "employment": "Job reward (legacy)"
+      "employment": "Job reward (legacy)",
+      "boss_clear": "Boss defeated",
+      "boss_fail": "Boss failed",
+      "boss_abandon": "Boss abandoned"
     },
     "postHoc": {
       "title": "Self-reported deduction",

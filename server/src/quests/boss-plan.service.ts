@@ -172,7 +172,12 @@ export class BossPlanService {
         routineValues.length === 0
           ? []
           : await tx.insert(routines).values(routineValues).returning();
-      await this.routineSpawnService.spawnToday(userId, today, tx);
+      await this.routineSpawnService.spawnToday(
+        userId,
+        today,
+        tx,
+        routineRows.map((routineRow) => routineRow.id),
+      );
 
       return { bossRow, questRows, routineRows, maxHp, today };
     });
@@ -200,7 +205,7 @@ export class BossPlanService {
     const bossRows = await this.db
       .select()
       .from(bosses)
-      .where(and(eq(bosses.userId, userId), isNull(bosses.judgedAt)))
+      .where(and(eq(bosses.userId, userId), isNull(bosses.result)))
       .orderBy(desc(bosses.createdAt), desc(bosses.id));
 
     if (bossRows.length === 0) {
@@ -360,7 +365,7 @@ async function countActiveBosses(tx: DrizzleTx, userId: string): Promise<number>
   const [countRow] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(bosses)
-    .where(and(eq(bosses.userId, userId), isNull(bosses.judgedAt)));
+    .where(and(eq(bosses.userId, userId), isNull(bosses.result)));
   return Number(countRow?.total ?? 0);
 }
 

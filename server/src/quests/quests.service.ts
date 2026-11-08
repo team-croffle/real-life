@@ -40,6 +40,7 @@ import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
+import { BossJudgmentService } from './boss-judgment.service';
 import type { CreateQuestDto } from './dto/create-quest.dto';
 import { monsterView } from './monster-view';
 import {
@@ -65,6 +66,7 @@ export class QuestsService {
     @Inject(AI_QUEUE) private readonly queue: AiQueue,
     private readonly walletService: WalletService,
     private readonly questPenaltyService: QuestPenaltyService,
+    private readonly bossJudgmentService: BossJudgmentService,
     private readonly routineSpawnService: RoutineSpawnService,
   ) {}
 
@@ -123,6 +125,7 @@ export class QuestsService {
 
   async list(userId: string): Promise<QuestListItem[]> {
     await this.questPenaltyService.settle(userId);
+    await this.bossJudgmentService.clearJudgedSubroutines(userId);
     await this.routineSpawnService.spawnToday(userId);
 
     const today = seoulCalendarDate();
@@ -236,7 +239,10 @@ export class QuestsService {
       const markedToday = await lockedMarkedToday(tx, userId, questRow.id, today);
       if (!isFreeAbandon(questRow, today, markedToday)) {
         const table = penaltySameAsMiss(questRow);
-        const gold = await this.walletService.applyClampedPenalty(tx, userId, table.gold);
+        const gold = await this.walletService.applyClampedPenalty(tx, userId, table.gold, {
+          questId: questRow.id,
+          bossId: null,
+        });
         const xpLoss = appliedXpPenalty(levelXp, table.xp);
         await tx.insert(questPenalties).values({
           questId: questRow.id,

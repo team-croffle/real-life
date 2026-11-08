@@ -18,6 +18,7 @@ import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
+import { BossJudgmentService } from './boss-judgment.service';
 import { addCalendarDays, calendarDaysBetween, seoulCalendarDate } from './quest-calendar';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class QuestPenaltyService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly walletService: WalletService,
+    private readonly bossJudgmentService: BossJudgmentService,
   ) {}
 
   async settle(userId: string): Promise<QuestPenaltySettlement> {
@@ -108,14 +110,16 @@ export class QuestPenaltyService {
         })
         .where(eq(userProgress.userId, userId));
 
+      const judged = await this.bossJudgmentService.judgeDue(tx, userId, yesterday);
+
       return {
         settledThrough: yesterday,
         comboDayCount,
         statusEffect,
         penalties,
-        balance: nextBalance,
-        level: progress.level,
-        levelXp,
+        balance: judged?.balance ?? nextBalance,
+        level: judged?.level ?? progress.level,
+        levelXp: judged?.levelXp ?? levelXp,
       };
     });
   }
@@ -128,7 +132,10 @@ export class QuestPenaltyService {
     levelXp: number,
     table: { gold: number; xp: number },
   ): Promise<{ balance: number; goldLoss: number; xpLoss: number }> {
-    const gold = await this.walletService.applyClampedPenalty(tx, userId, table.gold);
+    const gold = await this.walletService.applyClampedPenalty(tx, userId, table.gold, {
+      questId: questRow.id,
+      bossId: null,
+    });
     const xpLoss = appliedXpPenalty(levelXp, table.xp);
     await tx.insert(questPenalties).values({
       questId: questRow.id,

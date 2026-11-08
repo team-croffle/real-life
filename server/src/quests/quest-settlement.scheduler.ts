@@ -5,6 +5,7 @@ import { isNotNull } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
 import { users } from '../database/schema/users';
+import { BossJudgmentService } from './boss-judgment.service';
 import { APP_TIME_ZONE } from './quest-calendar';
 import { QuestPenaltyService } from './quest-penalty.service';
 import { RoutineSpawnService } from './routine-spawn.service';
@@ -16,6 +17,7 @@ export class QuestSettlementScheduler {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly questPenaltyService: QuestPenaltyService,
+    private readonly bossJudgmentService: BossJudgmentService,
     private readonly routineSpawnService: RoutineSpawnService,
   ) {}
 
@@ -37,6 +39,14 @@ export class QuestSettlementScheduler {
         failed += 1;
         this.logger.error(
           `settlement failed for user ${id}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+      try {
+        await this.bossJudgmentService.clearJudgedSubroutines(id);
+      } catch (error) {
+        this.logger.error(
+          `boss routine cleanup failed for user ${id}`,
           error instanceof Error ? error.stack : String(error),
         );
       }
