@@ -36,22 +36,22 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   auth.ts                       Better Auth configuration
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
 quests/                         every quest rule
-  quests.service.ts             register a deadline quest, list (settle, then spawn), give up
+  quests.service.ts             register a deadline quest, list (settle, then spawn), give up (free only for an untouched quest registered today)
   quests.controller.ts          POST/GET /api/quests, complete, check today, DELETE
   routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, pause, resume, DELETE
   routines.service.ts           routine rules. A boss subroutine cannot be updated, paused or resumed
   routine-spawn.service.ts      write today's quest once per routine
   bosses.controller.ts          POST /api/bosses, GET /api/bosses
   boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines
-  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress and the quest row
-  quest-penalty.service.ts      settle missed days (quests a routine wrote, passed deadlines)
+  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress (XP and the category stat) and the quest row, then clear lethargy
+  quest-penalty.service.ts      settle missed days. Lethargy when any quest due that day is still open
   quest-settlement.scheduler.ts settle everyone at 00:01 Seoul, then spawn today's routine quests
   quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
   quest-calendar.ts             Seoul date helpers
   monster-view.ts               map a monster row and a task status to the list fields
 wallet/                         balance, history, post-hoc deduction
 progress/                       level, XP, titles, streak, gacha tickets
-stats/                          stat totals
+stats/                          stamina, intellect and sense stored on progress at completion
 job-change/                     job change
 ai/                             monster, battle log, difficulty recommendation, quest plan. The current implementation is Gemini
   ai.ts                         interface. It does not decide gold or XP
@@ -158,7 +158,7 @@ This diagram expands 'make the battle log' in the completion flow.
 - A quest a routine wrote is all at once and due that day, so it gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
 - Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
 - For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be given up.
-- Completing a quest a routine wrote clears the status effect. Completing any other quest leaves it.
+- Completing any quest clears lethargy. The completion XP is also added to that category's stat on progress. Exercise and daily life go to stamina, study and work to intellect, creative and mind to sense.
 
 ### Failures
 
@@ -204,6 +204,14 @@ The completion response's `applied` holds the base amount, check-ins and elapsed
 
 Every level gained adds one gacha ticket. Reaching level 10, 20, 30, 40 or 50 gives a title.
 
+## Giving up a quest
+
+`DELETE /api/quests/:id` locks the quest first, then the user, the wallet and progress. A completion locks the quest before the user, so the same order keeps the two from waiting on each other.
+
+A completed quest, or one whose due date is before today in Seoul, is rejected with 409.
+
+Giving up is free when the quest was created today, has no check-in today, was not written by a routine, and is not a boss subquest. Otherwise the gold and XP are the same as a miss. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty for the gap from the creation day to the due date. All at once stays on the daily column. Gold stops at -30 and XP stops at 0 in the current level. `GET /api/quests` returns those floored amounts as `abandonGold` and `abandonXp`. They are 0 when the give-up is free or not allowed. The wallet history kind is `penalty`. Giving up does not turn lethargy on. The quest row is then deleted.
+
 ## Penalty settlement flow
 
 <a href="img/penalty_flow.png"><img src="img/penalty_flow.png" alt="Penalty settlement flow" width="500"></a>
@@ -212,8 +220,8 @@ Yesterday is the day before today on the Seoul calendar. If the last settled dat
 
 ### Worth noting
 
-- Gold and XP are deducted for quests still open whose due date falls on a settled day. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty. A boss is not a quest, so it is not charged. Its subquests are. Lethargy turns on only when a quest a routine wrote was missed.
-- A day with no missed quest from a routine leaves the status effect as it is. If that day had no completion, only the streak goes to 0.
+- Gold and XP are deducted for quests still open whose due date falls on a settled day. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty. A boss is not a quest, so it is not charged. Its subquests are. Lethargy turns on when any of those quests was missed.
+- A day with no missed quest leaves the status effect as it is. If that day had no completion, only the streak goes to 0.
 - The streak goes up only on a first completion; settlement only resets past days with no completion to 0.
 - Today is never settled.
 - Levels do not change in this settlement.
@@ -221,13 +229,13 @@ Yesterday is the day before today on the Seoul calendar. If the last settled dat
 
 ### Rules
 
-| Rule                   | Value                                                                                                                                                                                                                                                                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                                                                                                                                                                |
-| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                                                                                                                                                              |
-| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                                                                                                                                                              |
-| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                                                                                                                                                              |
-| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                                                                                                                                                    |
-| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                                                                                                                                                 |
-| Lethargy               | Becomes `lethargy` when a quest a routine wrote is missed. A day with no such miss leaves the status effect as it is                                                                                                                                                                                                                        |
-| Deadline quest penalty | A steady deadline is chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. All at once uses the daily column however long the gap is. Same number for gold and XP. A deadline quest that a routine did not write leaves streak and lethargy unchanged |
+| Rule                   | Value                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                                                                                                                                                                         |
+| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                                                                                                                                                                       |
+| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                                                                                                                                                                       |
+| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                                                                                                                                                                       |
+| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                                                                                                                                                             |
+| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                                                                                                                                                          |
+| Lethargy               | Becomes `lethargy` when any quest due that day is still open. A day with no missed quest leaves the status effect as it is. Settlement does not clear it                                                                                                                                                                                             |
+| Deadline quest penalty | A steady deadline is chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. All at once uses the daily column however long the gap is. Same number for gold and XP. A missed deadline turns lethargy on. Streak still follows whether that day had a completion |
