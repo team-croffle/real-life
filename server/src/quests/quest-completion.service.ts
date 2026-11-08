@@ -1,4 +1,4 @@
-import type { QuestCompletionResult, QuestDayMarkResult, StatusEffect } from '@nest-vue/shared';
+import type { QuestCompletionResult, QuestDayMarkResult } from '@nest-vue/shared';
 import {
   QUEST_CATEGORY_STATS,
   QUEST_NOTE_MAX_LENGTH,
@@ -116,7 +116,7 @@ export class QuestCompletionService {
         .set({ completedOn: today, note, battleLog, gold, xp })
         .where(eq(quests.id, questRow.id));
 
-      const statusEffect = await statusAfterCompletion(tx, userId, questRow.routineId !== null);
+      const statusEffect = await statusAfterCompletion(tx, userId);
 
       return {
         gold,
@@ -372,24 +372,9 @@ function assertCompletable(questRow: QuestRow, createdOn: string, today: string)
   }
 }
 
-async function statusAfterCompletion(
-  tx: DrizzleTx,
-  userId: string,
-  clearLethargy: boolean,
-): Promise<StatusEffect | null> {
-  if (clearLethargy) {
-    await tx
-      .update(userProgress)
-      .set({ statusEffect: null })
-      .where(eq(userProgress.userId, userId));
-    return null;
-  }
-
-  const [progressRow] = await tx
-    .select({ statusEffect: userProgress.statusEffect })
-    .from(userProgress)
-    .where(eq(userProgress.userId, userId));
-  return progressRow?.statusEffect ?? null;
+async function statusAfterCompletion(tx: DrizzleTx, userId: string): Promise<null> {
+  await tx.update(userProgress).set({ statusEffect: null }).where(eq(userProgress.userId, userId));
+  return null;
 }
 
 async function lockedMarkCount(tx: DrizzleTx, questId: string, userId: string): Promise<number> {
