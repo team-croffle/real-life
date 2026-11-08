@@ -36,10 +36,10 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   auth.ts                       Better Auth configuration
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
 quests/                         every quest rule
-  quests.service.ts             register a deadline quest, list (settle, then spawn), give up (free only for an untouched quest registered today)
+  quests.service.ts             register a deadline quest, list (settle, then spawn), delete (free only for an untouched quest registered today)
   quests.controller.ts          POST/GET /api/quests, complete, check today, DELETE
   routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, pause, resume, DELETE
-  routines.service.ts           routine rules. A boss subroutine cannot be updated, paused or resumed
+  routines.service.ts           routine rules. A new title clears the monster and enqueues again. A boss subroutine cannot be updated, paused or resumed
   routine-spawn.service.ts      write today's quest once per routine
   bosses.controller.ts          POST /api/bosses, GET /api/bosses
   boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines
@@ -132,6 +132,8 @@ The list reads the monster row and any task still in the queue. It maps them to 
 - No monster row, and the task is `failed`: `failed`, and `monster` is null.
 - No monster row and no task: both are null.
 
+A routine response is `generating` and `monster` is null while its task is `pending` or `running`, even when a monster row is still stored. `PATCH /api/routines/:id` that changes the title sets `monster_id` to null, then enqueues a monster task for the new title. The response does not wait. If that enqueue fails, the routine stays with `monster_id` empty. A title that did not change leaves the monster as it is.
+
 ## Boss plan flow
 
 `POST /api/ai/quest-plans` calls the AI interface directly, on the direct-call limit. The model returns subquests and does not set times or HP. The server counts both with `bossQuestHp` in `shared`. A deadline before today in Seoul, or after the boss deadline, is dropped. If none remain, the call answers 503 and stores nothing.
@@ -157,7 +159,7 @@ This diagram expands 'make the battle log' in the completion flow.
 - Settlement is committed first. If the completion fails, settlement stays.
 - A quest a routine wrote is all at once and due that day, so it gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
 - Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
-- For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be given up.
+- For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be deleted.
 - Completing any quest clears lethargy. The completion XP is also added to that category's stat on progress. Exercise and daily life go to stamina, study and work to intellect, creative and mind to sense.
 
 ### Failures
@@ -204,13 +206,13 @@ The completion response's `applied` holds the base amount, check-ins and elapsed
 
 Every level gained adds one gacha ticket. Reaching level 10, 20, 30, 40 or 50 gives a title.
 
-## Giving up a quest
+## Deleting a quest
 
 `DELETE /api/quests/:id` locks the quest first, then the user, the wallet and progress. A completion locks the quest before the user, so the same order keeps the two from waiting on each other.
 
 A completed quest, or one whose due date is before today in Seoul, is rejected with 409.
 
-Giving up is free when the quest was created today, has no check-in today, was not written by a routine, and is not a boss subquest. Otherwise the gold and XP are the same as a miss. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty for the gap from the creation day to the due date. All at once stays on the daily column. Gold stops at -30 and XP stops at 0 in the current level. `GET /api/quests` returns those floored amounts as `abandonGold` and `abandonXp`. They are 0 when the give-up is free or not allowed. The wallet history kind is `penalty`. Giving up does not turn lethargy on. The quest row is then deleted.
+Deletion is free when the quest was created today, has no check-in today, was not written by a routine, and is not a boss subquest. Otherwise the gold and XP are the same as a miss. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty for the gap from the creation day to the due date. All at once stays on the daily column. Gold stops at -30 and XP stops at 0 in the current level. `GET /api/quests` returns those floored amounts as `abandonGold` and `abandonXp`. They are 0 when the deletion is free or not allowed. The delete confirmation shows that gold and XP. The wallet history kind is `penalty`. Deleting does not turn lethargy on. The quest row is then deleted.
 
 ## Penalty settlement flow
 
