@@ -62,7 +62,7 @@ export class QuestPenaltyService {
         const misses = openRows
           .filter((questRow) => questRow.endsOn === day)
           .toSorted((left, right) => left.id.localeCompare(right.id));
-        if (misses.some((questRow) => questRow.routineId !== null)) {
+        if (misses.length > 0) {
           statusEffect = 'lethargy';
         }
 
