@@ -7,6 +7,7 @@ const props = defineProps<{
   title: string;
   pending: boolean;
   error: string;
+  routine?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -37,9 +38,11 @@ function requestCancel(): void {
       aria-modal="true"
       class="bg-surface relative z-10 w-full max-w-[340px] rounded-[18px] p-[22px] shadow-xl"
     >
-      <h2 class="mb-2 text-[15px] font-bold">{{ t('quest.abandonTitle') }}</h2>
+      <h2 class="mb-2 text-[15px] font-bold">
+        {{ routine ? t('quest.deleteTitle') : t('quest.abandonTitle') }}
+      </h2>
       <p class="text-secondary-foreground mb-4 text-[12.5px] leading-normal">
-        {{ t('quest.abandonBody', { title }) }}
+        {{ routine ? t('quest.deleteBody') : t('quest.abandonBody', { title }) }}
       </p>
       <p v-if="error" class="text-destructive mb-3 text-[12px]">{{ error }}</p>
       <div class="flex gap-2">
@@ -60,7 +63,7 @@ function requestCancel(): void {
           :disabled="pending"
           @click="emit('confirm')"
         >
-          {{ t('quest.abandon') }}
+          {{ routine ? t('quest.delete') : t('quest.abandon') }}
         </Button>
       </div>
     </div>

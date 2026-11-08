@@ -214,6 +214,8 @@
     "menu": "Menu",
     "abandon": "Give up",
     "delete": "Delete",
+    "deleteTitle": "Delete this routine?",
+    "deleteBody": "Deleting the routine leaves quests that were already created.",
     "abandonTitle": "Give up this quest?",
     "abandonBody": "Giving up “{title}” cannot be undone.",
     "cancel": "Cancel",

@@ -411,6 +411,7 @@ onUnmounted(() => {
     <QuestAbandonDialog
       v-if="abandonId"
       :title="abandonTitle"
+      :routine="abandonKind === 'routine'"
       :pending="abandonPending"
       :error="abandonError"
       @cancel="closeAbandon"
