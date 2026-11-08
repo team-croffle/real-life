@@ -2,6 +2,7 @@ import type { BossKind } from '../constants/bosses';
 import type { MonsterStatus } from '../constants/monsters';
 import type { QuestCategory } from '../constants/quests';
 import type { Quest } from './quest';
+import type { Routine } from './routine';
 
 export interface BossAppearance {
   kind: BossKind;
@@ -32,4 +33,5 @@ export interface ConfirmedBoss {
   maxHp: number;
   hp: number;
   quests: Quest[];
+  routines: Routine[];
 }

@@ -19,6 +19,9 @@ export const userProgress = pgTable('user_progress', {
     .notNull()
     .default(sql`((timezone('Asia/Seoul', now()))::date - 1)`),
   statusEffect: statusEffectEnum(),
+  stamina: integer().notNull().default(0),
+  intellect: integer().notNull().default(0),
+  sense: integer().notNull().default(0),
   penaltiesSettledOn: date({ mode: 'string' })
     .notNull()
     .default(sql`(timezone('Asia/Seoul', now()))::date`),

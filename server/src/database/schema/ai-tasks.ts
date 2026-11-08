@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm';
 import {
+  check,
   index,
   integer,
   jsonb,
@@ -10,7 +12,9 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import { bosses } from './bosses';
 import { quests } from './quests';
+import { routines } from './routines';
 import { users } from './users';
 
 export const AI_TASK_KINDS = ['monster'] as const;
@@ -22,7 +26,7 @@ export type AiTaskStatus = (typeof AI_TASK_STATUSES)[number];
 export const aiTaskKindEnum = pgEnum('ai_task_kind', AI_TASK_KINDS);
 export const aiTaskStatusEnum = pgEnum('ai_task_status', AI_TASK_STATUSES);
 
-/** 몬스터 생성만 큐에 넣는다. 전투 기록·난이도·계획은 요청 안에서 바로 부른다. */
+/** 몬스터 생성만 큐에 넣는다. 주인은 퀘스트·루틴·보스 중 하나다. */
 export const aiTasks = pgTable(
   'ai_tasks',
   {
@@ -30,13 +34,11 @@ export const aiTasks = pgTable(
     userId: uuid()
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    /** 몬스터 작업은 퀘스트당 하나. 페이로드에는 넣지 않는다. */
-    questId: uuid()
-      .notNull()
-      .references(() => quests.id, { onDelete: 'cascade' }),
+    questId: uuid().references(() => quests.id, { onDelete: 'cascade' }),
+    routineId: uuid().references(() => routines.id, { onDelete: 'cascade' }),
+    bossId: uuid().references(() => bosses.id, { onDelete: 'cascade' }),
     kind: aiTaskKindEnum().notNull(),
     payload: jsonb().notNull(),
-    result: jsonb(),
     status: aiTaskStatusEnum().notNull().default('pending'),
     attempts: integer().notNull().default(0),
     runAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
@@ -50,8 +52,18 @@ export const aiTasks = pgTable(
   },
   (table) => [
     unique('ai_tasks_quest_id_unique').on(table.questId),
+    unique('ai_tasks_routine_id_unique').on(table.routineId),
+    unique('ai_tasks_boss_id_unique').on(table.bossId),
     index('ai_tasks_status_run_at_idx').on(table.status, table.runAt),
     index('ai_tasks_user_id_idx').on(table.userId),
+    check(
+      'ai_tasks_one_owner',
+      sql`(
+        (${table.questId} IS NOT NULL)::int
+        + (${table.routineId} IS NOT NULL)::int
+        + (${table.bossId} IS NOT NULL)::int
+      ) = 1`,
+    ),
   ],
 );
 
