@@ -41,7 +41,12 @@ export interface QuestListItem {
   completedToday: boolean;
   completed: boolean;
   canComplete: boolean;
+  /** 완료했거나 마감이 지났으면 false */
   canAbandon: boolean;
+  /** 지금 지우면 빠지는 골드. 공짜거나 포기할 수 없으면 0. 바닥을 적용한 값이다 */
+  abandonGold: number;
+  /** 지금 지우면 빠지는 경험치. 공짜거나 포기할 수 없으면 0. 바닥을 적용한 값이다 */
+  abandonXp: number;
   canMarkToday: boolean;
   /** day-mark가 없으면 0 */
   markedDayCount: number;
