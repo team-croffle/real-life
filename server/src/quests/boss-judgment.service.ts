@@ -28,6 +28,7 @@ import { routines } from '../database/schema/routines';
 import { userProgress } from '../database/schema/user-progress';
 import { userTitles } from '../database/schema/user-titles';
 import { users } from '../database/schema/users';
+import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
 
 const BOSS_ID_PATTERN =
@@ -139,6 +140,7 @@ export class BossJudgmentService {
         .orderBy(asc(quests.id))
         .for('update');
       await lockUser(tx, userId);
+      await lockWallet(tx, userId);
       const levelXp = await lockProgressXp(tx, userId);
       const [bossRow] = await tx
         .select()
@@ -305,6 +307,18 @@ export class BossJudgmentService {
       result: 'failed',
       titlesGranted: [],
     };
+  }
+}
+
+async function lockWallet(tx: DrizzleTx, userId: string): Promise<void> {
+  await tx.insert(wallets).values({ userId }).onConflictDoNothing();
+  const [walletRow] = await tx
+    .select({ userId: wallets.userId })
+    .from(wallets)
+    .where(eq(wallets.userId, userId))
+    .for('update');
+  if (!walletRow) {
+    throw new InternalServerErrorException('wallet row missing after insert');
   }
 }
 
