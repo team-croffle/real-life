@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, or } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
@@ -24,7 +24,7 @@ export class RoutineSpawnService {
       return;
     }
     const run = async (db: DrizzleDb | DrizzleTx) => {
-      const routineRows = await lockRoutinesToSpawn(db, userId, onlyRoutineIds);
+      const routineRows = await lockRoutinesToSpawn(db, userId, today, onlyRoutineIds);
       const due = routineRows.filter(
         (routineRow) =>
           routineRow.spawnedOn !== today &&
@@ -72,6 +72,7 @@ export class RoutineSpawnService {
 async function lockRoutinesToSpawn(
   db: DrizzleDb | DrizzleTx,
   userId: string,
+  today: string,
   onlyRoutineIds: readonly string[] | undefined,
 ): Promise<RoutineRow[]> {
   if (onlyRoutineIds) {
@@ -91,7 +92,8 @@ async function lockRoutinesToSpawn(
       and(
         eq(routines.userId, userId),
         eq(routines.active, true),
-        or(isNull(routines.bossId), isNull(bosses.result)),
+        // 보스 마감일이 오늘보다 이전이면 찍지 않는다. 판정 결과와 상관없이 마감일로 거른다.
+        or(isNull(routines.bossId), gte(bosses.deadlineOn, today)),
       ),
     )
     .orderBy(asc(routines.id))
