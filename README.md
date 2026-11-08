@@ -49,7 +49,7 @@ A quest is registered with a kind (normal or main), a category, a title, a diffi
 
 The schedule is one of two.
 
-- **Routine** — pick weekdays (all seven means every day), optionally every other week. It is completed on the chosen weekdays only, once a day. A missed day cannot be filled in later. A routine can be paused: pausing starts the next day, and resuming starts the same day
+- **Routine** — pick weekdays (all seven means every day), optionally every other week. It is completed on the chosen weekdays only, once a day. A missed day cannot be filled in later. A routine can be paused: pausing starts the next day, and resuming starts the same day. Each scheduled day writes one quest. Deleting that quest, or turning the routine off and back on, does not write another quest that same day. A routine that has not written one today still does, including one just registered or whose weekdays were changed to include today
 - **Deadline** — completed once by the due date. From the day after the due date it can no longer be completed; there is no grace period. Each day you work on it before then is recorded with **check today** — once a day, only on that day. Check-ins do not count toward the streak
 
 A quest can be given up. Giving up deletes it with no reward. A deadline quest that has already been completed cannot be given up.

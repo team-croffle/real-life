@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, date, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { bosses } from './bosses';
 import { monsters } from './monsters';
@@ -23,6 +23,8 @@ export const routines = pgTable(
     /** 보스 하위 루틴. 보스가 지워지면 루틴도 지운다. */
     bossId: uuid().references(() => bosses.id, { onDelete: 'cascade' }),
     monsterId: uuid().references(() => monsters.id, { onDelete: 'set null' }),
+    /** 마지막으로 퀘스트를 찍은 서울 날짜. 아직 없으면 null */
+    spawnedOn: date({ mode: 'string' }),
     createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })
       .notNull()
