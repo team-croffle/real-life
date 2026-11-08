@@ -214,6 +214,8 @@
     "menu": "메뉴",
     "abandon": "포기",
     "delete": "삭제",
+    "deleteTitle": "루틴을 삭제할까요?",
+    "deleteBody": "루틴을 지워도 이미 만든 퀘스트는 남아요.",
     "abandonTitle": "퀘스트를 포기할까요?",
     "abandonBody": "「{title}」을(를) 포기하면 되돌릴 수 없어요.",
     "cancel": "취소",
