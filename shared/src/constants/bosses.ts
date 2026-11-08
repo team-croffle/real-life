@@ -37,6 +37,21 @@ export const BOSS_LABELS: Record<BossKind, string> = {
 /** 판정 전 보스 상한. 넘으면 확정은 409. */
 export const BOSS_ACTIVE_MAX = 3;
 
+/** 보스 행의 결과. 비어 있으면 진행 중이다. */
+export const BOSS_RESULTS = ['cleared', 'failed', 'abandoned'] as const;
+
+export type BossResult = (typeof BOSS_RESULTS)[number];
+
+/** 자리값. 직업·연속 배율을 곱하지 않는다. 밸런스는 나중에 정한다. */
+export const BOSS_REWARD_PER_HP = 10;
+
+/** 자리값. 보상 단가보다 작다. 직업·연속 배율을 곱하지 않는다. */
+export const BOSS_PENALTY_PER_HP = 5;
+
+export const BOSS_TICKET_BASE = 1;
+export const BOSS_TICKET_HP_PER_EXTRA = 40;
+export const BOSS_TICKET_MAX = 5;
+
 export function isBossKind(kind: string): kind is BossKind {
   return (BOSS_KINDS as readonly string[]).includes(kind);
 }

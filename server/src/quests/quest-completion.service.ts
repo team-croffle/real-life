@@ -1,6 +1,7 @@
 import type { QuestCompletionResult, QuestDayMarkResult } from '@nest-vue/shared';
 import {
   QUEST_CATEGORY_STATS,
+  QUEST_DIFFICULTY_SCORES,
   QUEST_NOTE_MAX_LENGTH,
   applyLevelXp,
   comboRewardMultiplier,
@@ -26,6 +27,7 @@ import { AI, type Ai } from '../ai/ai';
 import { AiCallLimiter } from '../ai/ai-call-limiter';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
+import { bosses } from '../database/schema/bosses';
 import { monsters } from '../database/schema/monsters';
 import { questDayMarks } from '../database/schema/quest-day-marks';
 import type { QuestRow } from '../database/schema/quests';
@@ -108,8 +110,20 @@ export class QuestCompletionService {
         comboMultiplier,
       );
 
-      const balance = await this.walletService.applyBalanceDelta(tx, userId, gold, 'completion');
       const progress = await grantProgress(tx, userId, xp, QUEST_CATEGORY_STATS[questRow.category]);
+      const balance = await this.walletService.applyBalanceDelta(tx, userId, gold, 'completion', {
+        questId: questRow.id,
+        bossId: null,
+        tickets: progress.ticketsGranted,
+      });
+      if (questRow.bossId !== null) {
+        await reduceBossHp(
+          tx,
+          userId,
+          questRow.bossId,
+          QUEST_DIFFICULTY_SCORES[questRow.difficulty],
+        );
+      }
 
       await tx
         .update(quests)
@@ -384,6 +398,27 @@ async function lockedMarkCount(tx: DrizzleTx, questId: string, userId: string): 
     .where(and(eq(questDayMarks.questId, questId), eq(questDayMarks.userId, userId)))
     .for('update');
   return markRow?.markedDayCount ?? 0;
+}
+
+async function reduceBossHp(
+  tx: DrizzleTx,
+  userId: string,
+  bossId: string,
+  score: number,
+): Promise<void> {
+  const [bossRow] = await tx
+    .select({ hp: bosses.hp, result: bosses.result })
+    .from(bosses)
+    .where(and(eq(bosses.id, bossId), eq(bosses.userId, userId)))
+    .for('update');
+  if (!bossRow || bossRow.result !== null) {
+    return;
+  }
+  const nextHp = Math.max(0, bossRow.hp - score);
+  if (nextHp === bossRow.hp) {
+    return;
+  }
+  await tx.update(bosses).set({ hp: nextHp }).where(eq(bosses.id, bossId));
 }
 
 async function grantProgress(

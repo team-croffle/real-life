@@ -134,6 +134,20 @@
       "when": 1794135284485,
       "tag": "0018_routine_spawned_on",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794150578143,
+      "tag": "0019_wallet_entry_cause",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794150910930,
+      "tag": "0020_boss_judgment",
+      "breakpoints": true
     }
   ]
 }

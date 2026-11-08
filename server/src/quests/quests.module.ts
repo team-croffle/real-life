@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AiQueueModule } from '../ai-queue/ai-queue.module';
 import { AiModule } from '../ai/ai.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { BossJudgmentService } from './boss-judgment.service';
 import { BossPlanService } from './boss-plan.service';
 import { BossesController } from './bosses.controller';
 import { QuestCompletionService } from './quest-completion.service';
@@ -22,6 +23,7 @@ import { RoutinesService } from './routines.service';
   providers: [
     QuestsService,
     BossPlanService,
+    BossJudgmentService,
     QuestCompletionService,
     QuestCritRoller,
     QuestPenaltyService,
