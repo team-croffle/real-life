@@ -2,7 +2,7 @@
 
 <p align="center"><a href="./ARCHITECTURE.ko.md">한국어</a></p>
 
-A web app where you register to-dos as quests and receive gold and XP when you complete them. A quest is registered as a routine or a deadline quest. If a routine's scheduled day or a deadline quest's due date passes without completion, settlement deducts gold and XP.
+A web app where you register to-dos as quests and receive gold and XP when you complete them. A deadline quest is registered on its own. A routine writes one all-at-once quest, due that day, on each scheduled day. If that quest or another deadline quest passes its due date without completion, settlement deducts gold and XP.
 
 ## Core design
 
@@ -36,14 +36,19 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   auth.ts                       Better Auth configuration
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
 quests/                         every quest rule
-  quests.service.ts             register, list, check today, routine pause/resume, give up
+  quests.service.ts             register a deadline quest, list (settle, then spawn), give up
+  quests.controller.ts          POST/GET /api/quests, complete, check today, DELETE
+  routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, pause, resume, DELETE
+  routines.service.ts           routine rules. A boss subroutine cannot be updated, paused or resumed
+  routine-spawn.service.ts      write today's quest once per routine
   bosses.controller.ts          POST /api/bosses, GET /api/bosses
-  boss-plan.service.ts          confirm a plan into a boss and its subquests, list bosses still in progress
-  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet and progress
-  quest-penalty.service.ts      settle missed days (missed routines, passed deadlines)
-  quest-settlement.scheduler.ts settle everyone at 00:01 Seoul
+  boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines
+  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress and the quest row
+  quest-penalty.service.ts      settle missed days (quests a routine wrote, passed deadlines)
+  quest-settlement.scheduler.ts settle everyone at 00:01 Seoul, then spawn today's routine quests
   quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
   quest-calendar.ts             Seoul date helpers
+  monster-view.ts               map a monster row and a task status to the list fields
 wallet/                         balance, history, post-hoc deduction
 progress/                       level, XP, titles, streak, gacha tickets
 stats/                          stat totals
@@ -59,7 +64,7 @@ ai/                             monster, battle log, difficulty recommendation, 
   quest-plan.service.ts         goal and deadline in, subquests with server-counted times and HP out
   dto/suggest-quest-plan.dto.ts
 ai-queue/                       background monster tasks only
-  ai-queue.ts                   enqueue, find by quest, dequeue, complete, fail
+  ai-queue.ts                   enqueue, find by quest, routine or boss, dequeue, complete, fail
   postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
   ai-queue.worker.ts            claims one monster task and calls the AI interface
 database/schema/                Drizzle tables (one file per table)
@@ -78,6 +83,7 @@ boss-hp.ts            HP for one subquest from a counted number of times and a d
 types/                response types exchanged by the server and the web
   difficulty-recommendation.ts
   boss.ts           boss list item
+  routine.ts        routine list item
   quest-plan.ts     suggested plan: subquests, times, HP
 ```
 
@@ -107,26 +113,32 @@ Main call relations:
 - Settlement deducts gold from the wallet.
 - A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
 
+## Routine spawn
+
+An active routine writes one quest on each scheduled day. The quest is an all-at-once deadline due that day. It copies the routine's category, title, difficulty, boss and monster. The routine stores that Seoul date, so the day is written once. Deleting the quest, or pausing and resuming the same day, does not write another.
+
+The write runs after settlement at 00:01 Seoul, for every user who has a job, and after settlement on `GET /api/quests`. It also runs when a routine is registered, when it is resumed, and inside the boss confirm transaction. Deleting a routine leaves the quests it wrote and their monsters.
+
 ## Monster task flow
 
-Registering a quest enqueues one monster task for that quest and returns without waiting. The quest id is stored on the task, and it is unique, so a quest has one task. The payload is the title and the eight kinds from `shared/src/constants/monsters.ts`. If the enqueue fails, the quest is still registered.
+Registering a deadline quest enqueues one monster task for that quest. Registering a routine enqueues one for that routine. Confirming a boss enqueues one for the boss, one for each deadline subquest and one for each subroutine. The task stores exactly one of those ids, and that id is unique. A quest's payload kinds are the eight from `shared/src/constants/monsters.ts`. A routine uses the same eight. A boss uses the eight boss kinds. The response does not wait. If the enqueue fails, the quest, routine or boss stays.
 
-The worker claims one task and calls the AI interface. The model picks a kind and writes a name and a description. It does not set gold or XP.
+The worker claims one task and calls the AI interface. The model picks a kind and writes a name and a description. It does not set gold or XP. On success the result is inserted into `monsters`, and the quest, routine or boss stores that id. A routine's result is also stored on the quests it wrote that do not have one yet. The task is then deleted. On failure the task stays `failed` and no monster row is written. The title stays as registered.
 
-The quest list reads those rows with `findMonsters`, which returns each task's queue `status` and `result`. The list maps them to `monsterStatus` and `monster`:
+The list reads the monster row and any task still in the queue. It maps them to `monsterStatus` and `monster`:
 
-- No task: both are null.
-- `pending` or `running`: `generating`, and `monster` is null.
-- `failed`, or `succeeded` whose result is not a known kind with a name and a description: `failed`, and `monster` is null. The quest title stays as registered.
-- `succeeded` with a valid result: `ready`. `monster.kind` is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon. `imageKey` is that kind. `name` and `description` come from the result.
+- A monster row with a known kind, a name and a description: `ready`. For a quest or a routine, `monster.kind` is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon. For a boss it is one of the eight boss kinds. `imageKey` is that kind. `name` and `description` come from the row.
+- No monster row, and the task is `pending` or `running`: `generating`, and `monster` is null.
+- No monster row, and the task is `failed`: `failed`, and `monster` is null.
+- No monster row and no task: both are null.
 
 ## Boss plan flow
 
 `POST /api/ai/quest-plans` calls the AI interface directly, on the direct-call limit. The model returns subquests and does not set times or HP. The server counts both with `bossQuestHp` in `shared`. A deadline before today in Seoul, or after the boss deadline, is dropped. If none remain, the call answers 503 and stores nothing.
 
-`POST /api/bosses` locks the user, then inserts the boss quest (`kind` main, a deadline done all at once), the HP row, and the subquests in one transaction. HP is counted again from the quests in the request. There are at most 10 subquests. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still awaiting judgment is 409. If the transaction fails, nothing is created.
+`POST /api/bosses` locks the user, then inserts the boss, the deadline subquests and the subroutines in one transaction. The boss is its own row. HP is stored on that row and counted again from the request. A deadline subquest stores the boss id. A subroutine stores it on the routine. There are at most 10 of them. Today's scheduled subroutines write their quest in that same transaction. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still awaiting judgment is 409. If the transaction fails, nothing is created. Updating, pausing or resuming a subroutine is 400.
 
-After that commit, one task is enqueued for the boss quest. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each subquest gets its own task with the monster kinds. If an enqueue fails, the boss and the subquests stay. `GET /api/bosses` maps that task the same way, checking boss kinds. A failed or invalid result leaves the title as the goal.
+After that commit, one task is enqueued for the boss. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each deadline subquest and each subroutine gets its own task with the monster kinds. If an enqueue fails, the boss, the subquests and the subroutines stay. `GET /api/bosses` reads the monster row and any task still in the queue, checking boss kinds. A failed result leaves the title as the goal.
 
 ## Quest completion flow
 
@@ -138,38 +150,34 @@ After that commit, one task is enqueued for the boss quest. The task kind stays 
 
 This diagram expands 'make the battle log' in the completion flow.
 
-- The quest is checked once without a lock. When there is a note, the direct-call limit is checked and then the battle log is written, with a 3 second cut. The quest is locked and checked again, and the log is saved on the completion row. The battle log is made outside the lock.
+- The quest is checked once without a lock. When there is a note, the direct-call limit is checked and then the battle log is written, with a 3 second cut. The quest is locked and checked again, and the log is saved on the quest row, with the completion date, gold, XP and note. The battle log is made outside the lock.
 
 ### Worth noting
 
 - Settlement is committed first. If the completion fails, settlement stays.
-- A routine gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
+- A quest a routine wrote is all at once and due that day, so it gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
 - Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
 - For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be given up.
-- Completing a routine clears the status effect. Completing a deadline quest leaves it.
+- Completing a quest a routine wrote clears the status effect. Completing any other quest leaves it.
 
 ### Failures
 
 The filter answers with the exception's status code as it is.
 
-| Condition                                | Status |
-| ---------------------------------------- | ------ |
-| The quest is a boss (`kind` main)        | 400    |
-| The note is longer than 500 characters   | 400    |
-| Completed before the creation day        | 400    |
-| A routine, and today is not a chosen day | 400    |
-| A routine, and this is a rest week       | 400    |
-| Outside the deadline period              | 400    |
-| No job at the settlement step            | 403    |
-| No job at the reward step                | 403    |
-| The quest id is malformed                | 404    |
-| Not the user's quest                     | 404    |
-| The routine was already completed today  | 409    |
-| The deadline quest was already completed | 409    |
+| Condition                              | Status |
+| -------------------------------------- | ------ |
+| The note is longer than 500 characters | 400    |
+| Completed before the creation day      | 400    |
+| Outside the deadline period            | 400    |
+| No job at the settlement step          | 403    |
+| No job at the reward step              | 403    |
+| The quest id is malformed              | 404    |
+| Not the user's quest                   | 404    |
+| The quest was already completed        | 409    |
 
 ### Reward calculation
 
-A routine uses a gap of 0 days, which gives the full daily amount.
+A quest a routine wrote is due the day it was written and its pace is all at once, so it pays the full daily amount.
 
 A steady deadline quest uses the gap between its creation day and the completion day. 0 is the daily table, 1 to 7 is the weekly table, 8 or more is the long-term table. A deadline done all at once uses the daily table and a ratio of 1, so the result's checked days and elapsed days are both 1.
 
@@ -204,8 +212,8 @@ Yesterday is the day before today on the Seoul calendar. If the last settled dat
 
 ### Worth noting
 
-- Gold and XP are deducted for current routines and for deadline quests past their due date. Settlement reads only `kind` general, so a boss is not charged. Its subquests are. Lethargy turns on only for missed routines.
-- A day with no scheduled routine leaves the status effect as it is. If that day had no completion, only the streak goes to 0.
+- Gold and XP are deducted for quests still open whose due date falls on a settled day. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty. A boss is not a quest, so it is not charged. Its subquests are. Lethargy turns on only when a quest a routine wrote was missed.
+- A day with no missed quest from a routine leaves the status effect as it is. If that day had no completion, only the streak goes to 0.
 - The streak goes up only on a first completion; settlement only resets past days with no completion to 0.
 - Today is never settled.
 - Levels do not change in this settlement.
@@ -213,13 +221,13 @@ Yesterday is the day before today on the Seoul calendar. If the last settled dat
 
 ### Rules
 
-| Rule                   | Value                                                                                                                                                                                                                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                                                                                                               |
-| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                                                                                                             |
-| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                                                                                                             |
-| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                                                                                                             |
-| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                                                                                                   |
-| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                                                                                                |
-| Lethargy               | Becomes `lethargy` when a routine is missed. A day with no scheduled routine leaves the status effect as it is                                                                                                                                                                             |
-| Deadline quest penalty | A steady deadline is chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. All at once uses the daily column however long the gap is. Same number for gold and XP. Streak and lethargy do not change |
+| Rule                   | Value                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                                                                                                                                                                |
+| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                                                                                                                                                              |
+| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                                                                                                                                                              |
+| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                                                                                                                                                              |
+| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                                                                                                                                                    |
+| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                                                                                                                                                 |
+| Lethargy               | Becomes `lethargy` when a quest a routine wrote is missed. A day with no such miss leaves the status effect as it is                                                                                                                                                                                                                        |
+| Deadline quest penalty | A steady deadline is chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. All at once uses the daily column however long the gap is. Same number for gold and XP. A deadline quest that a routine did not write leaves streak and lethargy unchanged |
