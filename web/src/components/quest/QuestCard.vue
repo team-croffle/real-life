@@ -57,7 +57,15 @@ const canPause = computed(
 const canResume = computed(
   () => routine.value !== null && routine.value.bossId === null && !routine.value.active,
 );
-const showMenu = computed(() => routine.value !== null || quest.value?.canAbandon === true);
+const canDelete = computed(() => {
+  if (routine.value) {
+    return routine.value.bossId === null;
+  }
+  return quest.value?.canAbandon === true;
+});
+const showMenu = computed(
+  () => canEdit.value || canPause.value || canResume.value || canDelete.value,
+);
 
 const difficultyClass = computed(() => {
   if (props.item.difficulty === 'easy') {
@@ -199,6 +207,7 @@ const difficultyClass = computed(() => {
           {{ t('quest.rest.action') }}
         </button>
         <button
+          v-if="canDelete"
           type="button"
           class="text-destructive block w-full px-3.5 py-2.5 text-left text-[12.5px] font-bold"
           @click="emit('abandon')"
