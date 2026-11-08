@@ -22,6 +22,7 @@ export * from './types/auth';
 export * from './types/job-change';
 export * from './types/progress';
 export * from './types/quest';
+export * from './types/routine';
 export * from './types/stats';
 export * from './types/user';
 export * from './types/wallet';

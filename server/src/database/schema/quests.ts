@@ -1,34 +1,23 @@
-import {
-  QUEST_CATEGORIES,
-  QUEST_DIFFICULTIES,
-  QUEST_KINDS,
-  QUEST_PACES,
-  QUEST_SCHEDULES,
-  QUEST_WEEKDAYS,
-} from '@nest-vue/shared';
 import { sql } from 'drizzle-orm';
 import {
-  type AnyPgColumn,
-  boolean,
   check,
   date,
   index,
-  pgEnum,
+  integer,
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import { bosses } from './bosses';
+import { monsters } from './monsters';
+import { questCategoryEnum, questDifficultyEnum, questPaceEnum } from './quest-enums';
+import { routines } from './routines';
 import { users } from './users';
 
-export const questKindEnum = pgEnum('quest_kind', QUEST_KINDS);
-export const questScheduleEnum = pgEnum('quest_schedule', QUEST_SCHEDULES);
-export const questPaceEnum = pgEnum('quest_pace', QUEST_PACES);
-export const questCategoryEnum = pgEnum('quest_category', QUEST_CATEGORIES);
-export const questDifficultyEnum = pgEnum('quest_difficulty', QUEST_DIFFICULTIES);
-export const questWeekdayEnum = pgEnum('quest_weekday', QUEST_WEEKDAYS);
-
+/** 할 일 하나. 루틴이 찍은 행은 pace once, ends_on은 그날이다. */
 export const quests = pgTable(
   'quests',
   {
@@ -36,20 +25,19 @@ export const quests = pgTable(
     userId: uuid()
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    kind: questKindEnum().notNull(),
     category: questCategoryEnum().notNull(),
     title: text().notNull(),
     difficulty: questDifficultyEnum().notNull(),
-    schedule: questScheduleEnum().notNull(),
-    /** 기한만 steady | once. 루틴은 null */
-    pace: questPaceEnum(),
-    weekdays: questWeekdayEnum().array(),
-    biweekly: boolean(),
-    endsOn: date({ mode: 'string' }),
-    /** 하위 퀘스트만 보스를 가리킨다. 메인 퀘스트와 일반 퀘스트는 null */
-    bossQuestId: uuid().references((): AnyPgColumn => quests.id, { onDelete: 'cascade' }),
-    restFrom: date({ mode: 'string' }),
-    restUntil: date({ mode: 'string' }),
+    pace: questPaceEnum().notNull(),
+    endsOn: date({ mode: 'string' }).notNull(),
+    bossId: uuid().references(() => bosses.id, { onDelete: 'set null' }),
+    routineId: uuid().references(() => routines.id, { onDelete: 'set null' }),
+    monsterId: uuid().references(() => monsters.id, { onDelete: 'set null' }),
+    completedOn: date({ mode: 'string' }),
+    gold: integer(),
+    xp: integer(),
+    note: text(),
+    battleLog: text(),
     createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true, mode: 'date' })
       .notNull()
@@ -58,60 +46,23 @@ export const quests = pgTable(
   },
   (table) => [
     index('quests_user_id_idx').on(table.userId),
-    index('quests_boss_quest_id_idx').on(table.bossQuestId),
+    index('quests_boss_id_idx').on(table.bossId),
+    index('quests_routine_id_idx').on(table.routineId),
+    index('quests_monster_id_idx').on(table.monsterId),
+    unique('quests_routine_id_ends_on_unique').on(table.routineId, table.endsOn),
     check(
-      'quests_boss_link',
-      sql`(
-        (${table.kind} = 'main' AND ${table.bossQuestId} IS NULL)
-        OR ${table.kind} = 'general'
-      )`,
-    ),
-    check(
-      'quests_schedule_xor',
+      'quests_completion',
       sql`(
         (
-          ${table.schedule} = 'routine'
-          AND ${table.endsOn} IS NULL
-          AND ${table.weekdays} IS NOT NULL
-          AND cardinality(${table.weekdays}) >= 1
-          AND ${table.biweekly} IS NOT NULL
+          ${table.completedOn} IS NULL
+          AND ${table.gold} IS NULL
+          AND ${table.xp} IS NULL
         )
         OR
         (
-          ${table.schedule} = 'deadline'
-          AND ${table.endsOn} IS NOT NULL
-          AND ${table.weekdays} IS NULL
-          AND ${table.biweekly} IS NULL
-        )
-      )`,
-    ),
-    check(
-      'quests_pace',
-      sql`(
-        (${table.schedule} = 'routine' AND ${table.pace} IS NULL)
-        OR
-        (${table.schedule} = 'deadline' AND ${table.pace} IS NOT NULL)
-      )`,
-    ),
-    check(
-      'quests_rest_period',
-      sql`(
-        (
-          ${table.schedule} = 'deadline'
-          AND ${table.restFrom} IS NULL
-          AND ${table.restUntil} IS NULL
-        )
-        OR
-        (
-          ${table.schedule} = 'routine'
-          AND (
-            (${table.restFrom} IS NULL AND ${table.restUntil} IS NULL)
-            OR
-            (
-              ${table.restFrom} IS NOT NULL
-              AND (${table.restUntil} IS NULL OR ${table.restUntil} >= ${table.restFrom})
-            )
-          )
+          ${table.completedOn} IS NOT NULL
+          AND ${table.gold} IS NOT NULL
+          AND ${table.xp} IS NOT NULL
         )
       )`,
     ),

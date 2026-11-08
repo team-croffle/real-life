@@ -120,6 +120,13 @@
       "when": 1793955613433,
       "tag": "0016_brave_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794127602464,
+      "tag": "0017_quest_structure",
+      "breakpoints": true
     }
   ]
 }
