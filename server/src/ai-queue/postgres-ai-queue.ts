@@ -1,16 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, asc, eq, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm';
 
 import type { MonsterDescription } from '../ai/ai';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { aiTasks } from '../database/schema/ai-tasks';
+import { bosses } from '../database/schema/bosses';
+import { monsters } from '../database/schema/monsters';
+import { quests } from '../database/schema/quests';
+import { routines } from '../database/schema/routines';
 import {
   AI_STALE_RUNNING_MS_DEFAULT,
   AI_TASKS_PER_MINUTE_DEFAULT,
   type AiQueue,
   type ClaimedAiTask,
+  type MonsterTaskOwner,
   type MonsterTaskPayload,
   type MonsterTaskState,
 } from './ai-queue';
@@ -30,7 +35,7 @@ export class PostgresAiQueue implements AiQueue {
 
   async enqueue(input: {
     userId: string;
-    questId: string;
+    owner: MonsterTaskOwner;
     payload: MonsterTaskPayload;
   }): Promise<{ id: string }> {
     const payload = monsterPayload(input.payload);
@@ -42,7 +47,9 @@ export class PostgresAiQueue implements AiQueue {
       .insert(aiTasks)
       .values({
         userId: input.userId,
-        questId: input.questId,
+        questId: input.owner.questId ?? null,
+        routineId: input.owner.routineId ?? null,
+        bossId: input.owner.bossId ?? null,
         kind: 'monster',
         payload,
       })
@@ -53,19 +60,34 @@ export class PostgresAiQueue implements AiQueue {
     return { id: aiTaskRow.id };
   }
 
-  async findMonsters(questIds: string[]): Promise<MonsterTaskState[]> {
-    if (questIds.length === 0) {
+  async findTasks(input: {
+    questIds?: string[];
+    routineIds?: string[];
+    bossIds?: string[];
+  }): Promise<MonsterTaskState[]> {
+    const filters = [];
+    if (input.questIds && input.questIds.length > 0) {
+      filters.push(inArray(aiTasks.questId, input.questIds));
+    }
+    if (input.routineIds && input.routineIds.length > 0) {
+      filters.push(inArray(aiTasks.routineId, input.routineIds));
+    }
+    if (input.bossIds && input.bossIds.length > 0) {
+      filters.push(inArray(aiTasks.bossId, input.bossIds));
+    }
+    if (filters.length === 0) {
       return [];
     }
 
     return this.db
       .select({
         questId: aiTasks.questId,
+        routineId: aiTasks.routineId,
+        bossId: aiTasks.bossId,
         status: aiTasks.status,
-        result: aiTasks.result,
       })
       .from(aiTasks)
-      .where(and(eq(aiTasks.kind, 'monster'), inArray(aiTasks.questId, questIds)));
+      .where(and(eq(aiTasks.kind, 'monster'), or(...filters)));
   }
 
   async dequeue(): Promise<ClaimedAiTask | null> {
@@ -120,10 +142,55 @@ export class PostgresAiQueue implements AiQueue {
   }
 
   async complete(id: string, attempts: number, result: MonsterDescription): Promise<void> {
-    await this.db
-      .update(aiTasks)
-      .set({ status: 'succeeded', result, lastError: null, updatedAt: sql`now()` })
-      .where(this.sameClaim(id, attempts));
+    await this.db.transaction(async (tx) => {
+      const [task] = await tx
+        .select({
+          id: aiTasks.id,
+          questId: aiTasks.questId,
+          routineId: aiTasks.routineId,
+          bossId: aiTasks.bossId,
+        })
+        .from(aiTasks)
+        .where(this.sameClaim(id, attempts))
+        .for('update');
+      if (!task) {
+        return;
+      }
+
+      const name = result.name.trim();
+      const description = result.description.trim();
+      if (!name || !description || !result.kind.trim()) {
+        throw new Error('monster result is invalid');
+      }
+
+      const [monsterRow] = await tx
+        .insert(monsters)
+        .values({ kind: result.kind, name, description })
+        .returning({ id: monsters.id });
+      if (!monsterRow) {
+        throw new Error('monster was not inserted');
+      }
+
+      if (task.questId) {
+        await tx
+          .update(quests)
+          .set({ monsterId: monsterRow.id })
+          .where(eq(quests.id, task.questId));
+      } else if (task.routineId) {
+        await tx
+          .update(routines)
+          .set({ monsterId: monsterRow.id })
+          .where(eq(routines.id, task.routineId));
+        await tx
+          .update(quests)
+          .set({ monsterId: monsterRow.id })
+          .where(and(eq(quests.routineId, task.routineId), isNull(quests.monsterId)));
+      } else if (task.bossId) {
+        await tx.update(bosses).set({ monsterId: monsterRow.id }).where(eq(bosses.id, task.bossId));
+      }
+
+      await tx.delete(aiTasks).where(eq(aiTasks.id, task.id));
+    });
   }
 
   async fail(id: string, attempts: number, reason: string, rateLimited: boolean): Promise<void> {

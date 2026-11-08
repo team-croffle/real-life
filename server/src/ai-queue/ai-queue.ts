@@ -13,11 +13,18 @@ export type MonsterTaskPayload = {
   kinds: string[];
 };
 
-/** 목록이 읽는 큐 행. 상태 변환은 호출부가 한다. */
+/** 큐에 넣는 주인. 셋 중 하나만 있다. */
+export type MonsterTaskOwner =
+  | { questId: string; routineId?: undefined; bossId?: undefined }
+  | { routineId: string; questId?: undefined; bossId?: undefined }
+  | { bossId: string; questId?: undefined; routineId?: undefined };
+
+/** 목록이 읽는 큐 행. 성공한 작업은 행이 없다. */
 export type MonsterTaskState = {
-  questId: string;
+  questId: string | null;
+  routineId: string | null;
+  bossId: string | null;
   status: AiTaskStatus;
-  result: unknown;
 };
 
 export type ClaimedAiTask = {
@@ -29,13 +36,20 @@ export type ClaimedAiTask = {
 };
 
 export interface AiQueue {
-  /** questId는 열에만 저장한다. payload에는 넣지 않는다. */
-  enqueue(input: { userId: string; questId: string; payload: MonsterTaskPayload }): Promise<{
-    id: string;
-  }>;
-  /** 작업이 없는 퀘스트는 빠진다. */
-  findMonsters(questIds: string[]): Promise<MonsterTaskState[]>;
+  /** 주인 id는 열에만 저장한다. payload에는 넣지 않는다. */
+  enqueue(input: {
+    userId: string;
+    owner: MonsterTaskOwner;
+    payload: MonsterTaskPayload;
+  }): Promise<{ id: string }>;
+  /** 넘긴 id 가운데 작업이 있는 것만 돌려준다. */
+  findTasks(input: {
+    questIds?: string[];
+    routineIds?: string[];
+    bossIds?: string[];
+  }): Promise<MonsterTaskState[]>;
   dequeue(): Promise<ClaimedAiTask | null>;
+  /** 몬스터 행을 넣고 주인에 연결한 뒤 큐에서 지운다. */
   complete(id: string, attempts: number, result: MonsterDescription): Promise<void>;
   fail(id: string, attempts: number, reason: string, rateLimited: boolean): Promise<void>;
 }

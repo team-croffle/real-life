@@ -13,11 +13,11 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 import { APIError } from 'better-auth/api';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
-import { accounts, users } from '../database/schema';
+import { accounts, bosses, monsters, quests, routines, users } from '../database/schema';
 import { allocateTag } from './auth';
 import { toUser } from './to-user';
 
@@ -113,7 +113,34 @@ export class ProfileService {
     input: { password?: string; idToken?: string },
   ): Promise<void> {
     await this.confirmWithdraw(session, input);
-    await this.db.delete(users).where(eq(users.id, session.user.id));
+    const userId = session.user.id;
+    await this.db.transaction(async (tx) => {
+      const [questMonsters, routineMonsters, bossMonsters] = await Promise.all([
+        tx
+          .select({ id: quests.monsterId })
+          .from(quests)
+          .where(and(eq(quests.userId, userId), isNotNull(quests.monsterId))),
+        tx
+          .select({ id: routines.monsterId })
+          .from(routines)
+          .where(and(eq(routines.userId, userId), isNotNull(routines.monsterId))),
+        tx
+          .select({ id: bosses.monsterId })
+          .from(bosses)
+          .where(and(eq(bosses.userId, userId), isNotNull(bosses.monsterId))),
+      ]);
+      const monsterIds = [
+        ...new Set(
+          [...questMonsters, ...routineMonsters, ...bossMonsters].flatMap((row) =>
+            row.id ? [row.id] : [],
+          ),
+        ),
+      ];
+      await tx.delete(users).where(eq(users.id, userId));
+      if (monsterIds.length > 0) {
+        await tx.delete(monsters).where(inArray(monsters.id, monsterIds));
+      }
+    });
   }
 
   /** 세션만으로는 탈퇴를 받지 않는다. 비밀번호 계정은 비밀번호, Google 계정은 ID 토큰으로 다시 확인한다. */
