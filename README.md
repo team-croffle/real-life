@@ -10,7 +10,7 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **Rewards** — a base amount set by difficulty and duration, multiplied by the share of checked days, the job multiplier, the streak multiplier and a bonus for a completion note. The register form shows the expected amount; the result shows what was applied
 - **Critical hits** — each completion has a 10% chance to double the gold, and a tenth of those triple it. Bigger critical hits get bigger effects and sounds
 - **Streak** — completing at least one quest a day keeps it going, and a longer streak raises the reward multiplier
-- **Penalties and lethargy** — missing a scheduled routine or a deadline costs gold and XP. A missed routine also puts you in a lethargy state. Settlement runs just after midnight in Seoul and when you open the app
+- **Penalties and lethargy** — missing a quest whose due date has passed costs gold and XP and turns on lethargy, whether a routine wrote it or not. Lethargy ends when any quest is completed. Settlement runs just after midnight in Seoul and when you open the app
 - **Wallet and debt** — gold can go down to -30 (debt), paid back automatically from the next rewards. On a day you gave in and enjoyed a reward before buying it in the shop, you take the gold off yourself with a post-hoc deduction
 - **Levels and titles** — XP raises your level, and every level-up gives a gacha ticket. Every tenth level gives a title
 - **Stats** — stamina, intellect and sense grow with the categories of the quests you complete, shown as a radar chart
@@ -50,7 +50,9 @@ A deadline quest is registered with a category, a title, a difficulty and a due 
 - **Routine** — stored on its own, not as a quest. Pick weekdays (all seven means every day), optionally every other week. Each scheduled day writes one all-at-once deadline quest due that day, and that quest is what you complete, once. A missed day cannot be filled in later. A routine can be paused: pausing starts the next day, and resuming starts the same day. The write runs after the 00:01 settlement and when the quest list is loaded, after settlement. Registering a routine, or turning it back on, also writes when today is scheduled. Deleting that quest, or turning the routine off and back on the same day, does not write another quest that day. A routine that has not written one today still does, including one just registered or whose weekdays now include today. Deleting the routine leaves the quests it already wrote, and their monsters. The day's quest uses the routine's monster.
 - **Deadline** — completed once by the due date. From the day after the due date it can no longer be completed; there is no grace period. Each day you work on it before then is recorded with **check today** — once a day, only on that day. Check-ins do not count toward the streak
 
-A quest can be given up. Giving up deletes it with no reward. A deadline quest that has already been completed cannot be given up.
+A quest can be given up while it is still open and its due date is today or later in Seoul. A completed quest, or one whose due date has passed, cannot be given up.
+
+Giving up is free only when the quest was registered today, has no check-in today, was not written by a routine, and is not a boss subquest. Any other give-up costs the same gold and XP as missing it. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty for the gap from the day it was created to the due date. All at once stays on the daily column. Gold stops at -30 and XP stops at 0 within the current level. The quest list shows those amounts. Giving up does not turn on lethargy.
 
 Registering a deadline quest or a routine enqueues one monster and returns immediately, with the title that was sent. The kind is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon, and the picture key is that kind. AI picks the kind and writes the name and the description.
 
@@ -108,7 +110,7 @@ The multiplier applies to both gold and XP, for routines and deadline quests ali
 
 Missing what you had to do costs gold and XP. Settlement runs every day just after midnight in Seoul (00:01), when the home page opens, and right before a completion. It goes through the missed days up to yesterday, one day at a time, and never looks at today. Running it again never charges the same day twice.
 
-- **A missed routine** costs easy -5, normal -10, hard -20 in both gold and XP per quest, and turns on **lethargy**. Lethargy ends when a routine is completed. A paused routine is not counted as missed
+- **A missed quest** is one still open whose due date falls on a settled day. It costs gold and XP and turns on **lethargy**. A quest a routine wrote costs easy -5, normal -10, hard -20 in both gold and XP. Any other quest uses the table below. Lethargy ends when any quest is completed. A settled day with no missed quest leaves lethargy as it is. A paused routine writes no quest, so it is not missed
 - **A missed deadline** is charged once, at the first settlement after the due date. A steady deadline's amount depends on the gap from the day it was created to the due date. One done all at once uses the daily column: easy -5, normal -10, hard -20
 
 | Difficulty | Daily | Weekly | Long-term |
@@ -138,7 +140,7 @@ On a day you gave in and enjoyed a reward before buying it in the shop, you take
 
 Every level gained gives one gacha ticket. Reaching levels 10, 20, 30, 40 and 50 for the first time gives a title. A title already earned is not announced again, even after a job change.
 
-There are three stats: stamina, intellect and sense. Exercise and daily life build stamina, study and work build intellect, creative and mind build sense. A stat is the sum of XP received from completions in its categories.
+There are three stats: stamina, intellect and sense. Exercise and daily life build stamina, study and work build intellect, creative and mind build sense. Each completion adds its XP to that category's stat.
 
 ## Settings
 
