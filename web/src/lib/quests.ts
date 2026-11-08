@@ -5,7 +5,6 @@ import type {
   QuestCompletionResult,
   QuestDayMarkResult,
   QuestListItem,
-  QuestRoutineRestResult,
   Routine,
 } from '@nest-vue/shared';
 
@@ -64,12 +63,4 @@ export async function resumeRoutine(routineId: string): Promise<Routine> {
 
 export async function deleteRoutine(routineId: string): Promise<void> {
   await apiFetch<void>(`/routines/${routineId}`, { method: 'DELETE' });
-}
-
-export async function restQuest(questId: string): Promise<QuestRoutineRestResult> {
-  return apiFetch<QuestRoutineRestResult>(`/quests/${questId}/rest`, { method: 'POST' });
-}
-
-export async function resumeQuest(questId: string): Promise<QuestRoutineRestResult> {
-  return apiFetch<QuestRoutineRestResult>(`/quests/${questId}/resume`, { method: 'POST' });
 }

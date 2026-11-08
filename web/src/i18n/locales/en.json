@@ -213,6 +213,7 @@
     "complete": "Complete today",
     "menu": "Menu",
     "abandon": "Give up",
+    "delete": "Delete",
     "abandonTitle": "Give up this quest?",
     "abandonBody": "Giving up “{title}” cannot be undone.",
     "cancel": "Cancel",
@@ -333,6 +334,7 @@
       "created": "Added “{title}”",
       "marked": "Checked today",
       "abandoned": "Quest given up",
+      "deleted": "Routine deleted",
       "rested": "It turns off tomorrow",
       "resumed": "It's on from today"
     },

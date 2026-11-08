@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Routine } from '@nest-vue/shared';
 import { Check, Ellipsis } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import type { QuestListItem } from '@/lib/quests';
 
 const props = defineProps<{
-  item: QuestListItem;
+  item: QuestListItem | Routine;
   menuOpen: boolean;
   busy: boolean;
 }>();
@@ -23,9 +24,37 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const done = computed(() => props.item.completed);
+function isRoutine(item: QuestListItem | Routine): item is Routine {
+  return 'weekdays' in item;
+}
 
-const scheduleText = computed(() => t('quest.repeat.deadline', { date: props.item.endsOn }));
+const routine = computed(() => (isRoutine(props.item) ? props.item : null));
+const quest = computed(() => (isRoutine(props.item) ? null : props.item));
+
+const done = computed(() => quest.value?.completed ?? false);
+
+const scheduleText = computed(() => {
+  const current = routine.value;
+  if (!current) {
+    return t('quest.repeat.deadline', { date: quest.value?.endsOn ?? '' });
+  }
+  if (current.weekdays.length === 7 && !current.biweekly) {
+    return t('quest.repeat.daily');
+  }
+  const days = current.weekdays.map((weekday) => t(`quest.weekdays.${weekday}`)).join('·');
+  if (current.biweekly) {
+    return t('quest.repeat.biweekly', { days });
+  }
+  return days;
+});
+
+const canPause = computed(
+  () => routine.value !== null && routine.value.bossId === null && routine.value.active,
+);
+const canResume = computed(
+  () => routine.value !== null && routine.value.bossId === null && !routine.value.active,
+);
+const showMenu = computed(() => routine.value !== null || quest.value?.canAbandon === true);
 
 const difficultyClass = computed(() => {
   if (props.item.difficulty === 'easy') {
@@ -70,7 +99,7 @@ const difficultyClass = computed(() => {
     }}</span>
 
     <span
-      v-if="!item.dueToday"
+      v-if="quest && !quest.dueToday"
       class="text-muted-foreground shrink-0 text-[11px] whitespace-nowrap"
     >
       {{ t('quest.notToday') }}
@@ -79,13 +108,13 @@ const difficultyClass = computed(() => {
       scheduleText
     }}</span>
     <span
-      v-if="item.expectedGold !== null && item.expectedXp !== null"
+      v-if="quest && quest.expectedGold !== null && quest.expectedXp !== null"
       class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
     >
-      {{ t('quest.rewardCard', { xp: item.expectedXp, gold: item.expectedGold }) }}
+      {{ t('quest.rewardCard', { xp: quest.expectedXp, gold: quest.expectedGold }) }}
     </span>
     <Button
-      v-if="item.canMarkToday"
+      v-if="quest?.canMarkToday"
       type="button"
       variant="outline"
       size="sm"
@@ -97,14 +126,14 @@ const difficultyClass = computed(() => {
       {{ t('quest.markToday') }}
     </Button>
     <span
-      v-else-if="item.markedToday"
+      v-else-if="quest?.markedToday"
       class="text-muted-foreground flex shrink-0 flex-col items-end leading-tight whitespace-nowrap"
     >
       <span class="text-[11.5px]">{{ t('quest.markedToday') }}</span>
       <span class="text-[10.5px] opacity-70">{{ t('quest.markedTodayNote') }}</span>
     </span>
     <Button
-      v-if="item.canComplete"
+      v-if="quest?.canComplete"
       type="button"
       size="sm"
       class="w-auto shrink-0"
@@ -112,8 +141,18 @@ const difficultyClass = computed(() => {
     >
       {{ t('quest.completeButton') }}
     </Button>
+    <Button
+      v-if="canResume"
+      type="button"
+      size="sm"
+      class="w-auto shrink-0"
+      :disabled="busy"
+      @click="emit('resume')"
+    >
+      {{ t('quest.rest.resume') }}
+    </Button>
 
-    <div v-if="item.canAbandon" class="relative shrink-0" data-quest-menu>
+    <div v-if="showMenu" class="relative shrink-0" data-quest-menu>
       <button
         type="button"
         class="text-muted-foreground p-1"
@@ -128,11 +167,19 @@ const difficultyClass = computed(() => {
         class="bg-surface border-border absolute top-9 right-0 z-10 w-[110px] overflow-hidden rounded-[10px] border shadow-lg"
       >
         <button
+          v-if="canPause"
+          type="button"
+          class="block w-full px-3.5 py-2.5 text-left text-[12.5px] font-bold"
+          @click="emit('rest')"
+        >
+          {{ t('quest.rest.action') }}
+        </button>
+        <button
           type="button"
           class="text-destructive block w-full px-3.5 py-2.5 text-left text-[12.5px] font-bold"
           @click="emit('abandon')"
         >
-          {{ t('quest.abandon') }}
+          {{ routine ? t('quest.delete') : t('quest.abandon') }}
         </button>
       </div>
     </div>
