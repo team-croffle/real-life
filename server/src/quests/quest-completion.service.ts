@@ -1,5 +1,6 @@
 import type { QuestCompletionResult, QuestDayMarkResult, StatusEffect } from '@nest-vue/shared';
 import {
+  QUEST_CATEGORY_STATS,
   QUEST_NOTE_MAX_LENGTH,
   applyLevelXp,
   comboRewardMultiplier,
@@ -108,7 +109,7 @@ export class QuestCompletionService {
       );
 
       const balance = await this.walletService.applyBalanceDelta(tx, userId, gold, 'completion');
-      const progress = await grantProgress(tx, userId, xp);
+      const progress = await grantProgress(tx, userId, xp, QUEST_CATEGORY_STATS[questRow.category]);
 
       await tx
         .update(quests)
@@ -404,6 +405,7 @@ async function grantProgress(
   tx: DrizzleTx,
   userId: string,
   gainedXp: number,
+  stat: (typeof QUEST_CATEGORY_STATS)[keyof typeof QUEST_CATEGORY_STATS],
 ): Promise<{
   level: number;
   levelXp: number;
@@ -436,6 +438,9 @@ async function grantProgress(
       level: applied.level,
       xp: applied.levelXp,
       gachaTicketCount: ticketCount,
+      stamina: sql`${userProgress.stamina} + ${stat === 'stamina' ? gainedXp : 0}`,
+      intellect: sql`${userProgress.intellect} + ${stat === 'intellect' ? gainedXp : 0}`,
+      sense: sql`${userProgress.sense} + ${stat === 'sense' ? gainedXp : 0}`,
     })
     .where(eq(userProgress.userId, userId));
 
