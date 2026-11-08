@@ -1,14 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-  BossAppearance,
   BossSummary,
   ConfirmedBoss,
-  MonsterStatus,
   Quest,
   QuestDifficulty,
   QuestPace,
   QuestWeekday,
+  Routine,
 } from '@nest-vue/shared';
 import {
   BOSS_ACTIVE_MAX,
@@ -30,18 +29,22 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
-import { bosses } from '../database/schema/bosses';
 import type { BossRow } from '../database/schema/bosses';
+import { bosses } from '../database/schema/bosses';
+import { monsters } from '../database/schema/monsters';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
+import type { RoutineRow } from '../database/schema/routines';
+import { routines } from '../database/schema/routines';
 import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import type { ConfirmBossDto, ConfirmBossQuestDto } from './dto/confirm-boss.dto';
+import { monsterView } from './monster-view';
 import {
   APP_TIME_ZONE,
   calendarDaysBetween,
@@ -50,9 +53,8 @@ import {
   routineOccurrenceCount,
   seoulCalendarDate,
 } from './quest-calendar';
-
-/** 보스 행의 난이도 열. 체력은 하위 퀘스트로만 계산한다. */
-const BOSS_ROW_DIFFICULTY = 'normal';
+import { toQuest } from './quests.service';
+import { RoutineSpawnService } from './routine-spawn.service';
 
 type PlannedSubquest =
   | {
@@ -83,6 +85,7 @@ export class BossPlanService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     @Inject(AI_QUEUE) private readonly queue: AiQueue,
+    private readonly routineSpawnService: RoutineSpawnService,
   ) {}
 
   async confirm(userId: string, dto: ConfirmBossDto): Promise<ConfirmedBoss> {
@@ -112,111 +115,152 @@ export class BossPlanService {
       }
 
       await tx.insert(userProgress).values({ userId }).onConflictDoNothing();
-      const [bossQuest] = await tx
-        .insert(quests)
+
+      const [bossRow] = await tx
+        .insert(bosses)
         .values({
           userId,
-          kind: 'main',
+          goal: title,
           category: dto.category,
-          title,
-          difficulty: BOSS_ROW_DIFFICULTY,
-          schedule: 'deadline',
-          pace: 'once',
-          weekdays: null,
-          biweekly: null,
-          endsOn: dto.deadlineOn,
-          bossQuestId: null,
+          deadlineOn: dto.deadlineOn,
+          maxHp,
+          hp: maxHp,
         })
         .returning();
-      const bossQuestRow = requireInserted(bossQuest);
-      await tx.insert(bosses).values({ questId: bossQuestRow.id, maxHp, hp: maxHp });
+      if (!bossRow) {
+        throw new InternalServerErrorException('boss insert returned no row');
+      }
 
-      const subquestValues = planned.map((item) => ({
-        id: randomUUID(),
-        userId,
-        kind: 'general' as const,
-        category: item.category,
-        title: item.title,
-        difficulty: item.difficulty,
-        schedule: item.schedule,
-        pace: item.schedule === 'deadline' ? item.pace : null,
-        weekdays: item.schedule === 'routine' ? item.weekdays : null,
-        biweekly: item.schedule === 'routine' ? item.biweekly : null,
-        endsOn: item.schedule === 'deadline' ? item.endsOn : null,
-        bossQuestId: bossQuestRow.id,
-      }));
-      const insertedSubquests = await tx.insert(quests).values(subquestValues).returning();
-      const subquestById = new Map(insertedSubquests.map((questRow) => [questRow.id, questRow]));
-      const subquestRows = subquestValues.map((value) =>
-        requireInserted(subquestById.get(value.id)),
+      const deadlineValues = planned.flatMap((item) =>
+        item.schedule === 'deadline'
+          ? [
+              {
+                id: randomUUID(),
+                userId,
+                category: item.category,
+                title: item.title,
+                difficulty: item.difficulty,
+                pace: item.pace,
+                endsOn: item.endsOn,
+                bossId: bossRow.id,
+              },
+            ]
+          : [],
+      );
+      const routineValues = planned.flatMap((item) =>
+        item.schedule === 'routine'
+          ? [
+              {
+                id: randomUUID(),
+                userId,
+                title: item.title,
+                category: item.category,
+                difficulty: item.difficulty,
+                weekdays: item.weekdays,
+                biweekly: item.biweekly,
+                bossId: bossRow.id,
+              },
+            ]
+          : [],
       );
 
-      return { bossQuestRow, subquestRows, maxHp, today };
+      const questRows =
+        deadlineValues.length === 0
+          ? []
+          : await tx.insert(quests).values(deadlineValues).returning();
+      const routineRows =
+        routineValues.length === 0
+          ? []
+          : await tx.insert(routines).values(routineValues).returning();
+      await this.routineSpawnService.spawnToday(userId, today, tx);
+
+      return { bossRow, questRows, routineRows, maxHp, today };
     });
 
-    await this.enqueueAll(userId, title, created.bossQuestRow.id, created.subquestRows);
+    await this.enqueueAll(
+      userId,
+      title,
+      created.bossRow.id,
+      created.questRows,
+      created.routineRows,
+    );
     return {
-      id: created.bossQuestRow.id,
-      category: created.bossQuestRow.category,
-      title: created.bossQuestRow.title,
-      endsOn: created.bossQuestRow.endsOn ?? dto.deadlineOn,
+      id: created.bossRow.id,
+      category: created.bossRow.category,
+      title: created.bossRow.goal,
+      endsOn: created.bossRow.deadlineOn,
       maxHp: created.maxHp,
       hp: created.maxHp,
-      quests: created.subquestRows.map((questRow) => toQuest(questRow, created.today)),
+      quests: created.questRows.map((questRow) => toDeadlineQuest(questRow, created.today)),
+      routines: created.routineRows.map((routineRow) => toRoutine(routineRow, null)),
     };
   }
 
   async list(userId: string): Promise<BossSummary[]> {
-    const bossQuestRows = await this.db
-      .select({ questRow: quests, bossRow: bosses })
+    const bossRows = await this.db
+      .select()
       .from(bosses)
-      .innerJoin(quests, eq(bosses.questId, quests.id))
-      .where(and(eq(quests.userId, userId), isNull(bosses.judgedAt)))
-      .orderBy(desc(quests.createdAt), desc(quests.id));
+      .where(and(eq(bosses.userId, userId), isNull(bosses.judgedAt)))
+      .orderBy(desc(bosses.createdAt), desc(bosses.id));
 
-    if (bossQuestRows.length === 0) {
+    if (bossRows.length === 0) {
       return [];
     }
 
-    const tasks = await this.queue.findMonsters(
-      bossQuestRows.map((bossAndQuest) => bossAndQuest.questRow.id),
+    const monsterIds = bossRows.flatMap((bossRow) =>
+      bossRow.monsterId ? [bossRow.monsterId] : [],
     );
-    const taskByQuest = new Map(tasks.map((task) => [task.questId, task]));
-    return bossQuestRows.map((bossAndQuest) =>
+    const [monsterRows, tasks] = await Promise.all([
+      monsterIds.length === 0
+        ? Promise.resolve([])
+        : this.db.select().from(monsters).where(inArray(monsters.id, monsterIds)),
+      this.queue.findTasks({ bossIds: bossRows.map((bossRow) => bossRow.id) }),
+    ]);
+    const monsterById = new Map(monsterRows.map((row) => [row.id, row]));
+    const taskByBoss = new Map(
+      tasks.flatMap((task) => (task.bossId ? [[task.bossId, task] as const] : [])),
+    );
+    return bossRows.map((bossRow) =>
       toBossSummary(
-        bossAndQuest.questRow,
-        bossAndQuest.bossRow,
-        taskByQuest.get(bossAndQuest.questRow.id),
+        bossRow,
+        bossRow.monsterId ? monsterById.get(bossRow.monsterId) : undefined,
+        taskByBoss.get(bossRow.id),
       ),
     );
   }
 
-  /** 큐에 넣지 못해도 확정은 그대로 둔다. */
+  /** 큐에 넣지 못해도 확정은 그대로 둔다. 찍힌 하루 퀘스트에는 작업을 넣지 않는다. */
   private async enqueueAll(
     userId: string,
     goal: string,
-    bossQuestId: string,
-    subquestRows: QuestRow[],
+    bossId: string,
+    questRows: QuestRow[],
+    routineRows: RoutineRow[],
   ): Promise<void> {
     await Promise.all([
-      this.enqueue(userId, bossQuestId, goal, [...BOSS_KINDS]),
-      ...subquestRows.map((questRow) =>
-        this.enqueue(userId, questRow.id, questRow.title, [...MONSTER_KINDS]),
+      this.enqueue(userId, { bossId }, goal, [...BOSS_KINDS]),
+      ...questRows.map((questRow) =>
+        this.enqueue(userId, { questId: questRow.id }, questRow.title, [...MONSTER_KINDS]),
+      ),
+      ...routineRows.map((routineRow) =>
+        this.enqueue(userId, { routineId: routineRow.id }, routineRow.title, [...MONSTER_KINDS]),
       ),
     ]);
   }
 
   private async enqueue(
     userId: string,
-    questId: string,
+    owner: { questId: string } | { routineId: string } | { bossId: string },
     title: string,
     kinds: string[],
   ): Promise<void> {
     try {
-      await this.queue.enqueue({ userId, questId, payload: { title, kinds } });
+      await this.queue.enqueue({ userId, owner, payload: { title, kinds } });
     } catch (error) {
+      const ownerId =
+        'questId' in owner ? owner.questId : 'routineId' in owner ? owner.routineId : owner.bossId;
       this.logger.error(
-        `monster enqueue failed for quest ${questId}`,
+        `monster enqueue failed for ${ownerId}`,
         error instanceof Error ? error.stack : String(error),
       );
     }
@@ -316,16 +360,8 @@ async function countActiveBosses(tx: DrizzleTx, userId: string): Promise<number>
   const [countRow] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(bosses)
-    .innerJoin(quests, eq(bosses.questId, quests.id))
-    .where(and(eq(quests.userId, userId), isNull(bosses.judgedAt)));
+    .where(and(eq(bosses.userId, userId), isNull(bosses.judgedAt)));
   return Number(countRow?.total ?? 0);
-}
-
-function requireInserted(questRow: QuestRow | undefined): QuestRow {
-  if (!questRow) {
-    throw new InternalServerErrorException('quest insert returned no row');
-  }
-  return questRow;
 }
 
 function uniqueSortedWeekdays(weekdays: QuestWeekday[]): QuestWeekday[] {
@@ -333,51 +369,29 @@ function uniqueSortedWeekdays(weekdays: QuestWeekday[]): QuestWeekday[] {
   return QUEST_WEEKDAYS.filter((weekday) => selected.has(weekday));
 }
 
-function toQuest(questRow: QuestRow, today: string): Quest {
-  const reward =
-    questRow.schedule === 'routine'
-      ? QUEST_REWARDS[questRow.difficulty].daily
-      : deadlineReward(
-          questRow.difficulty,
-          questRow.pace ?? 'steady',
-          questRow.endsOn ?? '',
-          today,
-        );
-  const base = {
-    id: questRow.id,
-    userId: questRow.userId,
-    kind: questRow.kind,
-    category: questRow.category,
-    title: questRow.title,
-    difficulty: questRow.difficulty,
-    gold: reward.gold,
-    xp: reward.xp,
-    createdAt: questRow.createdAt.toISOString(),
-    updatedAt: questRow.updatedAt.toISOString(),
-  };
+function toDeadlineQuest(questRow: QuestRow, today: string): Quest {
+  return toQuest(
+    questRow,
+    deadlineReward(questRow.difficulty, questRow.pace, questRow.endsOn, today),
+  );
+}
 
-  if (questRow.schedule === 'routine') {
-    return {
-      ...base,
-      schedule: 'routine',
-      pace: null,
-      weekdays: questRow.weekdays ?? [],
-      biweekly: questRow.biweekly ?? false,
-      endsOn: null,
-      restFrom: questRow.restFrom,
-      restUntil: questRow.restUntil,
-    };
-  }
-
+export function toRoutine(
+  routineRow: RoutineRow,
+  appearance: { monsterStatus: Routine['monsterStatus']; monster: Routine['monster'] } | null,
+): Routine {
   return {
-    ...base,
-    schedule: 'deadline',
-    pace: questRow.pace ?? 'steady',
-    weekdays: null,
-    biweekly: null,
-    endsOn: questRow.endsOn ?? '',
-    restFrom: null,
-    restUntil: null,
+    id: routineRow.id,
+    title: routineRow.title,
+    category: routineRow.category,
+    difficulty: routineRow.difficulty,
+    weekdays: routineRow.weekdays ?? [],
+    biweekly: routineRow.biweekly,
+    active: routineRow.active,
+    bossId: routineRow.bossId,
+    createdAt: routineRow.createdAt.toISOString(),
+    monsterStatus: appearance?.monsterStatus ?? null,
+    monster: appearance?.monster ?? null,
   };
 }
 
@@ -395,60 +409,25 @@ function deadlineReward(
 }
 
 function toBossSummary(
-  questRow: QuestRow,
   bossRow: BossRow,
+  monster: { kind: string; name: string; description: string } | undefined,
   task: MonsterTaskState | undefined,
 ): BossSummary {
-  const appearance = bossForList(task);
+  const appearance = monsterView(
+    monster,
+    task?.status,
+    isBossKind,
+    (kind) => BOSS_IMAGE_KEYS[kind],
+  );
   return {
-    id: questRow.id,
-    category: questRow.category,
-    title: questRow.title,
-    endsOn: questRow.endsOn ?? '',
+    id: bossRow.id,
+    category: bossRow.category,
+    title: bossRow.goal,
+    endsOn: bossRow.deadlineOn,
     maxHp: bossRow.maxHp,
     hp: bossRow.hp,
-    createdOn: seoulCalendarDate(questRow.createdAt),
-    ...appearance,
-  };
-}
-
-function bossForList(task: MonsterTaskState | undefined): {
-  bossStatus: MonsterStatus | null;
-  boss: BossAppearance | null;
-} {
-  if (!task || task.status === 'pending' || task.status === 'running') {
-    return { bossStatus: task ? 'generating' : null, boss: null };
-  }
-  if (task.status === 'failed') {
-    return { bossStatus: 'failed', boss: null };
-  }
-  const boss = bossFromResult(task.result);
-  if (!boss) {
-    return { bossStatus: 'failed', boss: null };
-  }
-  return { bossStatus: 'ready', boss };
-}
-
-function bossFromResult(result: unknown): BossAppearance | null {
-  if (typeof result !== 'object' || result === null || Array.isArray(result)) {
-    return null;
-  }
-  const record = result as Record<string, unknown>;
-  if (typeof record.kind !== 'string' || !isBossKind(record.kind)) {
-    return null;
-  }
-  if (typeof record.name !== 'string' || typeof record.description !== 'string') {
-    return null;
-  }
-  const name = record.name.trim();
-  const description = record.description.trim();
-  if (!name || !description) {
-    return null;
-  }
-  return {
-    kind: record.kind,
-    imageKey: BOSS_IMAGE_KEYS[record.kind],
-    name,
-    description,
+    createdOn: seoulCalendarDate(bossRow.createdAt),
+    bossStatus: appearance.monsterStatus,
+    boss: appearance.monster,
   };
 }
