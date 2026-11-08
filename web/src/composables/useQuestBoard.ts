@@ -8,7 +8,7 @@ import { completeQuest, getQuests, markQuestToday, type QuestListItem } from '@/
 type QuestView = 'loading' | 'ready' | 'error';
 
 export function isQuestDone(item: QuestListItem): boolean {
-  return item.schedule === 'deadline' ? item.completed : item.completedToday;
+  return item.completed;
 }
 
 export function useQuestBoard() {

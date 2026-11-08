@@ -26,15 +26,12 @@ const note = ref('');
 // 결과 창이 뜨기 전에 효과음을 미리 받아 둔다.
 onMounted(preloadSounds);
 
-const sameDayDeadline = computed(
-  () => props.item.schedule === 'deadline' && props.item.createdOn === seoulToday(),
-);
+const steady = computed(() => props.item.pace === 'steady');
+
+const sameDayDeadline = computed(() => steady.value && props.item.createdOn === seoulToday());
 
 const zeroReward = computed(
-  () =>
-    props.item.schedule === 'deadline' &&
-    props.item.expectedGold === 0 &&
-    props.item.expectedXp === 0,
+  () => steady.value && props.item.expectedGold === 0 && props.item.expectedXp === 0,
 );
 
 function cancel(): void {
@@ -66,7 +63,7 @@ function confirm(): void {
       class="bg-surface relative z-10 max-h-[80vh] w-full max-w-[440px] overflow-y-auto rounded-[18px] p-[22px] shadow-xl"
     >
       <p
-        v-if="item.schedule === 'deadline'"
+        v-if="steady"
         class="bg-accent text-accent-foreground mb-4 rounded-[10px] px-3 py-2.5 text-[13px] leading-normal font-bold"
       >
         {{ t('quest.deadlineCompleteNotice') }}
@@ -76,7 +73,7 @@ function confirm(): void {
         {{ t('quest.completeBody', { title: item.title }) }}
       </p>
 
-      <template v-if="item.schedule === 'deadline'">
+      <template v-if="steady">
         <p
           v-if="item.expectedGold !== null && item.expectedXp !== null"
           class="mb-2 text-[13px] font-bold"
@@ -100,9 +97,7 @@ function confirm(): void {
       </template>
 
       <div class="mb-4 flex flex-col gap-1">
-        <Label for="quest-note">{{
-          item.schedule === 'deadline' ? t('quest.deadlineNote') : t('quest.note')
-        }}</Label>
+        <Label for="quest-note">{{ steady ? t('quest.deadlineNote') : t('quest.note') }}</Label>
         <textarea
           id="quest-note"
           v-model="note"
@@ -130,9 +125,7 @@ function confirm(): void {
           {{ t('quest.cancel') }}
         </Button>
         <Button type="button" size="sm" class="w-auto flex-1" :disabled="pending" @click="confirm">
-          {{
-            item.schedule === 'deadline' ? t('quest.deadlineConfirm') : t('quest.confirmComplete')
-          }}
+          {{ steady ? t('quest.deadlineConfirm') : t('quest.confirmComplete') }}
         </Button>
       </div>
     </div>
