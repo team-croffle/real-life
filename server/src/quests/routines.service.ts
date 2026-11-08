@@ -96,7 +96,7 @@ export class RoutinesService {
       throw new BadRequestException('weekdays must contain at least one weekday');
     }
 
-    return this.db.transaction(async (tx) => {
+    const saved = await this.db.transaction(async (tx) => {
       const routineRow = await lockOwnedRoutine(tx, userId, routineId);
       if (routineRow.bossId !== null) {
         throw new BadRequestException('a boss routine cannot be updated');
@@ -115,9 +115,15 @@ export class RoutinesService {
       if (!updated) {
         throw new InternalServerErrorException('routine update returned no row');
       }
-      const [view] = await this.withMonsters([updated]);
-      return view ?? toRoutine(updated, null);
+      const enqueueTitle = title !== undefined && title !== routineRow.title ? title : null;
+      return { row: updated, enqueueTitle };
     });
+
+    if (saved.enqueueTitle) {
+      await this.enqueueMonster(userId, routineId, saved.enqueueTitle);
+    }
+    const [view] = await this.withMonsters([saved.row]);
+    return view ?? toRoutine(saved.row, null);
   }
 
   async pause(userId: string, routineId: string): Promise<Routine> {
