@@ -7,6 +7,7 @@ import type { DrizzleDb } from '../database/database.module';
 import { users } from '../database/schema/users';
 import { APP_TIME_ZONE } from './quest-calendar';
 import { QuestPenaltyService } from './quest-penalty.service';
+import { RoutineSpawnService } from './routine-spawn.service';
 
 @Injectable()
 export class QuestSettlementScheduler {
@@ -15,6 +16,7 @@ export class QuestSettlementScheduler {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly questPenaltyService: QuestPenaltyService,
+    private readonly routineSpawnService: RoutineSpawnService,
   ) {}
 
   /** 서울 자정이 지난 직후(00:01) 하루 한 번, 직업을 고른 모든 사용자의 정산을 돌린다. */
@@ -35,6 +37,14 @@ export class QuestSettlementScheduler {
         failed += 1;
         this.logger.error(
           `settlement failed for user ${id}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+      try {
+        await this.routineSpawnService.spawnToday(id);
+      } catch (error) {
+        this.logger.error(
+          `routine spawn failed for user ${id}`,
           error instanceof Error ? error.stack : String(error),
         );
       }

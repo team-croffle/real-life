@@ -50,21 +50,9 @@ export function isBiweeklyOnWeek(createdOn: string, today: string): boolean {
   return weeks % 2 === 0;
 }
 
-export interface RoutineRestDates {
-  restFrom: string | null;
-  restUntil: string | null;
-}
-
-export function isRestingOn(quest: RoutineRestDates, day: string): boolean {
-  if (quest.restFrom === null || day < quest.restFrom) {
-    return false;
-  }
-  return quest.restUntil === null || day <= quest.restUntil;
-}
-
-/** 만든 날부터 throughOn까지, 양 끝 포함, 쉬는 날이 없을 때의 예정 횟수. */
+/** 만든 날부터 throughOn까지, 양 끝 포함. 격주 기준은 createdOn이다. */
 export function routineOccurrenceCount(
-  quest: {
+  routine: {
     weekdays: readonly QuestWeekday[] | null;
     biweekly: boolean | null;
   },
@@ -76,25 +64,46 @@ export function routineOccurrenceCount(
   }
   let count = 0;
   for (let day = createdOn; day <= throughOn; day = addCalendarDays(day, 1)) {
-    if (
-      isRoutineDueOn(
-        {
-          schedule: 'routine',
-          weekdays: quest.weekdays,
-          biweekly: quest.biweekly,
-          restFrom: null,
-          restUntil: null,
-        },
-        createdOn,
-        day,
-      )
-    ) {
+    if (isRoutineScheduledOn(routine, createdOn, day)) {
       count += 1;
     }
   }
   return count;
 }
 
+/** 그날 요일에 해당하고, 격주면 만든 날이 속한 주부터 한 주 걸러다. */
+export function isRoutineScheduledOn(
+  routine: {
+    weekdays: readonly QuestWeekday[] | null;
+    biweekly: boolean | null;
+  },
+  createdOn: string,
+  day: string,
+): boolean {
+  if (day < createdOn) {
+    return false;
+  }
+  const weekdays = routine.weekdays ?? [];
+  if (!weekdays.includes(weekdayOfCalendarDate(day))) {
+    return false;
+  }
+  if (routine.biweekly && !isBiweeklyOnWeek(createdOn, day)) {
+    return false;
+  }
+  return true;
+}
+
+export interface RoutineRestDates {
+  restFrom: string | null;
+  restUntil: string | null;
+}
+
+export function isRestingOn(quest: RoutineRestDates, day: string): boolean {
+  if (quest.restFrom === null || day < quest.restFrom) {
+    return false;
+  }
+  return quest.restUntil === null || day <= quest.restUntil;
+}
 export function isRoutineDueOn(
   quest: {
     schedule: QuestSchedule;
