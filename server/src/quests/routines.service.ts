@@ -196,9 +196,12 @@ export class RoutinesService {
       tasks.flatMap((task) => (task.routineId ? [[task.routineId, task] as const] : [])),
     );
     return routineRows.map((routineRow) => {
+      const taskStatus = taskByRoutine.get(routineRow.id)?.status;
+      const generating = taskStatus === 'pending' || taskStatus === 'running';
+      const monsterRow = routineRow.monsterId ? monsterById.get(routineRow.monsterId) : undefined;
       const appearance = monsterView(
-        routineRow.monsterId ? monsterById.get(routineRow.monsterId) : undefined,
-        taskByRoutine.get(routineRow.id)?.status,
+        generating ? undefined : monsterRow,
+        taskStatus,
         isMonsterKind,
         (kind) => MONSTER_IMAGE_KEYS[kind],
       );
