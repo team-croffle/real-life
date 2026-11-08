@@ -1,38 +1,13 @@
-import type {
-  QuestCategory,
-  QuestDifficulty,
-  QuestKind,
-  QuestPace,
-  QuestSchedule,
-  QuestWeekday,
-} from '@nest-vue/shared';
+import type { QuestCategory, QuestDifficulty, QuestPace } from '@nest-vue/shared';
 import {
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
-  QUEST_KINDS,
   QUEST_PACES,
-  QUEST_SCHEDULES,
   QUEST_TITLE_MAX,
-  QUEST_WEEKDAYS,
 } from '@nest-vue/shared';
-import {
-  ArrayMinSize,
-  ArrayUnique,
-  IsArray,
-  IsBoolean,
-  IsDefined,
-  IsIn,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-  ValidateIf,
-} from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class CreateQuestDto {
-  @IsIn(QUEST_KINDS)
-  kind!: QuestKind;
-
   @IsIn(QUEST_CATEGORIES)
   category!: QuestCategory;
 
@@ -44,29 +19,11 @@ export class CreateQuestDto {
   @IsIn(QUEST_DIFFICULTIES)
   difficulty!: QuestDifficulty;
 
-  @IsIn(QUEST_SCHEDULES)
-  schedule!: QuestSchedule;
-
-  /** 기한만. 없으면 steady. 루틴에 있으면 거절한다 */
-  @ValidateIf((dto: CreateQuestDto) => dto.pace !== undefined)
+  /** 없으면 steady */
+  @IsOptional()
   @IsIn(QUEST_PACES)
   pace?: QuestPace;
 
-  @ValidateIf((dto: CreateQuestDto) => dto.schedule === 'routine')
-  @IsDefined()
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayUnique()
-  @IsIn(QUEST_WEEKDAYS, { each: true })
-  weekdays?: QuestWeekday[];
-
-  @ValidateIf((dto: CreateQuestDto) => dto.schedule === 'routine')
-  @IsDefined()
-  @IsBoolean()
-  biweekly?: boolean;
-
-  @ValidateIf((dto: CreateQuestDto) => dto.schedule === 'deadline')
-  @IsDefined()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  endsOn?: string;
+  endsOn!: string;
 }
