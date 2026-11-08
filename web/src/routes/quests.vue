@@ -11,6 +11,7 @@ import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
 import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDialog.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import QuestRestDialog from '@/components/quest/QuestRestDialog.vue';
+import RoutineEditDialog from '@/components/quest/RoutineEditDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
@@ -60,6 +61,8 @@ const resumeId = ref<string | null>(null);
 let routinesGeneration = 0;
 const registerOpen = ref(false);
 const registerBusy = ref(false);
+const editRoutine = ref<Routine | null>(null);
+const editBusy = ref(false);
 
 const filtered = computed(() => {
   if (tab.value === 'today') {
@@ -144,6 +147,10 @@ function onKeyDown(event: KeyboardEvent): void {
     closeRest();
     return;
   }
+  if (editRoutine.value) {
+    closeEdit();
+    return;
+  }
   if (registerBusy.value) {
     return;
   }
@@ -153,6 +160,27 @@ function onKeyDown(event: KeyboardEvent): void {
 function openRegister(): void {
   menuId.value = null;
   registerOpen.value = true;
+}
+
+function closeEdit(): void {
+  if (editBusy.value) {
+    return;
+  }
+  editRoutine.value = null;
+}
+
+function openEdit(id: string): void {
+  const routine = routines.value.find((item) => item.id === id);
+  if (!routine || routine.bossId !== null || routine.monsterStatus === 'generating') {
+    return;
+  }
+  menuId.value = null;
+  editRoutine.value = routine;
+}
+
+async function onRoutineSaved(): Promise<void> {
+  await Promise.all([load(true), loadRoutines(true)]);
+  showToast(t('quest.toast.updated'));
 }
 
 function toggleMenu(id: string): void {
@@ -367,6 +395,7 @@ onUnmounted(() => {
           @abandon="openAbandon(item.id, 'routine')"
           @rest="openRest(item.id)"
           @resume="onResume(item.id)"
+          @edit="openEdit(item.id)"
         />
       </div>
 
@@ -384,6 +413,14 @@ onUnmounted(() => {
         />
       </div>
     </div>
+
+    <RoutineEditDialog
+      v-if="editRoutine"
+      :routine="editRoutine"
+      @close="closeEdit"
+      @saved="onRoutineSaved"
+      @busy="editBusy = $event"
+    />
 
     <QuestRegisterDialog
       :open="registerOpen"
