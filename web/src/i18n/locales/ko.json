@@ -213,6 +213,7 @@
     "complete": "오늘 완료",
     "menu": "메뉴",
     "abandon": "포기",
+    "delete": "삭제",
     "abandonTitle": "퀘스트를 포기할까요?",
     "abandonBody": "「{title}」을(를) 포기하면 되돌릴 수 없어요.",
     "cancel": "취소",
@@ -333,6 +334,7 @@
       "created": "「{title}」 퀘스트가 추가되었어요",
       "marked": "오늘을 체크했어요",
       "abandoned": "퀘스트를 포기했어요",
+      "deleted": "루틴을 삭제했어요",
       "rested": "내일부터 꺼졌어요",
       "resumed": "오늘부터 켜졌어요"
     },

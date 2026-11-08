@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Routine } from '@nest-vue/shared';
 import { ListChecks, Plus, TriangleAlert } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -13,7 +14,13 @@ import QuestRestDialog from '@/components/quest/QuestRestDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
-import { abandonQuest, restQuest, resumeQuest } from '@/lib/quests';
+import {
+  abandonQuest,
+  deleteRoutine,
+  getRoutines,
+  pauseRoutine,
+  resumeRoutine,
+} from '@/lib/quests';
 
 type QuestTab = 'today' | 'done' | 'all' | 'routines';
 
@@ -39,14 +46,18 @@ const {
 } = useQuestBoard();
 
 const tab = ref<QuestTab>('today');
+const routines = ref<Routine[]>([]);
+const routinesView = ref<'loading' | 'ready' | 'error'>('loading');
 const menuId = ref<string | null>(null);
 const abandonId = ref<string | null>(null);
+const abandonKind = ref<'quest' | 'routine'>('quest');
 const abandonError = ref('');
 const abandonPending = ref(false);
 const restId = ref<string | null>(null);
 const restError = ref('');
 const restPending = ref(false);
 const resumeId = ref<string | null>(null);
+let routinesGeneration = 0;
 const registerOpen = ref(false);
 const registerBusy = ref(false);
 
@@ -57,17 +68,23 @@ const filtered = computed(() => {
   if (tab.value === 'done') {
     return items.value.filter((item) => item.dueToday && isQuestDone(item));
   }
-  if (tab.value === 'routines') {
-    return items.value.filter((item) => item.schedule === 'routine');
-  }
   return items.value;
 });
 
-const abandonTitle = computed(
-  () => items.value.find((item) => item.id === abandonId.value)?.title ?? '',
+const listView = computed(() => (tab.value === 'routines' ? routinesView.value : view.value));
+
+const shownCount = computed(() =>
+  tab.value === 'routines' ? routines.value.length : filtered.value.length,
 );
 
-const restTitle = computed(() => items.value.find((item) => item.id === restId.value)?.title ?? '');
+const abandonTitle = computed(() => {
+  const source = abandonKind.value === 'routine' ? routines.value : items.value;
+  return source.find((item) => item.id === abandonId.value)?.title ?? '';
+});
+
+const restTitle = computed(
+  () => routines.value.find((item) => item.id === restId.value)?.title ?? '',
+);
 
 function questErrorMessage(cause: unknown, action?: 'rest' | 'resume'): string {
   if (!(cause instanceof ApiError) || cause.status === 401) {
@@ -141,10 +158,31 @@ function closeAbandon(): void {
   abandonId.value = null;
 }
 
-function openAbandon(id: string): void {
+function openAbandon(id: string, kind: 'quest' | 'routine'): void {
   menuId.value = null;
   abandonError.value = '';
+  abandonKind.value = kind;
   abandonId.value = id;
+}
+
+async function loadRoutines(silent = false): Promise<void> {
+  const generation = ++routinesGeneration;
+  if (!silent) {
+    routinesView.value = 'loading';
+  }
+  try {
+    const next = await getRoutines();
+    if (generation !== routinesGeneration) {
+      return;
+    }
+    routines.value = next;
+    routinesView.value = 'ready';
+  } catch {
+    if (generation !== routinesGeneration) {
+      return;
+    }
+    routinesView.value = 'error';
+  }
 }
 
 function closeRest(): void {
@@ -173,10 +211,14 @@ async function onConfirmAbandon(): Promise<void> {
   abandonPending.value = true;
   abandonError.value = '';
   try {
-    await abandonQuest(id);
+    if (abandonKind.value === 'routine') {
+      await deleteRoutine(id);
+    } else {
+      await abandonQuest(id);
+    }
     abandonId.value = null;
-    await load(true);
-    showToast(t('quest.toast.abandoned'));
+    await Promise.all([load(true), loadRoutines(true)]);
+    showToast(t(abandonKind.value === 'routine' ? 'quest.toast.deleted' : 'quest.toast.abandoned'));
   } catch (cause) {
     const message = questErrorMessage(cause);
     if (message) {
@@ -195,9 +237,9 @@ async function onConfirmRest(): Promise<void> {
   restPending.value = true;
   restError.value = '';
   try {
-    await restQuest(id);
+    await pauseRoutine(id);
     restId.value = null;
-    await load(true);
+    await Promise.all([load(true), loadRoutines(true)]);
     showToast(t('quest.toast.rested'));
   } catch (cause) {
     const message = questErrorMessage(cause, 'rest');
@@ -215,8 +257,8 @@ async function onResume(id: string): Promise<void> {
   }
   resumeId.value = id;
   try {
-    await resumeQuest(id);
-    await load(true);
+    await resumeRoutine(id);
+    await Promise.all([load(true), loadRoutines(true)]);
     showToast(t('quest.toast.resumed'));
   } catch (cause) {
     const message = questErrorMessage(cause, 'resume');
@@ -229,12 +271,13 @@ async function onResume(id: string): Promise<void> {
 }
 
 async function onCreated(title: string): Promise<void> {
-  await load(true);
+  await Promise.all([load(true), loadRoutines(true)]);
   showToast(t('quest.toast.created', { title }));
 }
 
 onMounted(() => {
   void load();
+  void loadRoutines();
   document.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('keydown', onKeyDown);
 });
@@ -269,7 +312,7 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div v-if="view === 'loading'" class="flex flex-col gap-2.5">
+      <div v-if="listView === 'loading'" class="flex flex-col gap-2.5">
         <div
           v-for="index in 3"
           :key="index"
@@ -279,18 +322,24 @@ onUnmounted(() => {
       </div>
 
       <div
-        v-else-if="view === 'error'"
+        v-else-if="listView === 'error'"
         class="flex flex-col items-center gap-3 px-5 py-[72px] text-center"
       >
         <TriangleAlert class="text-destructive size-[34px]" />
         <p class="text-secondary-foreground text-sm font-semibold">{{ t('quest.loadError') }}</p>
-        <Button type="button" variant="outline" size="sm" class="w-auto px-4" @click="load(false)">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          class="w-auto px-4"
+          @click="tab === 'routines' ? loadRoutines(false) : load(false)"
+        >
           {{ t('quest.retry') }}
         </Button>
       </div>
 
       <div
-        v-else-if="filtered.length === 0"
+        v-else-if="shownCount === 0"
         class="flex flex-col items-center gap-3 px-5 py-[72px] text-center"
       >
         <ListChecks class="text-muted-foreground size-[34px]" />
@@ -299,19 +348,31 @@ onUnmounted(() => {
         </p>
       </div>
 
+      <div v-else-if="tab === 'routines'" class="flex flex-col gap-2.5">
+        <QuestCard
+          v-for="item in routines"
+          :key="item.id"
+          :item="item"
+          :menu-open="menuId === item.id"
+          :busy="resumeId === item.id"
+          @toggle-menu="toggleMenu(item.id)"
+          @abandon="openAbandon(item.id, 'routine')"
+          @rest="openRest(item.id)"
+          @resume="onResume(item.id)"
+        />
+      </div>
+
       <div v-else class="flex flex-col gap-2.5">
         <QuestCard
           v-for="item in filtered"
           :key="item.id"
           :item="item"
           :menu-open="menuId === item.id"
-          :busy="busyId === item.id || resumeId === item.id"
+          :busy="busyId === item.id"
           @complete="requestComplete(item.id)"
           @mark="onMark(item.id)"
           @toggle-menu="toggleMenu(item.id)"
-          @abandon="openAbandon(item.id)"
-          @rest="openRest(item.id)"
-          @resume="onResume(item.id)"
+          @abandon="openAbandon(item.id, 'quest')"
         />
       </div>
     </div>
