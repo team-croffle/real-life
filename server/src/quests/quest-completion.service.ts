@@ -21,12 +21,11 @@ import {
 } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 
-import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { AI, type Ai } from '../ai/ai';
 import { AiCallLimiter } from '../ai/ai-call-limiter';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
-import { questCompletions } from '../database/schema/quest-completions';
+import { monsters } from '../database/schema/monsters';
 import { questDayMarks } from '../database/schema/quest-day-marks';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
@@ -36,14 +35,7 @@ import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
 import type { CompleteQuestDto } from './dto/complete-quest.dto';
-import {
-  calendarDaysBetween,
-  isDeadlineInPeriod,
-  isRestingOn,
-  isRoutineDueOn,
-  seoulCalendarDate,
-  weekdayOfCalendarDate,
-} from './quest-calendar';
+import { calendarDaysBetween, isDeadlineInPeriod, seoulCalendarDate } from './quest-calendar';
 import { QuestCritRoller } from './quest-crit.roller';
 import { QuestPenaltyService } from './quest-penalty.service';
 
@@ -63,7 +55,6 @@ export class QuestCompletionService {
     private readonly questPenaltyService: QuestPenaltyService,
     private readonly questCritRoller: QuestCritRoller,
     @Inject(AI) private readonly ai: Ai,
-    @Inject(AI_QUEUE) private readonly queue: AiQueue,
     private readonly aiCallLimiter: AiCallLimiter,
   ) {}
 
@@ -82,10 +73,10 @@ export class QuestCompletionService {
       const questRow = await lockQuest(tx, userId, questId);
       const today = seoulCalendarDate();
       const createdOn = seoulCalendarDate(questRow.createdAt);
-      await assertCompletable(tx, questRow, createdOn, today);
+      assertCompletable(questRow, createdOn, today);
 
-      const pace = questRow.pace ?? 'steady';
-      const daySpan = questRow.schedule === 'deadline' ? calendarDaysBetween(createdOn, today) : 0;
+      const pace = questRow.pace;
+      const daySpan = calendarDaysBetween(createdOn, today);
       const markedDayCount =
         pace === 'once' || daySpan <= 0 ? 0 : await lockedMarkCount(tx, questRow.id, userId);
       const table = completionTableAmount(questRow.difficulty, daySpan, markedDayCount, pace);
@@ -119,24 +110,12 @@ export class QuestCompletionService {
       const balance = await this.walletService.applyBalanceDelta(tx, userId, gold, 'completion');
       const progress = await grantProgress(tx, userId, xp);
 
-      try {
-        await tx.insert(questCompletions).values({
-          questId: questRow.id,
-          userId,
-          completedOn: today,
-          note,
-          battleLog,
-          gold,
-          xp,
-        });
-      } catch (error) {
-        if (isUniqueViolation(error)) {
-          throw new ConflictException('quest is already completed for this day');
-        }
-        throw error;
-      }
+      await tx
+        .update(quests)
+        .set({ completedOn: today, note, battleLog, gold, xp })
+        .where(eq(quests.id, questRow.id));
 
-      const statusEffect = await statusAfterCompletion(tx, userId, questRow.schedule === 'routine');
+      const statusEffect = await statusAfterCompletion(tx, userId, questRow.routineId !== null);
 
       return {
         gold,
@@ -169,15 +148,8 @@ export class QuestCompletionService {
 
     return this.db.transaction(async (tx) => {
       const questRow = await lockQuest(tx, userId, questId);
-      if (questRow.kind === 'main') {
-        throw new BadRequestException('a boss cannot mark a day');
-      }
       const today = seoulCalendarDate();
-      if (
-        questRow.schedule !== 'deadline' ||
-        questRow.endsOn === null ||
-        questRow.pace === 'once'
-      ) {
+      if (questRow.pace === 'once') {
         throw new BadRequestException('only weekly and long quests can mark a day');
       }
 
@@ -188,7 +160,7 @@ export class QuestCompletionService {
       if (!isDeadlineInPeriod(createdOn, questRow.endsOn, today)) {
         throw new BadRequestException('today is outside the quest period');
       }
-      if (await hasAnyCompletion(tx, questRow.id)) {
+      if (questRow.completedOn !== null) {
         throw new ConflictException('completed quests cannot mark a day');
       }
 
@@ -233,13 +205,35 @@ export class QuestCompletionService {
       const questRow = await readQuest(tx, userId, questId);
       const today = seoulCalendarDate();
       const createdOn = seoulCalendarDate(questRow.createdAt);
-      await assertCompletable(tx, questRow, createdOn, today);
+      assertCompletable(questRow, createdOn, today);
     });
   }
 
+  private async monsterName(questId: string): Promise<string> {
+    const [questRow] = await this.db
+      .select({ monsterId: quests.monsterId })
+      .from(quests)
+      .where(eq(quests.id, questId));
+    if (!questRow?.monsterId) {
+      return UNKNOWN_MONSTER_NAME;
+    }
+    const [monsterRow] = await this.db
+      .select({ kind: monsters.kind, name: monsters.name, description: monsters.description })
+      .from(monsters)
+      .where(eq(monsters.id, questRow.monsterId));
+    if (!monsterRow || !isMonsterKind(monsterRow.kind)) {
+      return UNKNOWN_MONSTER_NAME;
+    }
+    const name = monsterRow.name.trim();
+    const description = monsterRow.description.trim();
+    if (!name || !description) {
+      return UNKNOWN_MONSTER_NAME;
+    }
+    return name;
+  }
+
   private async battleLog(questId: string, note: string | null): Promise<string> {
-    const tasks = await this.queue.findMonsters([questId]);
-    const name = monsterName(tasks.find((task) => task.questId === questId));
+    const name = await this.monsterName(questId);
     const preset = presetBattleLog(name);
     if (note === null) {
       return preset;
@@ -293,33 +287,6 @@ function describeBattleLogError(error: unknown): string {
   }
   const cause = error.cause instanceof Error ? ` cause=${error.cause.message}` : '';
   return `${error.name}: ${error.message}${cause}`;
-}
-
-function monsterName(task: MonsterTaskState | undefined): string {
-  if (task?.status !== 'succeeded') {
-    return UNKNOWN_MONSTER_NAME;
-  }
-  const name = readyMonsterName(task.result);
-  return name ?? UNKNOWN_MONSTER_NAME;
-}
-
-function readyMonsterName(result: unknown): string | null {
-  if (typeof result !== 'object' || result === null || Array.isArray(result)) {
-    return null;
-  }
-  const record = result as Record<string, unknown>;
-  if (typeof record.kind !== 'string' || !isMonsterKind(record.kind)) {
-    return null;
-  }
-  if (typeof record.name !== 'string' || typeof record.description !== 'string') {
-    return null;
-  }
-  const name = record.name.trim();
-  const description = record.description.trim();
-  if (!name || !description) {
-    return null;
-  }
-  return name;
 }
 
 async function lockQuest(tx: DrizzleTx, userId: string, questId: string): Promise<QuestRow> {
@@ -392,40 +359,14 @@ async function requireJobClass(tx: DrizzleTx, userId: string) {
   return userRow.jobClass;
 }
 
-async function assertCompletable(
-  tx: DrizzleTx,
-  questRow: QuestRow,
-  createdOn: string,
-  today: string,
-): Promise<void> {
-  if (questRow.kind === 'main') {
-    throw new BadRequestException('a boss cannot be completed as a quest');
-  }
+function assertCompletable(questRow: QuestRow, createdOn: string, today: string): void {
   if (today < createdOn) {
     throw new BadRequestException('quest cannot be completed before it was created');
   }
-
-  if (questRow.schedule === 'routine') {
-    if (isRestingOn(questRow, today)) {
-      throw new BadRequestException('routine is resting today');
-    }
-    if (!isRoutineDueOn(questRow, createdOn, today)) {
-      const weekdays = questRow.weekdays ?? [];
-      if (!weekdays.includes(weekdayOfCalendarDate(today))) {
-        throw new BadRequestException('today is not a scheduled weekday');
-      }
-      throw new BadRequestException('today is an off week');
-    }
-    if (await hasCompletionOn(tx, questRow.id, today)) {
-      throw new ConflictException('quest is already completed for this day');
-    }
-    return;
-  }
-
-  if (questRow.endsOn === null || !isDeadlineInPeriod(createdOn, questRow.endsOn, today)) {
+  if (!isDeadlineInPeriod(createdOn, questRow.endsOn, today)) {
     throw new BadRequestException('quest is past its end date');
   }
-  if (await hasAnyCompletion(tx, questRow.id)) {
+  if (questRow.completedOn !== null) {
     throw new ConflictException('quest is already completed');
   }
 }
@@ -448,29 +389,6 @@ async function statusAfterCompletion(
     .from(userProgress)
     .where(eq(userProgress.userId, userId));
   return progressRow?.statusEffect ?? null;
-}
-
-async function hasCompletionOn(
-  tx: DrizzleTx,
-  questId: string,
-  completedOn: string,
-): Promise<boolean> {
-  const [completionRow] = await tx
-    .select({ id: questCompletions.id })
-    .from(questCompletions)
-    .where(
-      and(eq(questCompletions.questId, questId), eq(questCompletions.completedOn, completedOn)),
-    );
-  return completionRow !== undefined;
-}
-
-async function hasAnyCompletion(tx: DrizzleTx, questId: string): Promise<boolean> {
-  const [completionRow] = await tx
-    .select({ id: questCompletions.id })
-    .from(questCompletions)
-    .where(eq(questCompletions.questId, questId))
-    .limit(1);
-  return completionRow !== undefined;
 }
 
 async function lockedMarkCount(tx: DrizzleTx, questId: string, userId: string): Promise<number> {
@@ -538,14 +456,4 @@ async function grantProgress(
     titlesGranted,
     ticketCount,
   };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) {
-    return false;
-  }
-  if ('code' in error && error.code === '23505') {
-    return true;
-  }
-  return 'cause' in error && isUniqueViolation(error.cause);
 }
