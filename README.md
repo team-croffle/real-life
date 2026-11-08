@@ -6,7 +6,7 @@
 
 The aim is to keep you doing the things that are easy to put off alone, through game rules that show the reward and the cost right away.
 
-- **Quests** — registered as a routine (repeats on chosen weekdays) or a deadline (done by a due date). You pick a category, a difficulty and a title template. A deadline is steady or all at once. Steady records the days you worked on it with "check today". All at once has no check today, and its reward and penalty stay on the daily column however long the gap is
+- **Quests** — a deadline quest is registered on its own. A routine repeats on chosen weekdays and, on each of those days, writes one all-at-once quest due that day. You pick a category, a difficulty and a title template. A deadline is steady or all at once. Steady records the days you worked on it with "check today". All at once has no check today, and its reward and penalty stay on the daily column however long the gap is
 - **Rewards** — a base amount set by difficulty and duration, multiplied by the share of checked days, the job multiplier, the streak multiplier and a bonus for a completion note. The register form shows the expected amount; the result shows what was applied
 - **Critical hits** — each completion has a 10% chance to double the gold, and a tenth of those triple it. Bigger critical hits get bigger effects and sounds
 - **Streak** — completing at least one quest a day keeps it going, and a longer streak raises the reward multiplier
@@ -15,8 +15,8 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **Levels and titles** — XP raises your level, and every level-up gives a gacha ticket. Every tenth level gives a title
 - **Stats** — stamina, intellect and sense grow with the categories of the quests you complete, shown as a radar chart
 - **Jobs** — student, office worker or freelancer, each earning more in its own categories. More jobs will come
-- **AI monsters** — registering a quest turns the to-do into one monster in the background. The kind is one of eight, the picture key matches the kind, and AI writes the name and the description. The title stays as entered while that runs, and if it fails. Gold and XP are set by the rules, not by AI
-- **AI bosses** — a big goal becomes a boss. Confirming a goal, a due date and a category creates the subquests and the boss HP in one step. At most three bosses are in progress. If naming the boss fails, the title stays the goal
+- **AI monsters** — registering a deadline quest or a routine turns the to-do into one monster in the background. The kind is one of eight, the picture key matches the kind, and AI writes the name and the description. The title stays as entered while that runs, and if it fails. Gold and XP are set by the rules, not by AI
+- **AI bosses** — a big goal becomes a boss. Confirming a goal, a due date and a category creates the deadline subquests, the subroutines and the boss HP in one step. At most three bosses are in progress. If naming the boss fails, the title stays the goal
 - **Shop and character (planned)** — buy real-life rewards with gold, and dress up a cat character with accessories from the gacha
 - **Notifications (planned)** — due soon, a streak about to break, level-ups, friend and raid news, each one switchable
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
@@ -41,22 +41,20 @@ The job can be changed once every 7 days. Changing it resets the level and XP to
 
 ## Quests
 
-A quest is registered with a kind (normal or main), a category, a title, a difficulty and a schedule. The title is 1 to 50 characters.
+A deadline quest is registered with a category, a title, a difficulty and a due date. The title is 1 to 50 characters. A routine is registered on its own, with the weekdays it repeats.
 
 - **Categories** are exercise, daily life, study, work, creative and mind. Each category has two title templates, which can be edited after picking
 - **Difficulty** is easy, normal or hard. A recommendation looks at the title only and returns one of those, plus one line of reason. It does not set an amount
-- A **main quest** is a boss for a big goal. The user sends a goal, a due date and a category. Subquests are routines and deadline quests. A deadline subquest counts as one time. A routine counts the days it is scheduled from the confirm day through the boss due date, including both ends. Easy is 1, normal is 2 and hard is 3. Boss HP is the sum of times × that score. A deadline subquest cannot end after the boss. There are at most 10 subquests, and eleven is rejected. A suggestion uses only as many as needed, usually 3 to 7. A deadline before today in Seoul, or after the boss deadline, is left out. If none remain, the suggestion is rejected. Confirming creates the boss and the subquests in one transaction, and stores that HP. The request does not send times or HP. If the write fails, nothing is created. At most three bosses are in progress, and another confirm is rejected. After confirm, one task picks a boss kind and writes a name and a description. The kinds are minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. If that fails, the title stays the goal. A boss is not in the quest list, is not completed or given up as a quest, and is not charged the deadline penalty. Its subquests are, and the list includes the boss title. `POST /api/quests` does not accept `kind: main` or `bossQuestId`. A routine under a boss cannot be paused, so its HP stays on the days counted at confirm
+- A **main quest** is a boss for a big goal. The user sends a goal, a due date and a category. Subquests are routines and deadline quests. A deadline subquest counts as one time. A routine counts the days it is scheduled from the confirm day through the boss due date, including both ends. Easy is 1, normal is 2 and hard is 3. Boss HP is the sum of times × that score. A deadline subquest cannot end after the boss. There are at most 10 subquests, and eleven is rejected. A suggestion uses only as many as needed, usually 3 to 7. A deadline before today in Seoul, or after the boss deadline, is left out. If none remain, the suggestion is rejected. Confirming creates the boss, the deadline subquests and the subroutines in one transaction, and stores that HP on the boss. The request does not send times or HP. If the write fails, nothing is created. At most three bosses are in progress, and another confirm is rejected. After confirm, one task picks a boss kind and writes a name and a description. The kinds are minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. If that fails, the title stays the goal. A boss is not a quest: it is not in the quest list, it is not completed or given up as a quest, and it is not charged a deadline penalty. Its subquests are. A subquest points at the boss, and the list includes the boss title. A subroutine points at the boss too. `POST /api/quests` registers a deadline quest only. A routine under a boss cannot be updated, paused or resumed, so its HP stays on the days counted at confirm
 
-The schedule is one of two.
-
-- **Routine** — pick weekdays (all seven means every day), optionally every other week. It is completed on the chosen weekdays only, once a day. A missed day cannot be filled in later. A routine can be paused: pausing starts the next day, and resuming starts the same day. Each scheduled day writes one quest. Deleting that quest, or turning the routine off and back on, does not write another quest that same day. A routine that has not written one today still does, including one just registered or whose weekdays were changed to include today
+- **Routine** — stored on its own, not as a quest. Pick weekdays (all seven means every day), optionally every other week. Each scheduled day writes one all-at-once deadline quest due that day, and that quest is what you complete, once. A missed day cannot be filled in later. A routine can be paused: pausing starts the next day, and resuming starts the same day. The write runs after the 00:01 settlement and when the quest list is loaded, after settlement. Registering a routine, or turning it back on, also writes when today is scheduled. Deleting that quest, or turning the routine off and back on the same day, does not write another quest that day. A routine that has not written one today still does, including one just registered or whose weekdays now include today. Deleting the routine leaves the quests it already wrote, and their monsters. The day's quest uses the routine's monster.
 - **Deadline** — completed once by the due date. From the day after the due date it can no longer be completed; there is no grace period. Each day you work on it before then is recorded with **check today** — once a day, only on that day. Check-ins do not count toward the streak
 
 A quest can be given up. Giving up deletes it with no reward. A deadline quest that has already been completed cannot be given up.
 
-Registering a quest enqueues one monster and returns immediately, with the title that was sent. The kind is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon, and the picture key is that kind. AI picks the kind and writes the name and the description.
+Registering a deadline quest or a routine enqueues one monster and returns immediately, with the title that was sent. The kind is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon, and the picture key is that kind. AI picks the kind and writes the name and the description.
 
-The list reports where that work stands. While the task is waiting or running, the status is generating and there is no monster. When it succeeds, the status is ready and the monster has the kind, picture key, name and description. When it fails, or the result is not a valid monster, the status is failed and there is no monster. The title stays as registered. A quest with no task has no status and no monster.
+The list reports where that work stands. While the task is waiting or running, the status is generating and there is no monster. When it succeeds, the monster is kept and the status is ready: kind, picture key, name and description. When it fails, or the result is not a valid monster, the status is failed and there is no monster. The title stays as registered. With no monster and no task, there is no status and no monster.
 
 ## Rewards
 
@@ -164,7 +162,7 @@ real-life/
 ├── server/                # NestJS API server
 │   ├── src/
 │   │   ├── auth/          # sign-up, sign-in, email verification, onboarding, account deletion (Better Auth)
-│   │   ├── quests/        # register, list, complete, check today, routine pause/resume, penalty settlement
+│   │   ├── quests/        # deadline quests, routines, completion, check today, penalty settlement
 │   │   ├── wallet/        # balance, history, debt, post-hoc deduction
 │   │   ├── progress/      # level, XP, titles, streak, gacha tickets
 │   │   ├── stats/         # stat totals
