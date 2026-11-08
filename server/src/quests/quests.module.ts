@@ -13,10 +13,12 @@ import { QuestSettlementScheduler } from './quest-settlement.scheduler';
 import { QuestsController } from './quests.controller';
 import { QuestsService } from './quests.service';
 import { RoutineSpawnService } from './routine-spawn.service';
+import { RoutinesController } from './routines.controller';
+import { RoutinesService } from './routines.service';
 
 @Module({
   imports: [AiModule, AiQueueModule, WalletModule],
-  controllers: [QuestsController, QuestPenaltiesController, BossesController],
+  controllers: [QuestsController, QuestPenaltiesController, BossesController, RoutinesController],
   providers: [
     QuestsService,
     BossPlanService,
@@ -25,6 +27,7 @@ import { RoutineSpawnService } from './routine-spawn.service';
     QuestPenaltyService,
     QuestSettlementScheduler,
     RoutineSpawnService,
+    RoutinesService,
   ],
 })
 export class QuestsModule {}
