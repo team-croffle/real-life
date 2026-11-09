@@ -1,4 +1,14 @@
-import type { QuestRewardApplied } from '@nest-vue/shared';
+import type {
+  JobClass,
+  QuestCategory,
+  QuestDifficulty,
+  QuestPace,
+  QuestRewardApplied,
+  QuestSchedule,
+} from '@nest-vue/shared';
+import { completionTableAmount, grantAmount, jobRewardMultiplier } from '@nest-vue/shared';
+
+import { calendarDaysBetween, isCalendarDate, seoulToday } from '@/lib/seoulDate';
 
 /** 메모를 적으면 붙는 배율. 서버 grantAmount의 10분의 11과 같다. */
 const NOTE_MULTIPLIER = 1.1;
@@ -26,6 +36,43 @@ export interface RewardBreakdown {
   showBaseGold: boolean;
   baseGold: number;
   crit: number;
+}
+
+/** 등록 폼과 보스 하위 줄의 예상 골드·경험치. 메모·연속·크리티컬은 넣지 않는다. */
+export function estimatedRegisterReward(input: {
+  schedule: QuestSchedule;
+  difficulty: QuestDifficulty;
+  category: QuestCategory;
+  jobClass: JobClass;
+  pace?: QuestPace;
+  endsOn?: string;
+}): { gold: number; xp: number; days?: number } | null {
+  const multiplier = jobRewardMultiplier(input.jobClass, input.category);
+  if (input.schedule === 'routine') {
+    const table = completionTableAmount(input.difficulty, 0, 0);
+    return {
+      gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
+      xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
+    };
+  }
+  if (!input.endsOn || !isCalendarDate(input.endsOn) || !input.pace) {
+    return null;
+  }
+  const daySpan = calendarDaysBetween(seoulToday(), input.endsOn);
+  if (daySpan < 0) {
+    return null;
+  }
+  const table = completionTableAmount(
+    input.difficulty,
+    daySpan,
+    daySpan + 1,
+    input.pace === 'once' ? 'once' : 'steady',
+  );
+  return {
+    days: input.pace === 'steady' ? table.elapsedDays : undefined,
+    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
+    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
+  };
 }
 
 export function rewardBreakdown(gold: number, applied: QuestRewardApplied): RewardBreakdown {

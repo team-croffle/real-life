@@ -14,9 +14,6 @@ import {
   QUEST_TITLE_MAX,
   QUEST_TITLE_TEMPLATES,
   QUEST_WEEKDAYS,
-  completionTableAmount,
-  grantAmount,
-  jobRewardMultiplier,
 } from '@nest-vue/shared';
 import { Star, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -26,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
+import { estimatedRegisterReward } from '@/lib/questReward';
 import { createQuest, createRoutine, recommendDifficulty } from '@/lib/quests';
 import {
   calendarDaysBetween,
@@ -69,56 +67,41 @@ const routineReward = computed(() => {
   if (schedule.value !== 'routine' || !jobClass) {
     return null;
   }
-  const table = completionTableAmount(difficulty.value, 0, 0);
-  const multiplier = jobRewardMultiplier(jobClass, category.value);
-  return {
-    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
-    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
-  };
+  return estimatedRegisterReward({
+    schedule: 'routine',
+    difficulty: difficulty.value,
+    category: category.value,
+    jobClass,
+  });
 });
 // 기한 퀘스트는 기한날에 끝내고 매일 체크했을 때의 최대 보상을 보여 준다.
 const deadlineMaxReward = computed(() => {
   const jobClass = auth.user?.jobClass;
-  if (
-    schedule.value !== 'deadline' ||
-    pace.value !== 'steady' ||
-    !jobClass ||
-    !isCalendarDate(endsOn.value)
-  ) {
+  if (schedule.value !== 'deadline' || pace.value !== 'steady' || !jobClass) {
     return null;
   }
-  const daySpan = calendarDaysBetween(seoulToday(), endsOn.value);
-  if (daySpan < 0) {
-    return null;
-  }
-  const table = completionTableAmount(difficulty.value, daySpan, daySpan + 1);
-  const multiplier = jobRewardMultiplier(jobClass, category.value);
-  return {
-    days: table.elapsedDays,
-    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
-    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
-  };
+  return estimatedRegisterReward({
+    schedule: 'deadline',
+    difficulty: difficulty.value,
+    category: category.value,
+    jobClass,
+    pace: 'steady',
+    endsOn: endsOn.value,
+  });
 });
 const deadlineOnceReward = computed(() => {
   const jobClass = auth.user?.jobClass;
-  if (
-    schedule.value !== 'deadline' ||
-    pace.value !== 'once' ||
-    !jobClass ||
-    !isCalendarDate(endsOn.value)
-  ) {
+  if (schedule.value !== 'deadline' || pace.value !== 'once' || !jobClass) {
     return null;
   }
-  const daySpan = calendarDaysBetween(seoulToday(), endsOn.value);
-  if (daySpan < 0) {
-    return null;
-  }
-  const table = completionTableAmount(difficulty.value, daySpan, daySpan + 1, 'once');
-  const multiplier = jobRewardMultiplier(jobClass, category.value);
-  return {
-    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
-    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
-  };
+  return estimatedRegisterReward({
+    schedule: 'deadline',
+    difficulty: difficulty.value,
+    category: category.value,
+    jobClass,
+    pace: 'once',
+    endsOn: endsOn.value,
+  });
 });
 const everyDay = computed(() => weekdays.value.length === QUEST_WEEKDAYS.length);
 const canSubmit = computed(() => {
