@@ -5,9 +5,11 @@ import { type Component, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute } from 'vue-router';
 
+import BossResultDialog from '@/components/boss/BossResultDialog.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import SettingsDialog from '@/components/settings/SettingsDialog.vue';
 import { Button } from '@/components/ui/button';
+import { resetUnseenBosses } from '@/lib/unseenBosses';
 import { router } from '@/router';
 import { useAuthStore } from '@/stores/auth';
 
@@ -46,6 +48,7 @@ function isCurrent(item: NavItem): boolean {
 }
 
 async function onLogout(): Promise<void> {
+  resetUnseenBosses();
   await auth.logout();
   await router.push('/login');
 }
@@ -169,5 +172,6 @@ async function onLogout(): Promise<void> {
     </nav>
 
     <SettingsDialog v-if="settingsOpen" @close="settingsOpen = false" />
+    <BossResultDialog />
   </div>
 </template>

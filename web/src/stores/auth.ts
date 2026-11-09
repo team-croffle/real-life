@@ -12,6 +12,7 @@ import { computed, ref } from 'vue';
 import { authClient } from '@/auth/authClient';
 import { clearAuthFlow, loadAuthFlow, saveAuthFlow } from '@/auth/authFlowStorage';
 import { ApiError, apiFetch } from '@/composables/useApi';
+import { resetUnseenBosses } from '@/lib/unseenBosses';
 
 let hydratePromise: Promise<void> | null = null;
 
@@ -95,6 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
     justOnboarded.value = false;
     persistFlow();
+    resetUnseenBosses();
   }
 
   function setPendingEmail(email: string): void {

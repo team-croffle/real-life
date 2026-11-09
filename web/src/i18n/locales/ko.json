@@ -97,7 +97,17 @@
     "confirm": "확정",
     "confirming": "확정 중",
     "activeMax": "진행 중인 보스는 최대 3개예요.",
-    "toastCreated": "메인 퀘스트를 만들었어요"
+    "toastCreated": "메인 퀘스트를 만들었어요",
+    "loot": "전리품 보기",
+    "clearedTitle": "보스 처치",
+    "clearedBody": "체력을 80% 이상 깎았어요",
+    "failedTitle": "보스 실패",
+    "lootGold": "{gold}G",
+    "lootXp": "{xp}XP",
+    "lootTickets": "뽑기권 {n}장",
+    "lostGold": "−{gold}G",
+    "lostXp": "−{xp}XP",
+    "close": "닫기"
   },
   "wallet": {
     "goldLabel": "보유 골드",

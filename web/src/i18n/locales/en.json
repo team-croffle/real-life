@@ -97,7 +97,17 @@
     "confirm": "Confirm",
     "confirming": "Confirming",
     "activeMax": "You can have at most 3 bosses in progress.",
-    "toastCreated": "Main quest created"
+    "toastCreated": "Main quest created",
+    "loot": "See loot",
+    "clearedTitle": "Boss cleared",
+    "clearedBody": "You cut at least 80% of its HP",
+    "failedTitle": "Boss failed",
+    "lootGold": "{gold}G",
+    "lootXp": "{xp}XP",
+    "lootTickets": "{n} tickets",
+    "lostGold": "−{gold}G",
+    "lostXp": "−{xp}XP",
+    "close": "Close"
   },
   "wallet": {
     "goldLabel": "Gold",

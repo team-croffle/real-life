@@ -196,12 +196,41 @@
   animation: tag-pulse 1.4s ease-in-out infinite;
 }
 
+@keyframes boss-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px) rotate(-1.5deg);
+  }
+  75% {
+    transform: translateX(5px) rotate(1.5deg);
+  }
+}
+
+.boss-shake {
+  animation: boss-shake 0.45s ease-in-out infinite;
+}
+
+.boss-clear-glow {
+  box-shadow:
+    0 0 40px var(--gold-soft),
+    0 0 12px var(--gold);
+}
+
+.boss-ember {
+  background: linear-gradient(to top, var(--destructive), transparent);
+  opacity: 0.55;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .result-pop,
   .result-glow,
   .result-ribbon,
   .tag-pulse,
-  .tag-shine::after {
+  .tag-shine::after,
+  .boss-shake {
     animation: none;
   }
 }
