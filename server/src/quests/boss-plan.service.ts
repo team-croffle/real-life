@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
+  BossLatestLog,
   BossSummary,
   ConfirmedBoss,
   Paginated,
@@ -16,6 +17,7 @@ import {
   BOSS_ACTIVE_MAX,
   BOSS_IMAGE_KEYS,
   BOSS_KINDS,
+  QUEST_DIFFICULTY_SCORES,
   MONSTER_KINDS,
   QUEST_REWARDS,
   QUEST_WEEKDAYS,
@@ -40,6 +42,7 @@ import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import type { BossRow } from '../database/schema/bosses';
 import { bosses } from '../database/schema/bosses';
 import { monsters } from '../database/schema/monsters';
+import { questPenalties } from '../database/schema/quest-penalties';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
 import type { RoutineRow } from '../database/schema/routines';
@@ -319,6 +322,9 @@ export class BossPlanService {
   }
 
   async list(userId: string): Promise<BossSummary[]> {
+    await this.questsService.prepareForRead(userId);
+    const today = seoulCalendarDate();
+    const yesterday = previousCalendarDate(today);
     const bossRows = await this.db
       .select()
       .from(bosses)
@@ -329,13 +335,71 @@ export class BossPlanService {
       return [];
     }
     const summaries = await this.withAppearance(bossRows);
+    const bossIds = bossRows.map((bossRow) => bossRow.id);
+    const [cutRows, counterRows] = await Promise.all([
+      this.db
+        .select({
+          id: quests.id,
+          bossId: quests.bossId,
+          title: quests.title,
+          difficulty: quests.difficulty,
+          completedOn: quests.completedOn,
+        })
+        .from(quests)
+        .where(and(inArray(quests.bossId, bossIds), isNotNull(quests.completedOn))),
+      this.db
+        .select({
+          id: questPenalties.id,
+          bossId: questPenalties.bossId,
+          questTitle: questPenalties.questTitle,
+          gold: questPenalties.gold,
+          missedOn: questPenalties.missedOn,
+        })
+        .from(questPenalties)
+        .where(and(inArray(questPenalties.bossId, bossIds), eq(questPenalties.reason, 'missed'))),
+    ]);
     return bossRows.flatMap((bossRow) => {
       const summary = summaries.get(bossRow.id);
-      return summary ? [summary] : [];
+      if (!summary) {
+        return [];
+      }
+      const cuts = cutRows.flatMap((row) =>
+        row.bossId === bossRow.id && row.completedOn
+          ? [
+              {
+                kind: 'cut' as const,
+                questTitle: row.title,
+                amount: QUEST_DIFFICULTY_SCORES[row.difficulty],
+                on: row.completedOn,
+                tieBreak: row.id,
+              },
+            ]
+          : [],
+      );
+      const counters = counterRows.flatMap((row) =>
+        row.bossId === bossRow.id
+          ? [
+              {
+                kind: 'counter' as const,
+                questTitle: row.questTitle,
+                amount: Math.abs(row.gold),
+                on: row.missedOn,
+                tieBreak: row.id,
+              },
+            ]
+          : [],
+      );
+      return [
+        {
+          ...summary,
+          latestLog: latestBossLog([...cuts, ...counters]),
+          counteredToday: counters.some((row) => row.on === yesterday),
+        },
+      ];
     });
   }
 
-  private async withAppearance(bossRows: BossRow[]): Promise<Map<string, BossSummary>> {
+  private async withAppearance(bossRows: BossRow[]): Promise<Map<string, BossCard>> {
     if (bossRows.length === 0) {
       return new Map();
     }
@@ -543,11 +607,39 @@ function deadlineReward(
   return QUEST_REWARDS[difficulty][period];
 }
 
+type BossCard = Omit<BossSummary, 'latestLog' | 'counteredToday'>;
+
+type BossLogCandidate = BossLatestLog & { tieBreak: string };
+
+function latestBossLog(rows: BossLogCandidate[]): BossLatestLog | null {
+  const sorted = rows.toSorted((left, right) => {
+    if (left.on !== right.on) {
+      return left.on < right.on ? 1 : -1;
+    }
+    if (left.kind !== right.kind) {
+      return left.kind === 'counter' ? -1 : 1;
+    }
+    return left.tieBreak < right.tieBreak ? 1 : -1;
+  });
+  const top = sorted[0];
+  if (!top) {
+    return null;
+  }
+  return { kind: top.kind, questTitle: top.questTitle, amount: top.amount, on: top.on };
+}
+
+function previousCalendarDate(day: string): string {
+  const [year, month, date] = day.split('-').map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, date));
+  utc.setUTCDate(utc.getUTCDate() - 1);
+  return utc.toISOString().slice(0, 10);
+}
+
 function toBossSummary(
   bossRow: BossRow,
   monster: { kind: string; name: string; description: string } | undefined,
   task: MonsterTaskState | undefined,
-): BossSummary {
+): BossCard {
   const appearance = monsterView(
     monster,
     task?.status,

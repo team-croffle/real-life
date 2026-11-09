@@ -57,6 +57,18 @@ export interface UnseenBossResult {
   tickets: number;
 }
 
+export type BossLogKind = 'cut' | 'counter';
+
+/** 진행 중 보스의 가장 최근 깎음 또는 반격. */
+export interface BossLatestLog {
+  kind: BossLogKind;
+  questTitle: string;
+  /** 깎음은 난이도 점수, 반격은 적용된 골드 절대값 */
+  amount: number;
+  /** 서울 날짜 `YYYY-MM-DD` */
+  on: string;
+}
+
 /** GET /api/bosses. 판정 전만. 제목은 목표 문구이고, 이름은 ready일 때만 있다. */
 export interface BossSummary {
   id: string;
@@ -68,6 +80,9 @@ export interface BossSummary {
   createdOn: string;
   bossStatus: MonsterStatus | null;
   boss: BossAppearance | null;
+  latestLog: BossLatestLog | null;
+  /** 서울 어제 놓친 하위 퀘스트의 반격이 있는가 */
+  counteredToday: boolean;
 }
 
 /** POST /api/bosses. 체력은 확정 요청에 없고 서버가 저장한 값이다. */
