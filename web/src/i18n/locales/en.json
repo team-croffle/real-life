@@ -38,7 +38,9 @@
       "retrying": "Trying again...",
       "failed": "Could not load",
       "refresh": "Refresh"
-    }
+    },
+    "counterBanner": "Boss counter! You missed a subquest for \"{name}\"",
+    "counterBannerAction": "See the boss"
   },
   "boss": {
     "historyChip": "Past bosses",

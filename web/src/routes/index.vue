@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Progress, Stats } from '@nest-vue/shared';
+import type { BossSummary, Progress, Stats } from '@nest-vue/shared';
 import { Plus, TriangleAlert } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
@@ -18,6 +18,7 @@ import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
+import { getBosses } from '@/lib/bosses';
 import { getProgress, settleQuestPenalties } from '@/lib/home';
 import type { QuestListItem } from '@/lib/quests';
 import { getStats } from '@/lib/stats';
@@ -58,6 +59,7 @@ const balance = ref<number | null>(null);
 const progress = ref<Progress | null>(null);
 const registerOpen = ref(false);
 const registerBusy = ref(false);
+const counterBanner = ref<{ id: string; name: string } | null>(null);
 
 // 홈 배너. 정산과 진행도·지갑 조회가 끝나면 사라진다. 실패하면 한 번 더 시도한 뒤 실패를 띄운다.
 type HomeLoadState = 'ready' | 'settling' | 'retrying' | 'failed';
@@ -87,6 +89,7 @@ const hiddenQuestCount = computed(() => dueTodayQuests.value.length - todayQuest
 let statsGeneration = 0;
 let walletGeneration = 0;
 let progressGeneration = 0;
+let bossesGeneration = 0;
 let settleAbort: AbortController | undefined;
 let settleTimer: ReturnType<typeof setTimeout> | undefined;
 let leftHome = false;
@@ -138,6 +141,37 @@ async function loadSummary(): Promise<void> {
   await Promise.all([loadStats(), loadWallet()]);
 }
 
+function pickCounteredBoss(bosses: BossSummary[]): BossSummary | null {
+  const countered = bosses.filter((boss) => boss.counteredToday);
+  if (countered.length === 0) {
+    return null;
+  }
+  return countered.reduce((latest, boss) => {
+    const latestOn = latest.latestLog?.on ?? '';
+    const on = boss.latestLog?.on ?? '';
+    return on > latestOn ? boss : latest;
+  });
+}
+
+async function loadCounterBanner(): Promise<void> {
+  const generation = ++bossesGeneration;
+  try {
+    const bosses = await getBosses();
+    if (generation !== bossesGeneration || leftHome) {
+      return;
+    }
+    const picked = pickCounteredBoss(bosses);
+    counterBanner.value = picked
+      ? { id: picked.id, name: picked.boss?.name ?? picked.title }
+      : null;
+  } catch {
+    if (generation !== bossesGeneration || leftHome) {
+      return;
+    }
+    counterBanner.value = null;
+  }
+}
+
 async function settleThenRead(canRetry = true): Promise<void> {
   settleAbort?.abort();
   clearTimeout(settleTimer);
@@ -166,6 +200,7 @@ async function settleThenRead(canRetry = true): Promise<void> {
   }
   if (settled && progressRead && walletRead) {
     homeLoad.value = 'ready';
+    void loadCounterBanner();
     return;
   }
   if (canRetry) {
@@ -173,6 +208,7 @@ async function settleThenRead(canRetry = true): Promise<void> {
     return;
   }
   homeLoad.value = 'failed';
+  void loadCounterBanner();
 }
 
 /** 실패 배너의 새로고침. 퀘스트 목록, 스탯, 정산을 처음부터 다시 한다. */
@@ -274,6 +310,19 @@ onUnmounted(() => {
           @click="refreshHome"
         >
           {{ t('home.load.refresh') }}
+        </Button>
+      </div>
+
+      <div
+        v-if="counterBanner"
+        class="bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-3 rounded-[14px] px-4 py-[11px] text-[12.5px] font-bold"
+        role="status"
+      >
+        <span>{{ t('home.counterBanner', { name: counterBanner.name }) }}</span>
+        <Button as-child variant="outline" size="sm" class="w-auto px-3">
+          <RouterLink :to="{ path: '/bosses', query: { id: counterBanner.id } }">
+            {{ t('home.counterBannerAction') }}
+          </RouterLink>
         </Button>
       </div>
 

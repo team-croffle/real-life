@@ -38,7 +38,9 @@
       "retrying": "다시 불러오는 중이에요",
       "failed": "불러오지 못했어요",
       "refresh": "새로고침"
-    }
+    },
+    "counterBanner": "보스의 반격! \"{name}\"에게 놓친 하위 퀘스트가 있어요",
+    "counterBannerAction": "보스 화면 보기"
   },
   "boss": {
     "historyChip": "지난 보스",
