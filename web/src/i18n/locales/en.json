@@ -252,6 +252,8 @@
     "deadlineRewardSpan": "You receive only checked days ÷ elapsed days of the reward.",
     "zeroRewardWarning": "The expected reward is 0. Completing this cannot be undone.",
     "resultTitle": "Quest complete",
+    "resultSettling": "Wrapping up the result",
+    "battleLog": "Battle log",
     "resultGoldLabel": "You earned",
     "resultGold": "{gold}G",
     "resultXp": "+{xp} XP",

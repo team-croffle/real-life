@@ -11,6 +11,7 @@ import { preloadSounds } from '@/lib/sound';
 
 const props = defineProps<{
   item: QuestListItem;
+  note: string;
   pending: boolean;
   error: string;
 }>();
@@ -21,7 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const note = ref('');
+const note = ref(props.note);
 
 // 결과 창이 뜨기 전에 효과음을 미리 받아 둔다.
 onMounted(preloadSounds);

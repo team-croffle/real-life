@@ -252,6 +252,8 @@
     "deadlineRewardSpan": "체크한 날 수 ÷ 걸린 일수만큼만 보상을 받아요.",
     "zeroRewardWarning": "예상 보상이 0이에요. 완료하면 되돌릴 수 없어요.",
     "resultTitle": "퀘스트를 완료했어요",
+    "resultSettling": "결과 정리 중",
+    "battleLog": "전투 기록",
     "resultGoldLabel": "받은 금액",
     "resultGold": "{gold}G",
     "resultXp": "경험치 +{xp}XP",

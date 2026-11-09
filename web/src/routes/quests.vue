@@ -36,9 +36,12 @@ const {
   view,
   completeId,
   completeItem,
+  completeNote,
   completeError,
   completePending,
+  resultOpen,
   completionResult,
+  completionMonster,
   busyId,
   toast,
   load,
@@ -153,14 +156,20 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   menuId.value = null;
+  if (monsterView.value) {
+    monsterView.value = null;
+    return;
+  }
+  if (resultOpen.value) {
+    if (completionResult.value) {
+      dismissCompletionResult();
+    }
+    return;
+  }
   if (completeId.value) {
     if (!completePending.value) {
       completeId.value = null;
     }
-    return;
-  }
-  if (completionResult.value) {
-    dismissCompletionResult();
     return;
   }
   if (abandonId.value) {
@@ -458,6 +467,7 @@ onUnmounted(() => {
     <QuestCompleteDialog
       v-if="completeItem"
       :item="completeItem"
+      :note="completeNote"
       :pending="completePending"
       :error="completeError"
       @cancel="completeId = null"
@@ -465,8 +475,9 @@ onUnmounted(() => {
     />
 
     <QuestCompleteResultDialog
-      v-if="completionResult"
+      v-if="resultOpen"
       :result="completionResult"
+      :monster="completionMonster"
       @close="dismissCompletionResult"
     />
 
