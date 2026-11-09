@@ -25,6 +25,7 @@ const emit = defineEmits<{
   resume: [];
   edit: [];
   viewMonster: [MonsterViewTarget];
+  retryMonster: [];
 }>();
 
 const { t } = useI18n();
@@ -145,6 +146,19 @@ const difficultyClass = computed(() => {
         class="text-muted-foreground animate-pulse truncate text-[11.5px]"
       >
         {{ t('quest.monsterGenerating') }}
+      </span>
+      <span v-else-if="quest.monsterStatus === 'failed'" class="flex min-w-0 items-center gap-2">
+        <span class="text-muted-foreground truncate text-[11.5px]">{{
+          t('quest.monsterFailed')
+        }}</span>
+        <button
+          type="button"
+          class="text-primary shrink-0 text-[11.5px] font-bold"
+          :disabled="busy"
+          @click="emit('retryMonster')"
+        >
+          {{ t('quest.monsterRetry') }}
+        </button>
       </span>
       <span class="truncate text-[13.5px]" :class="readyMonster ? 'font-bold' : 'font-semibold'">
         {{ readyMonster ? readyMonster.name : quest.title }}

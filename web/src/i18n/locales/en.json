@@ -233,6 +233,8 @@
     "save": "Save",
     "editNotice": "Changes apply to quests created from now on. Quests already created stay as they are.",
     "monsterGenerating": "Creating monster",
+    "monsterFailed": "Couldn't create the monster",
+    "monsterRetry": "Create again",
     "cancel": "Cancel",
     "completeTitle": "Complete this quest?",
     "completeBody": "Complete “{title}”.",
