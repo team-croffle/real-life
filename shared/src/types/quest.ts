@@ -62,8 +62,10 @@ export interface QuestListItem {
   monster: QuestMonster | null;
   /** 보스 하위 퀘스트만. 아니면 null */
   bossId: string | null;
-  /** 보스 하위 퀘스트만. 아니면 null */
+  /** 보스 하위 퀘스트만. 목표. 아니면 null */
   bossTitle: string | null;
+  /** 보스 몬스터 이름. 하위 퀘스트가 아니거나 보스에 몬스터가 없으면 null */
+  bossName: string | null;
 }
 
 export interface CreateQuestPayload {
