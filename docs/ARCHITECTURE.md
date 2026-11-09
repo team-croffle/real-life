@@ -43,13 +43,13 @@ quests/                         every quest rule
   routines.service.ts           routine rules. A new title clears the monster and enqueues again. Updating, pausing, resuming or deleting a boss subroutine is 400
   routine-spawn.service.ts      write today's quest once per routine
   bosses.controller.ts          POST /api/bosses, GET /api/bosses, unseen, history, POST /api/bosses/:id/monster, seen, abandon
-  boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines, and list bosses still in progress, unseen results and past bosses
+  boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines, and list bosses still in progress (with subquests), unseen results and past bosses
   boss-judgment.service.ts      judge due bosses inside settlement, abandon, mark a result seen, then drop judged subroutines before spawn
   quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress (XP and the category stat) and the quest row, cut boss HP by the difficulty score, then clear lethargy
   quest-penalty.service.ts      settle missed days. Lethargy when any quest due that day is still open
   quest-settlement.scheduler.ts at 00:01 Seoul: settle (judgment is inside it), drop judged boss subroutines, then spawn
   quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
-  quest-calendar.ts             Seoul date helpers
+  quest-calendar.ts             Seoul date helpers. Calendar-day functions are re-exported from shared
   monster-view.ts               map a monster row and a task status to the list fields
   monster-retry.service.ts      requeue a failed monster task for a quest, a routine or a boss. A quest a routine wrote retries the routine task
 wallet/                         balance, history, post-hoc deduction
@@ -84,10 +84,11 @@ constants/            reward table, penalty table, critical-hit odds, jobs and o
   bosses.ts           eight boss kinds, picture keys, active cap of 3, placeholder reward 10 and penalty 5 per HP
 boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
 boss-reward.ts        80% clear line, clear reward and fail penalty, with no job or streak multiplier
+quest-calendar.ts     Seoul calendar-day helpers. The server re-exports them; the web uses them to preview boss HP
 types/                response types exchanged by the server and the web
   quest.ts            quest list item: bossTitle is the goal, bossName is the boss monster name or null
   difficulty-recommendation.ts
-  boss.ts           boss list item
+  boss.ts           boss list item, including subquests on GET /api/bosses and boss plus bossStatus on unseen
   routine.ts        routine list item
   quest-plan.ts     suggested plan: subquests, times, HP
 ```
@@ -95,12 +96,14 @@ types/                response types exchanged by the server and the web
 ### Web (`web/src/`)
 
 ```
-routes/        pages (the file name is the URL): home, quests, stats, wallet, job, sign-up/sign-in/onboarding
-components/    a folder per page (home, quest, wallet, stats, job, settings, auth) and shared ui/
-  quest/MonsterImage.vue         /monsters/{imageKey}.svg, then /fallback/unknown.svg
+routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, job, sign-up/sign-in/onboarding
+components/    a folder per page (home, quest, boss, wallet, stats, job, settings, auth) and shared ui/
+  boss/BossRegisterDialog.vue    main-quest plan and confirm
+  boss/BossResultDialog.vue      unseen clear or fail
+  quest/MonsterImage.vue         /monsters/{imageKey}.svg or /bosses/{imageKey}.svg, then /fallback/unknown.svg
   quest/MonsterViewDialog.vue    monster name, picture and description
   quest/QuestHistoryPager.vue    numbered pages; size 5, 10, 15 or 20, default 20
-lib/           server calls (quests, wallet, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings
+lib/           server calls (quests, bosses, unseenBosses, wallet, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings
 composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
@@ -155,7 +158,7 @@ A routine response is `generating` and `monster` is null while its task is `pend
 
 `POST /api/bosses` locks the user, then inserts the boss, the deadline subquests and the subroutines in one transaction. The boss is its own row. HP is stored on that row and counted again from the request. A deadline subquest stores the boss id. A subroutine stores it on the routine. There are at most 10 of them. Today's scheduled subroutines write their quest in that same transaction. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still in progress is 409. If the transaction fails, nothing is created. Updating, pausing, resuming or deleting a subroutine is 400.
 
-After that commit, one task is enqueued for the boss. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each deadline subquest and each subroutine gets its own task with the monster kinds. If an enqueue fails, the boss, the subquests and the subroutines stay. `GET /api/bosses` returns only bosses still in progress. It reads the monster row and any task still in the queue, checking boss kinds. The name comes from the boss prompt. A failed result leaves the title as the goal. `latestLog` is a counter whose `missedOn` is yesterday in Seoul, when one exists. Otherwise it is the later date, and on the same day the counter wins over a cut. `counteredToday` is true when `missedOn` is yesterday in Seoul.
+After that commit, one task is enqueued for the boss. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each deadline subquest and each subroutine gets its own task with the monster kinds. If an enqueue fails, the boss, the subquests and the subroutines stay. `GET /api/bosses` returns only bosses still in progress. It reads the monster row and any task still in the queue, checking boss kinds. The name comes from the boss prompt. A failed result leaves the title as the goal. Each boss has `subquests`, one row per item put in at confirm (at most 10). A routine row has `done` (completed spawned quests), `missed` (spawned, not completed, due before today in Seoul) and `remaining` (scheduled days from the confirm day through the boss due date, minus scheduled days through yesterday, minus 1 when today's spawned quest was completed or deleted). A deadline row has `status` `open`, `done` or `missed`. Each row has `expectedGold` and `expectedXp`, the same calculation as `GET /api/quests`; a routine is one spawned day quest. Order is remaining, then done, then missed; within a group, confirm order. `latestLog` is a counter whose `missedOn` is yesterday in Seoul, when one exists. Otherwise it is the later date, and on the same day the counter wins over a cut. `counteredToday` is true when `missedOn` is yesterday in Seoul. `GET /api/bosses/unseen` items include `boss` (only when ready) and `bossStatus`.
 
 ## Boss judgment
 
