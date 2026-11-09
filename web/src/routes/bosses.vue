@@ -16,14 +16,11 @@ import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { useQuestBoard } from '@/composables/useQuestBoard';
 import { abandonBoss, getBosses, getBossHistory, retryBossMonster } from '@/lib/bosses';
-import { estimatedRegisterReward } from '@/lib/questReward';
 import { calendarDaysBetween, seoulToday } from '@/lib/seoulDate';
-import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const auth = useAuthStore();
 const {
   items,
   completeId,
@@ -304,30 +301,7 @@ function subquestChip(item: BossSubquest): string {
 }
 
 function subquestReward(item: BossSubquest): string {
-  const jobClass = auth.user?.jobClass;
-  if (!jobClass) {
-    return '';
-  }
-  const reward =
-    item.kind === 'routine'
-      ? estimatedRegisterReward({
-          schedule: 'routine',
-          difficulty: item.difficulty,
-          category: item.category,
-          jobClass,
-        })
-      : estimatedRegisterReward({
-          schedule: 'deadline',
-          difficulty: item.difficulty,
-          category: item.category,
-          jobClass,
-          pace: 'once',
-          endsOn: seoulToday(),
-        });
-  if (!reward) {
-    return '';
-  }
-  return t('quest.rewardCard', { xp: reward.xp, gold: reward.gold });
+  return t('quest.rewardCard', { xp: item.expectedXp, gold: item.expectedGold });
 }
 
 function isRoutineSubquest(item: BossSubquest): item is BossRoutineSubquest {

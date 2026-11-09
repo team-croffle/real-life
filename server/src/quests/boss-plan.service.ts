@@ -5,6 +5,7 @@ import type {
   BossSubquest,
   BossSummary,
   ConfirmedBoss,
+  JobClass,
   Paginated,
   PastBoss,
   Quest,
@@ -23,7 +24,9 @@ import {
   QUEST_REWARDS,
   QUEST_WEEKDAYS,
   bossQuestHp,
+  comboRewardMultiplier,
   isBossKind,
+  jobRewardMultiplier,
 } from '@nest-vue/shared';
 import {
   BadRequestException,
@@ -43,6 +46,7 @@ import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import type { BossRow } from '../database/schema/bosses';
 import { bosses } from '../database/schema/bosses';
 import { monsters } from '../database/schema/monsters';
+import { questDayMarks } from '../database/schema/quest-day-marks';
 import { questPenalties } from '../database/schema/quest-penalties';
 import type { QuestRow } from '../database/schema/quests';
 import { quests } from '../database/schema/quests';
@@ -62,7 +66,7 @@ import {
   routineOccurrenceCount,
   seoulCalendarDate,
 } from './quest-calendar';
-import { QuestsService, toQuest } from './quests.service';
+import { QuestsService, rewardPayout, toQuest } from './quests.service';
 import { RoutineSpawnService } from './routine-spawn.service';
 
 type PlannedSubquest =
@@ -343,44 +347,84 @@ export class BossPlanService {
     }
     const summaries = await this.withAppearance(bossRows);
     const bossIds = bossRows.map((bossRow) => bossRow.id);
-    const [cutRows, counterRows, routineRows, questRows] = await Promise.all([
-      this.db
-        .select({
-          id: quests.id,
-          bossId: quests.bossId,
-          title: quests.title,
-          difficulty: quests.difficulty,
-          completedOn: quests.completedOn,
-        })
-        .from(quests)
-        .where(and(inArray(quests.bossId, bossIds), isNotNull(quests.completedOn))),
-      this.db
-        .select({
-          id: questPenalties.id,
-          bossId: questPenalties.bossId,
-          questTitle: questPenalties.questTitle,
-          gold: questPenalties.gold,
-          xp: questPenalties.xp,
-          missedOn: questPenalties.missedOn,
-        })
-        .from(questPenalties)
-        .where(and(inArray(questPenalties.bossId, bossIds), eq(questPenalties.reason, 'missed'))),
-      this.db.select().from(routines).where(inArray(routines.bossId, bossIds)),
-      this.db
-        .select({
-          id: quests.id,
-          bossId: quests.bossId,
-          routineId: quests.routineId,
-          title: quests.title,
-          category: quests.category,
-          difficulty: quests.difficulty,
-          completedOn: quests.completedOn,
-          endsOn: quests.endsOn,
-          createdAt: quests.createdAt,
-        })
-        .from(quests)
-        .where(inArray(quests.bossId, bossIds)),
-    ]);
+    const [cutRows, counterRows, routineRows, questRows, userRows, progressRows] =
+      await Promise.all([
+        this.db
+          .select({
+            id: quests.id,
+            bossId: quests.bossId,
+            title: quests.title,
+            difficulty: quests.difficulty,
+            completedOn: quests.completedOn,
+          })
+          .from(quests)
+          .where(and(inArray(quests.bossId, bossIds), isNotNull(quests.completedOn))),
+        this.db
+          .select({
+            id: questPenalties.id,
+            bossId: questPenalties.bossId,
+            questTitle: questPenalties.questTitle,
+            gold: questPenalties.gold,
+            xp: questPenalties.xp,
+            missedOn: questPenalties.missedOn,
+          })
+          .from(questPenalties)
+          .where(and(inArray(questPenalties.bossId, bossIds), eq(questPenalties.reason, 'missed'))),
+        this.db.select().from(routines).where(inArray(routines.bossId, bossIds)),
+        this.db
+          .select({
+            id: quests.id,
+            bossId: quests.bossId,
+            routineId: quests.routineId,
+            title: quests.title,
+            category: quests.category,
+            difficulty: quests.difficulty,
+            pace: quests.pace,
+            completedOn: quests.completedOn,
+            endsOn: quests.endsOn,
+            createdAt: quests.createdAt,
+          })
+          .from(quests)
+          .where(inArray(quests.bossId, bossIds)),
+        this.db
+          .select({ jobClass: users.jobClass })
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1),
+        this.db
+          .select({
+            comboDayCount: userProgress.comboDayCount,
+            comboCountedOn: userProgress.comboCountedOn,
+          })
+          .from(userProgress)
+          .where(eq(userProgress.userId, userId))
+          .limit(1),
+      ]);
+    const jobClass = userRows[0]?.jobClass;
+    if (!jobClass) {
+      throw new ForbiddenException();
+    }
+    const progressRow = progressRows[0];
+    const countedToday = (progressRow?.comboCountedOn ?? '') >= today;
+    const streak = (progressRow?.comboDayCount ?? 0) + (countedToday ? 0 : 1);
+    const deadlineIds = questRows.flatMap((row) => (row.routineId === null ? [row.id] : []));
+    const markRows =
+      deadlineIds.length === 0
+        ? []
+        : await this.db
+            .select({
+              questId: questDayMarks.questId,
+              markedDayCount: questDayMarks.markedDayCount,
+            })
+            .from(questDayMarks)
+            .where(
+              and(eq(questDayMarks.userId, userId), inArray(questDayMarks.questId, deadlineIds)),
+            );
+    const reward = {
+      jobClass,
+      comboMultiplier: comboRewardMultiplier(streak),
+      markedDayCountByQuest: new Map(markRows.map((row) => [row.questId, row.markedDayCount])),
+    };
     return bossRows.flatMap((bossRow) => {
       const summary = summaries.get(bossRow.id);
       if (!summary) {
@@ -424,6 +468,7 @@ export class BossPlanService {
             questRows.filter((row) => row.bossId === bossRow.id),
             today,
             yesterday,
+            reward,
           ),
         },
       ];
@@ -647,9 +692,16 @@ type SubquestQuestRow = {
   title: string;
   category: QuestRow['category'];
   difficulty: QuestDifficulty;
+  pace: QuestPace;
   completedOn: string | null;
   endsOn: string;
   createdAt: Date;
+};
+
+type SubquestReward = {
+  jobClass: JobClass;
+  comboMultiplier: number;
+  markedDayCountByQuest: Map<string, number>;
 };
 
 function bossSubquests(
@@ -658,6 +710,7 @@ function bossSubquests(
   questRows: SubquestQuestRow[],
   today: string,
   yesterday: string,
+  reward: SubquestReward,
 ): BossSubquest[] {
   const ranked = [
     ...routineRows.map((routineRow) => {
@@ -675,6 +728,14 @@ function bossSubquests(
         routineOccurrenceCount(routineRow, createdOn, bossRow.deadlineOn) -
         routineOccurrenceCount(routineRow, createdOn, yesterday) -
         todayConsumed;
+      const payout = listedQuestPayout(
+        routineRow.difficulty,
+        routineRow.category,
+        'once',
+        0,
+        0,
+        reward,
+      );
       return {
         rank: remaining > 0 ? 0 : missed === 0 ? 1 : 2,
         createdAt: routineRow.createdAt,
@@ -688,6 +749,8 @@ function bossSubquests(
           done,
           missed,
           remaining,
+          expectedGold: payout.gold,
+          expectedXp: payout.xp,
         },
       };
     }),
@@ -696,6 +759,16 @@ function bossSubquests(
       .map((row) => {
         const status: 'open' | 'done' | 'missed' =
           row.completedOn !== null ? 'done' : row.endsOn < today ? 'missed' : 'open';
+        const createdOn = seoulCalendarDate(row.createdAt);
+        const daySpan = calendarDaysBetween(createdOn, today);
+        const payout = listedQuestPayout(
+          row.difficulty,
+          row.category,
+          row.pace,
+          daySpan,
+          reward.markedDayCountByQuest.get(row.id) ?? 0,
+          reward,
+        );
         return {
           rank: status === 'open' ? 0 : status === 'done' ? 1 : 2,
           createdAt: row.createdAt,
@@ -707,6 +780,8 @@ function bossSubquests(
             category: row.category,
             difficulty: row.difficulty,
             status,
+            expectedGold: payout.gold,
+            expectedXp: payout.xp,
           },
         };
       }),
@@ -748,6 +823,25 @@ function latestBossLog(rows: BossLogCandidate[], yesterday: string): BossLatestL
     return { kind: 'cut', questTitle: top.questTitle, amount: top.amount, on: top.on };
   }
   return { kind: 'counter', questTitle: top.questTitle, gold: top.gold, xp: top.xp, on: top.on };
+}
+
+/** 목록 expectedGold·expectedXp와 같다. 루틴은 찍힌 하루 퀘스트라 간격 0, pace once다. */
+function listedQuestPayout(
+  difficulty: QuestDifficulty,
+  category: QuestRow['category'],
+  pace: QuestPace,
+  daySpan: number,
+  markedDayCount: number,
+  reward: SubquestReward,
+): { gold: number; xp: number } {
+  return rewardPayout(
+    difficulty,
+    daySpan,
+    daySpan > 0 ? markedDayCount : 0,
+    jobRewardMultiplier(reward.jobClass, category),
+    reward.comboMultiplier,
+    pace,
+  );
 }
 
 function previousCalendarDate(day: string): string {

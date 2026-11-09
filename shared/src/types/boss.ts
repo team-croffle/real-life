@@ -18,6 +18,10 @@ export interface BossRoutineSubquest {
   done: number;
   missed: number;
   remaining: number;
+  /** 찍힌 하루 퀘스트 1회. 목록의 expectedGold와 같은 계산 */
+  expectedGold: number;
+  /** 찍힌 하루 퀘스트 1회. 목록의 expectedXp와 같은 계산 */
+  expectedXp: number;
 }
 
 /** 확정 때 넣은 하위 기한 퀘스트. routine_id가 없는 행만. */
@@ -28,6 +32,10 @@ export interface BossDeadlineSubquest {
   category: QuestCategory;
   difficulty: QuestDifficulty;
   status: BossSubquestStatus;
+  /** 그 기한 퀘스트의 목록 expectedGold와 같은 계산 */
+  expectedGold: number;
+  /** 그 기한 퀘스트의 목록 expectedXp와 같은 계산 */
+  expectedXp: number;
 }
 
 export interface BossAppearance {

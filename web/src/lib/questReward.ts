@@ -38,7 +38,7 @@ export interface RewardBreakdown {
   crit: number;
 }
 
-/** 등록 폼과 보스 하위 줄의 예상 골드·경험치. 메모·연속·크리티컬은 넣지 않는다. */
+/** 등록 폼의 예상 골드·경험치. 메모·연속·크리티컬은 넣지 않는다. */
 export function estimatedRegisterReward(input: {
   schedule: QuestSchedule;
   difficulty: QuestDifficulty;
