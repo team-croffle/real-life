@@ -9,21 +9,33 @@ import { markBossSeen } from '@/lib/bosses';
 import { clearConfetti, fireConfetti } from '@/lib/confetti';
 import { advanceUnseenBoss, currentUnseenBoss, ensureUnseenBossesLoaded } from '@/lib/unseenBosses';
 
-type LootStep = 'intro' | 'gold' | 'xp' | 'tickets' | 'done';
+const LOOT_GAP_MS = 300;
 
 const { t } = useI18n();
 
 const current = ref<UnseenBossResult | null>(null);
-const lootStep = ref<LootStep>('intro');
+const lootOpen = ref(false);
+const shownLoot = ref(0);
 const seenSent = ref(false);
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let lootTimer: ReturnType<typeof setTimeout> | undefined;
 
 const lostGold = computed(() => Math.abs(current.value?.gold ?? 0));
 const lostXp = computed(() => Math.abs(current.value?.xp ?? 0));
+const lootTotal = computed(() => (current.value?.xp === null ? 2 : 3));
+
+function clearLootTimer(): void {
+  if (lootTimer !== undefined) {
+    clearTimeout(lootTimer);
+    lootTimer = undefined;
+  }
+}
 
 function showCurrent(): void {
+  clearLootTimer();
   current.value = currentUnseenBoss();
-  lootStep.value = 'intro';
+  lootOpen.value = false;
+  shownLoot.value = 0;
   seenSent.value = false;
 }
 
@@ -54,21 +66,28 @@ function closeCurrent(): void {
   showCurrent();
 }
 
-function onLoot(): void {
-  markSeenOnce();
-  lootStep.value = 'gold';
+function revealLoot(): void {
+  const total = lootTotal.value;
+  if (reduceMotion) {
+    shownLoot.value = total;
+    return;
+  }
+  shownLoot.value = 1;
+  const step = (): void => {
+    if (shownLoot.value >= total) {
+      lootTimer = undefined;
+      return;
+    }
+    shownLoot.value += 1;
+    lootTimer = setTimeout(step, LOOT_GAP_MS);
+  };
+  lootTimer = setTimeout(step, LOOT_GAP_MS);
 }
 
-function onNextLoot(): void {
-  if (lootStep.value === 'gold') {
-    lootStep.value = current.value?.xp === null ? 'tickets' : 'xp';
-    return;
-  }
-  if (lootStep.value === 'xp') {
-    lootStep.value = 'tickets';
-    return;
-  }
-  lootStep.value = 'done';
+function onLoot(): void {
+  markSeenOnce();
+  lootOpen.value = true;
+  revealLoot();
 }
 
 watch(current, (boss) => {
@@ -82,6 +101,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  clearLootTimer();
   clearConfetti();
 });
 </script>
@@ -134,27 +154,33 @@ onUnmounted(() => {
       </p>
 
       <template v-if="current.result === 'cleared'">
-        <p v-if="lootStep === 'intro'" class="text-secondary-foreground mb-4 text-[13px]">
+        <p v-if="!lootOpen" class="text-secondary-foreground mb-4 text-[13px]">
           {{ t('boss.clearedBody') }}
         </p>
-        <p v-else-if="lootStep === 'gold'" class="text-gold mb-4 text-[22px] font-bold">
-          {{ t('boss.lootGold', { gold: current.gold }) }}
-        </p>
-        <p v-else-if="lootStep === 'xp'" class="mb-4 text-[22px] font-bold">
-          {{ t('boss.lootXp', { xp: current.xp }) }}
-        </p>
-        <p v-else-if="lootStep === 'tickets'" class="text-gold mb-4 text-[22px] font-bold">
-          {{ t('boss.lootTickets', { n: current.tickets }) }}
-        </p>
-        <Button v-if="lootStep === 'intro'" type="button" class="w-full" @click="onLoot">
-          {{ t('boss.loot') }}
-        </Button>
-        <Button
-          v-else-if="lootStep === 'gold' || lootStep === 'xp' || lootStep === 'tickets'"
-          type="button"
-          class="w-full"
-          @click="onNextLoot"
-        >
+        <div v-else class="mb-4 flex flex-col gap-1">
+          <p
+            v-if="shownLoot >= 1"
+            class="text-gold text-[22px] font-bold"
+            :class="reduceMotion ? '' : 'result-pop'"
+          >
+            {{ t('boss.lootGold', { gold: current.gold }) }}
+          </p>
+          <p
+            v-if="current.xp !== null && shownLoot >= 2"
+            class="text-[22px] font-bold"
+            :class="reduceMotion ? '' : 'result-pop'"
+          >
+            {{ t('boss.lootXp', { xp: current.xp }) }}
+          </p>
+          <p
+            v-if="shownLoot >= (current.xp === null ? 2 : 3)"
+            class="text-gold text-[22px] font-bold"
+            :class="reduceMotion ? '' : 'result-pop'"
+          >
+            {{ t('boss.lootTickets', { n: current.tickets }) }}
+          </p>
+        </div>
+        <Button v-if="!lootOpen" type="button" class="w-full" @click="onLoot">
           {{ t('boss.loot') }}
         </Button>
         <Button v-else type="button" class="w-full" @click="closeCurrent">
