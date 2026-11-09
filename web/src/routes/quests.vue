@@ -20,6 +20,7 @@ import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
 import {
   abandonQuest,
   deleteRoutine,
+  retryQuestMonster,
   getRoutines,
   pauseRoutine,
   resumeRoutine,
@@ -50,6 +51,7 @@ const {
 
 const tab = ref<QuestTab>('today');
 const monsterView = ref<MonsterViewTarget | null>(null);
+const retryingId = ref<string | null>(null);
 const routines = ref<Routine[]>([]);
 const routinesView = ref<'loading' | 'ready' | 'error'>('loading');
 const menuId = ref<string | null>(null);
@@ -117,6 +119,25 @@ function questErrorMessage(cause: unknown, action?: 'rest' | 'resume'): string {
     return t('quest.errors.completedDeadline');
   }
   return cause.message || t('quest.errors.generic');
+}
+
+async function onRetryMonster(id: string): Promise<void> {
+  if (retryingId.value) {
+    return;
+  }
+  retryingId.value = id;
+  try {
+    await retryQuestMonster(id);
+    await load(true);
+  } catch (cause) {
+    const message = questErrorMessage(cause);
+    if (message) {
+      showToast(message);
+    }
+    await load(true);
+  } finally {
+    retryingId.value = null;
+  }
 }
 
 function onPointerDown(event: PointerEvent): void {
@@ -408,12 +429,13 @@ onUnmounted(() => {
           :key="item.id"
           :item="item"
           :menu-open="menuId === item.id"
-          :busy="busyId === item.id"
+          :busy="busyId === item.id || retryingId === item.id"
           @complete="requestComplete(item.id)"
           @mark="onMark(item.id)"
           @toggle-menu="toggleMenu(item.id)"
           @abandon="openAbandon(item.id, 'quest')"
           @view-monster="monsterView = $event"
+          @retry-monster="onRetryMonster(item.id)"
         />
       </div>
     </div>

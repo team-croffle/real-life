@@ -38,6 +38,10 @@ export async function markQuestToday(questId: string): Promise<QuestDayMarkResul
   return apiFetch<QuestDayMarkResult>(`/quests/${questId}/day-marks`, { method: 'POST' });
 }
 
+export async function retryQuestMonster(questId: string): Promise<void> {
+  await apiFetch<void>(`/quests/${questId}/monster`, { method: 'POST' });
+}
+
 export async function abandonQuest(questId: string): Promise<void> {
   await apiFetch<void>(`/quests/${questId}`, { method: 'DELETE' });
 }
