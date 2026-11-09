@@ -392,7 +392,7 @@ export class BossPlanService {
       return [
         {
           ...summary,
-          latestLog: latestBossLog([...cuts, ...counters]),
+          latestLog: latestBossLog([...cuts, ...counters], yesterday),
           counteredToday: counters.some((row) => row.on === yesterday),
         },
       ];
@@ -611,8 +611,11 @@ type BossCard = Omit<BossSummary, 'latestLog' | 'counteredToday'>;
 
 type BossLogCandidate = BossLatestLog & { tieBreak: string };
 
-function latestBossLog(rows: BossLogCandidate[]): BossLatestLog | null {
-  const sorted = rows.toSorted((left, right) => {
+/** 어제 반격이 있으면 그 반격을 준다. 배너가 뜬 날의 오늘 깎음보다 앞이다. */
+function latestBossLog(rows: BossLogCandidate[], yesterday: string): BossLatestLog | null {
+  const yesterdayCounters = rows.filter((row) => row.kind === 'counter' && row.on === yesterday);
+  const candidates = yesterdayCounters.length > 0 ? yesterdayCounters : rows;
+  const sorted = candidates.toSorted((left, right) => {
     if (left.on !== right.on) {
       return left.on < right.on ? 1 : -1;
     }
