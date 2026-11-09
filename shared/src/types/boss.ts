@@ -81,6 +81,8 @@ export interface UnseenBossResult {
   xp: number | null;
   /** 지갑 줄의 뽑기권. 줄이 없으면 0 */
   tickets: number;
+  bossStatus: MonsterStatus | null;
+  boss: BossAppearance | null;
 }
 
 export type BossLogKind = 'cut' | 'counter';

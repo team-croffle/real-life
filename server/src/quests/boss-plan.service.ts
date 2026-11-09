@@ -228,24 +228,27 @@ export class BossPlanService {
       return [];
     }
 
-    const entryRows = await this.db
-      .select({
-        bossId: walletEntries.bossId,
-        amount: walletEntries.amount,
-        tickets: walletEntries.tickets,
-        kind: walletEntries.kind,
-      })
-      .from(walletEntries)
-      .where(
-        and(
-          eq(walletEntries.userId, userId),
-          inArray(
-            walletEntries.bossId,
-            bossRows.map((bossRow) => bossRow.id),
+    const [entryRows, summaries] = await Promise.all([
+      this.db
+        .select({
+          bossId: walletEntries.bossId,
+          amount: walletEntries.amount,
+          tickets: walletEntries.tickets,
+          kind: walletEntries.kind,
+        })
+        .from(walletEntries)
+        .where(
+          and(
+            eq(walletEntries.userId, userId),
+            inArray(
+              walletEntries.bossId,
+              bossRows.map((bossRow) => bossRow.id),
+            ),
+            inArray(walletEntries.kind, ['boss_clear', 'boss_fail']),
           ),
-          inArray(walletEntries.kind, ['boss_clear', 'boss_fail']),
         ),
-      );
+      this.withAppearance(bossRows),
+    ]);
     const payByBoss = new Map<string, { amount: number; tickets: number }>();
     for (const entryRow of entryRows) {
       if (!entryRow.bossId) {
@@ -264,6 +267,7 @@ export class BossPlanService {
         return [];
       }
       const pay = payByBoss.get(bossRow.id);
+      const summary = summaries.get(bossRow.id);
       return [
         {
           id: bossRow.id,
@@ -277,6 +281,8 @@ export class BossPlanService {
           gold: pay?.amount ?? 0,
           xp: bossRow.xpChange,
           tickets: pay?.tickets ?? 0,
+          bossStatus: summary?.bossStatus ?? null,
+          boss: summary?.boss ?? null,
         },
       ];
     });
