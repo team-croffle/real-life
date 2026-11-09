@@ -17,9 +17,12 @@ export function useQuestBoard() {
   const items = ref<QuestListItem[]>([]);
   const view = ref<QuestView>('loading');
   const completeId = ref<string | null>(null);
+  const completeNote = ref('');
   const completeError = ref('');
   const completePending = ref(false);
+  const resultOpen = ref(false);
   const completionResult = ref<QuestCompletionResult | null>(null);
+  const completionMonster = ref<{ name: string; imageKey: string } | null>(null);
   const busyId = ref<string | null>(null);
   const toast = ref('');
 
@@ -67,27 +70,39 @@ export function useQuestBoard() {
 
   function openComplete(id: string): void {
     completeError.value = '';
+    completeNote.value = '';
     completeId.value = id;
   }
 
   function dismissCompletionResult(): void {
     completionResult.value = null;
+    resultOpen.value = false;
+    completionMonster.value = null;
   }
 
   async function onConfirmComplete(note: string): Promise<boolean> {
     const id = completeId.value;
-    if (!id || completePending.value) {
+    const item = completeItem.value;
+    if (!id || !item || completePending.value) {
       return false;
     }
+    completeNote.value = note;
+    const monster = item.monsterStatus === 'ready' ? item.monster : null;
+    completionMonster.value = monster ? { name: monster.name, imageKey: monster.imageKey } : null;
+    completeId.value = null;
+    completionResult.value = null;
+    resultOpen.value = true;
     completePending.value = true;
     completeError.value = '';
     try {
       const result = await completeQuest(id, note);
-      completeId.value = null;
       await load(true);
       completionResult.value = result;
       return true;
     } catch (cause) {
+      resultOpen.value = false;
+      completionMonster.value = null;
+      completeId.value = id;
       const message = statusErrorMessage(cause, {
         400: t('quest.errors.completeBadRequest'),
         403: t('quest.errors.completeForbidden'),
@@ -136,9 +151,12 @@ export function useQuestBoard() {
     view,
     completeId,
     completeItem,
+    completeNote,
     completeError,
     completePending,
+    resultOpen,
     completionResult,
+    completionMonster,
     busyId,
     toast,
     load,
