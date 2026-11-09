@@ -12,12 +12,9 @@ import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
 import { quests } from '../database/schema/quests';
 import { addCalendarDays, seoulCalendarDate } from '../quests/quest-calendar';
-import { AI, type Ai } from './ai';
+import { AI, DIFFICULTY_HISTORY_DAYS, type Ai } from './ai';
 import { AiCallLimiter } from './ai-call-limiter';
 import type { RecommendDifficultyDto } from './dto/recommend-difficulty.dto';
-
-/** 서울 오늘을 포함한 최근 일수. 프롬프트의 "최근 14일"과 같다. */
-export const DIFFICULTY_HISTORY_DAYS = 14;
 
 @Injectable()
 export class DifficultyService {
