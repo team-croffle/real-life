@@ -102,7 +102,7 @@ export class BossJudgmentService {
       }
       await tx
         .update(bosses)
-        .set({ result: paid.result, judgedAt })
+        .set({ result: paid.result, judgedAt, xpChange: paid.xpChange })
         .where(eq(bosses.id, bossRow.id));
     }
     /* oxlint-enable no-await-in-loop */
@@ -169,9 +169,15 @@ export class BossJudgmentService {
           .set({ xp: levelXp - xpLoss })
           .where(eq(userProgress.userId, userId));
       }
+      const judgedAt = new Date();
       await tx
         .update(bosses)
-        .set({ result: 'abandoned', judgedAt: new Date() })
+        .set({
+          result: 'abandoned',
+          judgedAt,
+          resultSeenAt: judgedAt,
+          xpChange: -xpLoss,
+        })
         .where(eq(bosses.id, bossId));
 
       const openIds = questRows.flatMap((questRow) =>
@@ -193,6 +199,34 @@ export class BossJudgmentService {
         tickets: 0,
         balance: gold.balance,
       };
+    });
+  }
+
+  /** 결과 화면을 봤다고 남긴다. 이미 봤으면 시각을 바꾸지 않는다. */
+  async markSeen(userId: string, bossId: string): Promise<void> {
+    if (!BOSS_ID_PATTERN.test(bossId)) {
+      throw new NotFoundException();
+    }
+    await this.db.transaction(async (tx) => {
+      const [bossRow] = await tx
+        .select({
+          id: bosses.id,
+          result: bosses.result,
+          resultSeenAt: bosses.resultSeenAt,
+        })
+        .from(bosses)
+        .where(and(eq(bosses.id, bossId), eq(bosses.userId, userId)))
+        .for('update');
+      if (!bossRow) {
+        throw new NotFoundException();
+      }
+      if (bossRow.result === null) {
+        throw new ConflictException('boss is still in progress');
+      }
+      if (bossRow.resultSeenAt !== null) {
+        return;
+      }
+      await tx.update(bosses).set({ resultSeenAt: new Date() }).where(eq(bosses.id, bossId));
     });
   }
 
@@ -230,6 +264,7 @@ export class BossJudgmentService {
     ProgressSnapshot & {
       balance: number;
       result: 'cleared' | 'failed';
+      xpChange: number;
       titlesGranted: number[];
     }
   > {
@@ -248,6 +283,7 @@ export class BossJudgmentService {
     ProgressSnapshot & {
       balance: number;
       result: 'cleared';
+      xpChange: number;
       titlesGranted: number[];
     }
   > {
@@ -275,6 +311,7 @@ export class BossJudgmentService {
       sense: progress.sense + (stat === 'sense' ? reward.xp : 0),
       balance,
       result: 'cleared',
+      xpChange: reward.xp,
       titlesGranted: applied.titlesGranted,
     };
   }
@@ -288,6 +325,7 @@ export class BossJudgmentService {
     ProgressSnapshot & {
       balance: number;
       result: 'failed';
+      xpChange: number;
       titlesGranted: number[];
     }
   > {
@@ -305,6 +343,7 @@ export class BossJudgmentService {
       xp: progress.xp - xpLoss,
       balance: gold.balance,
       result: 'failed',
+      xpChange: -xpLoss,
       titlesGranted: [],
     };
   }

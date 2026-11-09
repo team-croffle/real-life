@@ -148,6 +148,13 @@
       "when": 1794150910930,
       "tag": "0020_boss_judgment",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794208336543,
+      "tag": "0021_boss_result_seen",
+      "breakpoints": true
     }
   ]
 }
