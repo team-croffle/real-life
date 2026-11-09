@@ -61,6 +61,7 @@ const pending = ref(false);
 const error = ref('');
 const recommendState = ref<'idle' | 'pending' | 'ready' | 'failed'>('idle');
 const recommendReason = ref('');
+let recommendGeneration = 0;
 
 const templates = computed(() => QUEST_TITLE_TEMPLATES[category.value]);
 const routineReward = computed(() => {
@@ -141,6 +142,7 @@ watch(pending, (value) => {
 });
 
 function clearRecommendation(): void {
+  recommendGeneration += 1;
   recommendState.value = 'idle';
   recommendReason.value = '';
 }
@@ -184,6 +186,7 @@ async function onRecommend(): Promise<void> {
   if (!canRecommend.value) {
     return;
   }
+  const generation = ++recommendGeneration;
   recommendState.value = 'pending';
   recommendReason.value = '';
   try {
@@ -191,10 +194,16 @@ async function onRecommend(): Promise<void> {
       title: title.value.trim(),
       category: category.value,
     });
+    if (generation !== recommendGeneration) {
+      return;
+    }
     difficulty.value = result.difficulty;
     recommendReason.value = result.reason;
     recommendState.value = 'ready';
   } catch {
+    if (generation !== recommendGeneration) {
+      return;
+    }
     recommendState.value = 'failed';
   }
 }
