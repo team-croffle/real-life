@@ -114,6 +114,10 @@
   "wallet": {
     "goldLabel": "Gold",
     "goldAmount": "{amount} G",
+    "ticketLabel": "Tickets",
+    "ticketAmount": "{count} tickets",
+    "ticketUnknown": "—",
+    "entryTickets": "· +{n} tickets",
     "debtTitle": "Debt",
     "debtLabel": "Debt balance",
     "debtNone": "No debt",

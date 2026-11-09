@@ -8,6 +8,7 @@ import AppShell from '@/components/layouts/AppShell.vue';
 import { Button } from '@/components/ui/button';
 import PostHocDeduction from '@/components/wallet/PostHocDeduction.vue';
 import { ApiError } from '@/composables/useApi';
+import { getProgress } from '@/lib/home';
 import { getWallet, getWalletEntries } from '@/lib/wallet';
 
 type SectionState = 'loading' | 'ready' | 'error';
@@ -16,6 +17,7 @@ const { t, locale } = useI18n();
 
 const balance = ref<number | null>(null);
 const balanceState = ref<SectionState>('loading');
+const ticketCount = ref<number | null>(null);
 const entries = ref<WalletEntry[]>([]);
 const page = ref(1);
 const totalPages = ref(0);
@@ -23,6 +25,7 @@ const entriesState = ref<SectionState>('loading');
 
 let balanceGeneration = 0;
 let entriesGeneration = 0;
+let progressGeneration = 0;
 let leftWallet = false;
 
 function formatCreatedAt(iso: string): string {
@@ -107,8 +110,28 @@ async function loadEntries(nextPage: number): Promise<void> {
   }
 }
 
+async function loadTickets(): Promise<void> {
+  const generation = ++progressGeneration;
+  try {
+    const next = await getProgress();
+    if (generation !== progressGeneration || leftWallet) {
+      return;
+    }
+    ticketCount.value = next.gachaTicketCount;
+  } catch (cause) {
+    if (generation !== progressGeneration || leftWallet) {
+      return;
+    }
+    if (cause instanceof ApiError && cause.status === 401) {
+      return;
+    }
+    ticketCount.value = null;
+  }
+}
+
 function reloadWallet(): void {
   void loadBalance();
+  void loadTickets();
   void loadEntries(1);
 }
 
@@ -140,13 +163,27 @@ onUnmounted(() => {
           {{ t('wallet.retry') }}
         </Button>
       </div>
-      <div v-else class="bg-surface border-border rounded-[18px] border px-5 py-5">
-        <p class="text-secondary-foreground text-[12.5px] font-bold">
-          {{ t('wallet.goldLabel') }}
-        </p>
-        <p class="mt-1 text-[26px] font-bold tracking-tight">
-          {{ t('wallet.goldAmount', { amount: balance }) }}
-        </p>
+      <div v-else class="grid items-stretch gap-3 sm:grid-cols-2">
+        <div class="bg-surface border-border rounded-[18px] border px-5 py-5">
+          <p class="text-secondary-foreground text-[12.5px] font-bold">
+            {{ t('wallet.goldLabel') }}
+          </p>
+          <p class="mt-1 text-[26px] font-bold tracking-tight">
+            {{ t('wallet.goldAmount', { amount: balance }) }}
+          </p>
+        </div>
+        <div class="bg-surface border-border rounded-[18px] border px-5 py-5">
+          <p class="text-secondary-foreground text-[12.5px] font-bold">
+            {{ t('wallet.ticketLabel') }}
+          </p>
+          <p class="mt-1 text-[26px] font-bold tracking-tight">
+            {{
+              ticketCount === null
+                ? t('wallet.ticketUnknown')
+                : t('wallet.ticketAmount', { count: ticketCount })
+            }}
+          </p>
+        </div>
       </div>
 
       <section class="mt-6">
@@ -206,6 +243,9 @@ onUnmounted(() => {
             </div>
             <p class="text-[13px] font-bold" :class="amountClass(entry.amount)">
               {{ entryAmount(entry.amount) }}
+              <span v-if="entry.tickets > 0" class="text-secondary-foreground font-semibold">
+                {{ t('wallet.entryTickets', { n: entry.tickets }) }}
+              </span>
             </p>
           </div>
         </div>
