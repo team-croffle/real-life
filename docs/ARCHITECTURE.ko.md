@@ -41,13 +41,13 @@ quests/                         퀘스트 규칙 전부
   routines.service.ts           루틴 규칙. 제목이 바뀌면 몬스터를 비우고 작업을 다시 넣는다. 보스 하위 루틴의 수정·끄기·켜기·삭제는 400이다
   routine-spawn.service.ts      루틴마다 오늘 퀘스트를 한 번 찍는다
   bosses.controller.ts          POST /api/bosses, GET /api/bosses, unseen, history, POST /api/bosses/:id/monster, seen, 포기
-  boss-plan.service.ts          계획을 보스, 하위 기한 퀘스트, 하위 루틴으로 확정하고, 진행 중인 보스, 안 본 결과, 지난 보스를 조회한다
+  boss-plan.service.ts          계획을 보스, 하위 기한 퀘스트, 하위 루틴으로 확정하고, 진행 중인 보스(하위 항목 포함), 안 본 결과, 지난 보스를 조회한다
   boss-judgment.service.ts      정산 안에서 마감이 지난 보스를 판정하고, 포기하고, 결과를 봤다고 남긴 뒤, 찍기 전에 판정된 하위 루틴을 지운다
   quest-completion.service.ts   완료: 정산 → 잠금 없이 확인 → 전투 기록 → 잠그고 다시 확인 → 지갑, 진행도(경험치와 카테고리 스탯), 퀘스트 행 갱신, 난이도 점수만큼 보스 체력을 깎은 뒤 무기력 해제
   quest-penalty.service.ts      놓친 날 정산. 그날 마감인 퀘스트가 열려 있으면 무기력
   quest-settlement.scheduler.ts 서울 00:01에 정산(판정은 그 안) 뒤, 판정된 보스 하위 루틴을 지우고 오늘 퀘스트를 찍는다
   quest-crit.roller.ts          크리티컬 판정 (CRIT_FORCE)
-  quest-calendar.ts             서울 날짜 계산
+  quest-calendar.ts             서울 날짜 계산. 달력 날짜 함수는 shared에서 다시 내보낸다
   monster-view.ts               몬스터 행과 작업 상태를 목록 필드로 바꾼다
   monster-retry.service.ts      퀘스트, 루틴, 보스의 실패한 몬스터 작업을 다시 넣는다. 루틴이 찍은 퀘스트는 루틴 작업을 다시 넣는다
 wallet/                         잔액, 내역, 사후 차감
@@ -82,10 +82,11 @@ constants/            보상표, 패널티표, 크리티컬 확률, 직업과 �
   bosses.ts           보스 8종, 그림 키, 진행 상한 3, 체력당 자리값 보상 10과 패널티 5
 boss-hp.ts            횟수와 난이도 점수로 하위 퀘스트 체력
 boss-reward.ts        80% 처치선, 처치 보상과 실패 패널티. 직업·연속 배율은 없다
+quest-calendar.ts     서울 달력 날짜 계산. 서버가 다시 내보내고, 웹은 보스 체력 예상에 쓴다
 types/                서버와 웹이 주고받는 응답 타입
   quest.ts            퀘스트 목록 항목. bossTitle은 목표, bossName은 보스 몬스터 이름 또는 null
   difficulty-recommendation.ts
-  boss.ts           보스 목록 항목
+  boss.ts           보스 목록 항목. GET /api/bosses의 subquests, unseen의 boss와 bossStatus
   routine.ts        루틴 목록 항목
   quest-plan.ts     제안된 계획: 하위 퀘스트, 횟수, 체력
 ```
@@ -93,12 +94,14 @@ types/                서버와 웹이 주고받는 응답 타입
 ### 웹 (`web/src/`)
 
 ```
-routes/        페이지 (파일 이름이 URL): home, quests, stats, wallet, job, sign-up/sign-in/onboarding
-components/    페이지마다 폴더 (home, quest, wallet, stats, job, settings, auth)와 공통 ui/
-  quest/MonsterImage.vue         /monsters/{imageKey}.svg, 없으면 /fallback/unknown.svg
+routes/        페이지 (파일 이름이 URL): home, quests, bosses, stats, wallet, job, sign-up/sign-in/onboarding
+components/    페이지마다 폴더 (home, quest, boss, wallet, stats, job, settings, auth)와 공통 ui/
+  boss/BossRegisterDialog.vue    메인 퀘스트 계획과 확정
+  boss/BossResultDialog.vue      안 본 처치·실패
+  quest/MonsterImage.vue         /monsters/{imageKey}.svg 또는 /bosses/{imageKey}.svg, 없으면 /fallback/unknown.svg
   quest/MonsterViewDialog.vue    몬스터 이름, 그림, 설명
   quest/QuestHistoryPager.vue    번호 페이지. size는 5, 10, 15, 20이고 기본 20
-lib/           서버 호출 (quests, wallet, home, stats, jobChange), 화면용 계산 (questReward), 색종이, 효과음, 저장한 설정
+lib/           서버 호출 (quests, bosses, unseenBosses, wallet, home, stats, jobChange), 화면용 계산 (questReward), 색종이, 효과음, 저장한 설정
 composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
 stores/        로그인 상태와 계정 API 호출 (Pinia)
 auth/          Better Auth 클라이언트
@@ -153,7 +156,7 @@ i18n/          한국어와 영어 문구
 
 `POST /api/bosses`는 사용자 행을 잠근 뒤, 보스, 하위 기한 퀘스트, 하위 루틴을 한 트랜잭션에 넣는다. 보스는 자기 행이다. 체력은 그 행에 저장하고 요청으로 다시 센다. 하위 기한 퀘스트는 보스 id를 저장한다. 하위 루틴은 루틴 행에 보스 id를 저장한다. 하위는 최대 10개다. 오늘 예정인 하위 루틴은 그 트랜잭션에서 퀘스트를 찍는다. 하위 마감이 보스 마감보다 뒤거나 체력이 1 미만이면 400이고 행은 없다. 판정 전 보스가 이미 3개면 409다. 트랜잭션이 실패하면 아무것도 생기지 않는다. 하위 루틴을 수정하거나 끄거나 켜거나 지우면 400이다.
 
-커밋된 뒤에 보스의 작업을 하나 넣는다. 작업 종류는 `monster` 그대로다. 페이로드의 종류는 `shared/src/constants/bosses.ts`의 8종이다. minotaur, hydra, cerberus, kraken, chimera, vampire, giant, abyss_lord. 하위 기한 퀘스트와 하위 루틴은 각자 몬스터 8종으로 작업을 넣는다. 넣기에 실패해도 보스, 하위 퀘스트, 하위 루틴은 남는다. `GET /api/bosses`는 진행 중인 보스만 준다. 몬스터 행과 큐에 남은 작업을 읽고, 종류만 보스 8종으로 본다. 이름은 보스 전용 프롬프트에서 온다. 실패하면 제목은 목표 문구 그대로다. `latestLog`는 서울 어제 반격이 있으면 그 반격이다. 없으면 날짜가 늦은 쪽이고, 같은 날이면 반격이 깎음보다 앞이다. `counteredToday`는 `missedOn`이 서울 어제일 때다.
+커밋된 뒤에 보스의 작업을 하나 넣는다. 작업 종류는 `monster` 그대로다. 페이로드의 종류는 `shared/src/constants/bosses.ts`의 8종이다. minotaur, hydra, cerberus, kraken, chimera, vampire, giant, abyss_lord. 하위 기한 퀘스트와 하위 루틴은 각자 몬스터 8종으로 작업을 넣는다. 넣기에 실패해도 보스, 하위 퀘스트, 하위 루틴은 남는다. `GET /api/bosses`는 진행 중인 보스만 준다. 몬스터 행과 큐에 남은 작업을 읽고, 종류만 보스 8종으로 본다. 이름은 보스 전용 프롬프트에서 온다. 실패하면 제목은 목표 문구 그대로다. 보스마다 `subquests`가 있다. 한 줄은 확정 때 넣은 하위 항목 하나이고, 최대 10개다. 루틴 줄의 `done`은 찍힌 퀘스트 중 완료 수, `missed`는 완료하지 않았고 마감이 서울 오늘보다 앞인 수, `remaining`은 만든 날부터 보스 마감까지 예정 수에서 만든 날부터 어제까지 예정 수를 빼고, 오늘 찍힌 퀘스트를 완료했거나 지웠으면 1을 더 뺀 값이다. 기한 줄의 `status`는 `open`·`done`·`missed`다. 줄마다 `expectedGold`와 `expectedXp`가 있고, 계산은 `GET /api/quests`와 같다. 루틴은 찍힌 하루 퀘스트 1회다. 순서는 남은 것, 완료, 놓침이고, 같은 묶음은 확정 순서다. `latestLog`는 서울 어제 반격이 있으면 그 반격이다. 없으면 날짜가 늦은 쪽이고, 같은 날이면 반격이 깎음보다 앞이다. `counteredToday`는 `missedOn`이 서울 어제일 때다. `GET /api/bosses/unseen` 항목에는 `boss`(`ready`일 때만)와 `bossStatus`가 있다.
 
 ## 보스 판정
 
