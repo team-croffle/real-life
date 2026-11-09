@@ -114,6 +114,10 @@
   "wallet": {
     "goldLabel": "보유 골드",
     "goldAmount": "{amount} G",
+    "ticketLabel": "보유 티켓",
+    "ticketAmount": "{count} 장",
+    "ticketUnknown": "—",
+    "entryTickets": "· 티켓 +{n}장",
     "debtTitle": "외상",
     "debtLabel": "외상 잔액",
     "debtNone": "외상 없음",
