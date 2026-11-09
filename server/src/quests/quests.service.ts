@@ -195,6 +195,9 @@ export class QuestsService {
       questRow.monsterId ? [questRow.monsterId] : [],
     );
     const bossIds = questRows.flatMap((questRow) => (questRow.bossId ? [questRow.bossId] : []));
+    const routineIds = questRows.flatMap((questRow) =>
+      questRow.routineId ? [questRow.routineId] : [],
+    );
     const [userRows, markRows, progressRows, walletRows, monsterRows, bossRows, monsterTasks] =
       await Promise.all([
         this.db
@@ -233,7 +236,10 @@ export class QuestsService {
               .select({ id: bosses.id, goal: bosses.goal })
               .from(bosses)
               .where(inArray(bosses.id, bossIds)),
-        this.queue.findTasks({ questIds }),
+        this.queue.findTasks({
+          questIds,
+          ...(routineIds.length > 0 ? { routineIds } : {}),
+        }),
       ]);
 
     const jobClass = userRows[0]?.jobClass;
@@ -246,6 +252,9 @@ export class QuestsService {
     const goalByBoss = new Map(bossRows.map((row) => [row.id, row.goal]));
     const taskByQuest = new Map(
       monsterTasks.flatMap((task) => (task.questId ? [[task.questId, task] as const] : [])),
+    );
+    const taskByRoutine = new Map(
+      monsterTasks.flatMap((task) => (task.routineId ? [[task.routineId, task] as const] : [])),
     );
     const progressRow = progressRows[0];
     const countedToday = (progressRow?.comboCountedOn ?? '') >= today;
@@ -263,6 +272,7 @@ export class QuestsService {
         markByQuest.get(questRow.id),
         questRow.monsterId ? monsterById.get(questRow.monsterId) : undefined,
         taskByQuest.get(questRow.id),
+        questRow.routineId ? taskByRoutine.get(questRow.routineId) : undefined,
         questRow.bossId,
         questRow.bossId ? (goalByBoss.get(questRow.bossId) ?? null) : null,
         balance,
@@ -333,6 +343,7 @@ function toQuestListItem(
   mark: { doneOn: string[] | null; markedDayCount: number } | undefined,
   monster: { kind: string; name: string; description: string } | undefined,
   monsterTask: MonsterTaskState | undefined,
+  routineTask: MonsterTaskState | undefined,
   bossId: string | null,
   bossTitle: string | null,
   balance: number,
@@ -362,12 +373,21 @@ function toQuestListItem(
         pace,
       )
     : null;
-  const appearance = monsterView(
+  const ownAppearance = monsterView(
     monster,
     monsterTask?.status,
     isMonsterKind,
     (kind) => MONSTER_IMAGE_KEYS[kind],
   );
+  const appearance =
+    questRow.routineId !== null && ownAppearance.monsterStatus !== 'ready'
+      ? monsterView(
+          undefined,
+          routineTask?.status,
+          isMonsterKind,
+          (kind) => MONSTER_IMAGE_KEYS[kind],
+        )
+      : ownAppearance;
 
   return {
     id: questRow.id,

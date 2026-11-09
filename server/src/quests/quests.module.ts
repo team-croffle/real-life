@@ -6,6 +6,7 @@ import { WalletModule } from '../wallet/wallet.module';
 import { BossJudgmentService } from './boss-judgment.service';
 import { BossPlanService } from './boss-plan.service';
 import { BossesController } from './bosses.controller';
+import { MonsterRetryService } from './monster-retry.service';
 import { QuestCompletionService } from './quest-completion.service';
 import { QuestCritRoller } from './quest-crit.roller';
 import { QuestPenaltiesController } from './quest-penalties.controller';
@@ -30,6 +31,7 @@ import { RoutinesService } from './routines.service';
     QuestSettlementScheduler,
     RoutineSpawnService,
     RoutinesService,
+    MonsterRetryService,
   ],
 })
 export class QuestsModule {}

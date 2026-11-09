@@ -15,11 +15,15 @@ import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 import { CreateRoutineDto } from './dto/create-routine.dto';
 import { UpdateRoutineDto } from './dto/update-routine.dto';
+import { MonsterRetryService } from './monster-retry.service';
 import { RoutinesService } from './routines.service';
 
 @Controller('routines')
 export class RoutinesController {
-  constructor(private readonly routinesService: RoutinesService) {}
+  constructor(
+    private readonly routinesService: RoutinesService,
+    private readonly monsterRetryService: MonsterRetryService,
+  ) {}
 
   @Get()
   @UseGuards(AuthGuard)
@@ -41,6 +45,13 @@ export class RoutinesController {
     @Body() dto: UpdateRoutineDto,
   ): Promise<Routine> {
     return this.routinesService.update(session.user.id, routineId, dto);
+  }
+
+  @Post(':id/monster')
+  @HttpCode(204)
+  @UseGuards(AuthGuard)
+  requeueMonster(@Session() session: UserSession, @Param('id') routineId: string): Promise<void> {
+    return this.monsterRetryService.requeueRoutine(session.user.id, routineId);
   }
 
   @Post(':id/pause')
