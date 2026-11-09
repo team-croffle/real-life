@@ -36,7 +36,7 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   auth.ts                       Better Auth configuration
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
 quests/                         every quest rule
-  quests.service.ts             register a deadline quest. prepareForRead (the quest list and boss reads share it) settles, drops judged boss subroutines, then spawns. Delete is free only for an untouched quest registered today
+  quests.service.ts             register a deadline quest. prepareForRead (the quest list and boss reads share it) settles, drops judged boss subroutines, then spawns. List items include bossTitle (the goal) and bossName (the boss monster name, or null). Delete is free only for an untouched quest registered today
   quests.controller.ts          POST/GET /api/quests, GET /api/quests/history, POST /api/quests/:id/monster, complete, check today, DELETE
   dto/list-history-query.dto.ts page and size for quest history and boss history. size is 5, 10, 15 or 20, default 20
   routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, POST /api/routines/:id/monster, pause, resume, DELETE
@@ -61,8 +61,8 @@ ai/                             monster, battle log, difficulty recommendation, 
   ai-call-limiter.ts            counts direct calls only (battle log, recommendation, quest plan). The queue worker is not counted. It lives in this server's memory, so each extra server adds another full limit
   gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite. Gemini is given a deadline of at least 10 seconds. We cut a battle log at 3 seconds
   difficulty.controller.ts      POST /api/ai/difficulty-recommendations
-  difficulty.service.ts         title in, difficulty and one line of reason out
-  dto/recommend-difficulty.dto.ts
+  difficulty.service.ts         title and category in; count completed and missed in the last 14 Seoul days; then the direct-call limit; then difficulty and one line of reason
+  dto/recommend-difficulty.dto.ts  title and category. Category is required
   quest-plan.controller.ts      POST /api/ai/quest-plans
   quest-plan.service.ts         goal and deadline in, subquests with server-counted times and HP out
   dto/suggest-quest-plan.dto.ts
@@ -85,6 +85,7 @@ constants/            reward table, penalty table, critical-hit odds, jobs and o
 boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
 boss-reward.ts        80% clear line, clear reward and fail penalty, with no job or streak multiplier
 types/                response types exchanged by the server and the web
+  quest.ts            quest list item: bossTitle is the goal, bossName is the boss monster name or null
   difficulty-recommendation.ts
   boss.ts           boss list item
   routine.ts        routine list item
@@ -96,12 +97,17 @@ types/                response types exchanged by the server and the web
 ```
 routes/        pages (the file name is the URL): home, quests, stats, wallet, job, sign-up/sign-in/onboarding
 components/    a folder per page (home, quest, wallet, stats, job, settings, auth) and shared ui/
+  quest/MonsterImage.vue         /monsters/{imageKey}.svg, then /fallback/unknown.svg
+  quest/MonsterViewDialog.vue    monster name, picture and description
+  quest/QuestHistoryPager.vue    numbered pages; size 5, 10, 15 or 20, default 20
 lib/           server calls (quests, wallet, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings
-composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state)
+composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
 i18n/          Korean and English copy
 ```
+
+Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missing file uses `web/public/fallback/unknown.svg`.
 
 ### Rules the code keeps
 
@@ -138,6 +144,10 @@ The list reads the monster row and any task still in the queue. It maps them to 
 - No monster row and no task: both are null.
 
 A routine response is `generating` and `monster` is null while its task is `pending` or `running`, even when a monster row is still stored. `PATCH /api/routines/:id` that changes the title sets `monster_id` to null, then enqueues a monster task for the new title. The response does not wait. If that enqueue fails, the routine stays with `monster_id` empty. A title that did not change leaves the monster as it is.
+
+## Difficulty recommendation
+
+`POST /api/ai/difficulty-recommendations` takes a title and a category. Category is required. An empty title is 400. The server then counts this user's quests in that category over the last 14 Seoul days, today included: `completedOn` in that window, and missed rows whose `completedOn` is empty and whose `endsOn` is in that window through yesterday. Next it checks the direct-call limit. If the limit is full it answers 503 and does not call AI. Then it calls the AI interface with the title, the category and those two counts. The model returns a difficulty and one line of reason. It does not set an amount. Any later failure is also 503.
 
 ## Boss plan flow
 
