@@ -64,10 +64,17 @@ export type QuestPlanDraft = {
   today: string;
 };
 
+export type DifficultyDraft = {
+  title: string;
+  category: QuestCategory;
+  completedCount: number;
+  missedCount: number;
+};
+
 export interface Ai {
   describeMonster(input: MonsterDraft): Promise<MonsterDescription>;
   describeBoss(input: MonsterDraft): Promise<MonsterDescription>;
   writeBattleLog(input: BattleLogDraft, timeoutMs?: number): Promise<string>;
-  recommendDifficulty(input: { title: string }): Promise<DifficultyRecommendation>;
+  recommendDifficulty(input: DifficultyDraft): Promise<DifficultyRecommendation>;
   suggestPlan(input: QuestPlanDraft): Promise<SuggestedQuest[]>;
 }
