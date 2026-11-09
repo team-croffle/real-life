@@ -233,8 +233,9 @@ export class QuestsService {
         bossIds.length === 0
           ? Promise.resolve([])
           : this.db
-              .select({ id: bosses.id, goal: bosses.goal })
+              .select({ id: bosses.id, goal: bosses.goal, bossName: monsters.name })
               .from(bosses)
+              .leftJoin(monsters, eq(bosses.monsterId, monsters.id))
               .where(inArray(bosses.id, bossIds)),
         this.queue.findTasks({
           questIds,
@@ -250,6 +251,7 @@ export class QuestsService {
     const markByQuest = new Map(markRows.map((row) => [row.questId, row]));
     const monsterById = new Map(monsterRows.map((row) => [row.id, row]));
     const goalByBoss = new Map(bossRows.map((row) => [row.id, row.goal]));
+    const nameByBoss = new Map(bossRows.map((row) => [row.id, row.bossName]));
     const taskByQuest = new Map(
       monsterTasks.flatMap((task) => (task.questId ? [[task.questId, task] as const] : [])),
     );
@@ -275,6 +277,7 @@ export class QuestsService {
         questRow.routineId ? taskByRoutine.get(questRow.routineId) : undefined,
         questRow.bossId,
         questRow.bossId ? (goalByBoss.get(questRow.bossId) ?? null) : null,
+        questRow.bossId ? (nameByBoss.get(questRow.bossId) ?? null) : null,
         balance,
         levelXp,
       ),
@@ -346,6 +349,7 @@ function toQuestListItem(
   routineTask: MonsterTaskState | undefined,
   bossId: string | null,
   bossTitle: string | null,
+  bossName: string | null,
   balance: number,
   levelXp: number,
 ): QuestListItem {
@@ -415,6 +419,7 @@ function toQuestListItem(
     monster: appearance.monster,
     bossId,
     bossTitle,
+    bossName,
   };
 }
 
