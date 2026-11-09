@@ -157,7 +157,7 @@ const difficultyClass = computed(() => {
     </span>
     <span
       v-if="missed"
-      class="bg-destructive shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold text-white"
+      class="bg-destructive/10 text-destructive shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
     >
       {{ t('quest.missed') }}
     </span>
