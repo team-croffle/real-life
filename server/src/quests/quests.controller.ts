@@ -1,15 +1,27 @@
 import type {
   CreateQuestResult,
+  Paginated,
   QuestCompletionResult,
   QuestDayMarkResult,
   QuestListItem,
 } from '@nest-vue/shared';
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 
 import { CompleteQuestDto } from './dto/complete-quest.dto';
 import { CreateQuestDto } from './dto/create-quest.dto';
+import { ListHistoryQueryDto } from './dto/list-history-query.dto';
 import { QuestCompletionService } from './quest-completion.service';
 import { QuestsService } from './quests.service';
 
@@ -24,6 +36,15 @@ export class QuestsController {
   @UseGuards(AuthGuard)
   create(@Session() session: UserSession, @Body() dto: CreateQuestDto): Promise<CreateQuestResult> {
     return this.questsService.create(session.user.id, dto);
+  }
+
+  @Get('history')
+  @UseGuards(AuthGuard)
+  history(
+    @Session() session: UserSession,
+    @Query() query: ListHistoryQueryDto,
+  ): Promise<Paginated<QuestListItem>> {
+    return this.questsService.history(session.user.id, query);
   }
 
   @Get()

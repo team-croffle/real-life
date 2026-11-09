@@ -1,4 +1,11 @@
-import type { JobClass, Quest, QuestDifficulty, QuestListItem, QuestPace } from '@nest-vue/shared';
+import type {
+  JobClass,
+  Paginated,
+  Quest,
+  QuestDifficulty,
+  QuestListItem,
+  QuestPace,
+} from '@nest-vue/shared';
 import {
   MONSTER_IMAGE_KEYS,
   MONSTER_KINDS,
@@ -25,7 +32,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray } from 'drizzle-orm';
 
 import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { DRIZZLE } from '../database/database.constants';
@@ -42,6 +49,7 @@ import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
 import { BossJudgmentService } from './boss-judgment.service';
 import type { CreateQuestDto } from './dto/create-quest.dto';
+import { HISTORY_DEFAULT_PAGE_SIZE, type ListHistoryQueryDto } from './dto/list-history-query.dto';
 import { monsterView } from './monster-view';
 import {
   APP_TIME_ZONE,
@@ -123,18 +131,61 @@ export class QuestsService {
     }
   }
 
-  async list(userId: string): Promise<QuestListItem[]> {
+  /** 정산(판정 포함) → 판정된 보스 하위 루틴 정리 → 오늘 찍기. 다시 해도 결과가 같다. */
+  async prepareForRead(userId: string): Promise<void> {
     await this.questPenaltyService.settle(userId);
     await this.bossJudgmentService.clearJudgedSubroutines(userId);
     await this.routineSpawnService.spawnToday(userId);
+  }
+
+  async list(userId: string): Promise<QuestListItem[]> {
+    await this.prepareForRead(userId);
 
     const today = seoulCalendarDate();
     const questRows = await this.db
       .select()
       .from(quests)
-      .where(eq(quests.userId, userId))
+      .where(and(eq(quests.userId, userId), gte(quests.endsOn, today)))
       .orderBy(desc(quests.createdAt), desc(quests.id));
 
+    return this.toListItems(userId, questRows, today);
+  }
+
+  async history(userId: string, query: ListHistoryQueryDto): Promise<Paginated<QuestListItem>> {
+    await this.prepareForRead(userId);
+
+    const page = query.page ?? 1;
+    const size = query.size ?? HISTORY_DEFAULT_PAGE_SIZE;
+    const where = eq(quests.userId, userId);
+    const [countRow] = await this.db.select({ total: count() }).from(quests).where(where);
+    const total = Number(countRow?.total ?? 0);
+    const totalPages = Math.ceil(total / size);
+    if (page > Math.max(totalPages, 1)) {
+      throw new BadRequestException('page is out of range');
+    }
+
+    const questRows = await this.db
+      .select()
+      .from(quests)
+      .where(where)
+      .orderBy(desc(quests.createdAt), desc(quests.id))
+      .limit(size)
+      .offset((page - 1) * size);
+    const today = seoulCalendarDate();
+    return {
+      items: await this.toListItems(userId, questRows, today),
+      page,
+      size,
+      total,
+      totalPages,
+    };
+  }
+
+  private async toListItems(
+    userId: string,
+    questRows: QuestRow[],
+    today: string,
+  ): Promise<QuestListItem[]> {
     if (questRows.length === 0) {
       return [];
     }
