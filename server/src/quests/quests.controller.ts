@@ -22,6 +22,7 @@ import type { UserSession } from '@thallesp/nestjs-better-auth';
 import { CompleteQuestDto } from './dto/complete-quest.dto';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { ListHistoryQueryDto } from './dto/list-history-query.dto';
+import { MonsterRetryService } from './monster-retry.service';
 import { QuestCompletionService } from './quest-completion.service';
 import { QuestsService } from './quests.service';
 
@@ -30,6 +31,7 @@ export class QuestsController {
   constructor(
     private readonly questsService: QuestsService,
     private readonly questCompletionService: QuestCompletionService,
+    private readonly monsterRetryService: MonsterRetryService,
   ) {}
 
   @Post()
@@ -51,6 +53,13 @@ export class QuestsController {
   @UseGuards(AuthGuard)
   list(@Session() session: UserSession): Promise<QuestListItem[]> {
     return this.questsService.list(session.user.id);
+  }
+
+  @Post(':id/monster')
+  @HttpCode(204)
+  @UseGuards(AuthGuard)
+  requeueMonster(@Session() session: UserSession, @Param('id') questId: string): Promise<void> {
+    return this.monsterRetryService.requeueQuest(session.user.id, questId);
   }
 
   @Post(':id/complete')

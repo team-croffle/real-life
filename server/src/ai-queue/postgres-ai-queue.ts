@@ -90,6 +90,31 @@ export class PostgresAiQueue implements AiQueue {
       .where(and(eq(aiTasks.kind, 'monster'), or(...filters)));
   }
 
+  async requeueFailed(owner: MonsterTaskOwner): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [task] = await tx
+        .select({ id: aiTasks.id, status: aiTasks.status })
+        .from(aiTasks)
+        .where(and(eq(aiTasks.kind, 'monster'), ownerFilter(owner)))
+        .for('update');
+      if (!task || task.status !== 'failed') {
+        return false;
+      }
+      await tx
+        .update(aiTasks)
+        .set({
+          status: 'pending',
+          attempts: 0,
+          runAt: sql`now()`,
+          startedAt: null,
+          lastError: null,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(aiTasks.id, task.id));
+      return true;
+    });
+  }
+
   async dequeue(): Promise<ClaimedAiTask | null> {
     return this.db.transaction(async (tx) => {
       // 분당 한도를 세는 동안 다른 프로세스가 같은 수를 보지 않게 한다.
@@ -270,6 +295,16 @@ export class PostgresAiQueue implements AiQueue {
 /** 1번 실패 뒤 15초, 2번 실패 뒤 30초. 3번이면 다시 넣지 않는다. 60초는 한 단계 더 있을 때의 간격이다. */
 function retryDelayMs(attempts: number): number {
   return RETRY_DELAYS_MS[attempts - 1] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+}
+
+function ownerFilter(owner: MonsterTaskOwner) {
+  if (owner.questId !== undefined) {
+    return eq(aiTasks.questId, owner.questId);
+  }
+  if (owner.routineId !== undefined) {
+    return eq(aiTasks.routineId, owner.routineId);
+  }
+  return eq(aiTasks.bossId, owner.bossId);
 }
 
 function monsterPayload(value: MonsterTaskPayload): MonsterTaskPayload | null {

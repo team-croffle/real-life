@@ -50,6 +50,11 @@ export interface AiQueue {
     bossIds?: string[];
   }): Promise<MonsterTaskState[]>;
   dequeue(): Promise<ClaimedAiTask | null>;
+  /**
+   * failed 행만 pending으로 되돌린다. 시도 횟수는 0이다.
+   * 행이 없거나 failed가 아니면 false다.
+   */
+  requeueFailed(owner: MonsterTaskOwner): Promise<boolean>;
   /** 몬스터 행을 넣고 주인에 연결한 뒤 큐에서 지운다. */
   complete(id: string, attempts: number, result: MonsterDescription): Promise<void>;
   fail(id: string, attempts: number, reason: string, rateLimited: boolean): Promise<void>;
