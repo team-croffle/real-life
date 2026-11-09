@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Routine } from '@nest-vue/shared';
 import { ListChecks, Plus, TriangleAlert } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AppShell from '@/components/layouts/AppShell.vue';
@@ -11,6 +11,7 @@ import QuestAbandonDialog from '@/components/quest/QuestAbandonDialog.vue';
 import QuestCard from '@/components/quest/QuestCard.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
 import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDialog.vue';
+import QuestHistoryPager from '@/components/quest/QuestHistoryPager.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import QuestRestDialog from '@/components/quest/QuestRestDialog.vue';
 import RoutineEditDialog from '@/components/quest/RoutineEditDialog.vue';
@@ -20,11 +21,13 @@ import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
 import {
   abandonQuest,
   deleteRoutine,
-  retryQuestMonster,
+  getQuestHistory,
   getRoutines,
   pauseRoutine,
   resumeRoutine,
+  retryQuestMonster,
 } from '@/lib/quests';
+import type { QuestListItem } from '@/lib/quests';
 
 type QuestTab = 'today' | 'done' | 'all' | 'routines';
 
@@ -53,6 +56,13 @@ const {
 } = useQuestBoard();
 
 const tab = ref<QuestTab>('today');
+const historyPage = ref(1);
+const historySize = ref(20);
+const historyItems = ref<QuestListItem[]>([]);
+const historyTotal = ref(0);
+const historyTotalPages = ref(0);
+const historyView = ref<'loading' | 'ready' | 'error'>('loading');
+let historyGeneration = 0;
 const monsterView = ref<MonsterViewTarget | null>(null);
 const retryingId = ref<string | null>(null);
 const routines = ref<Routine[]>([]);
@@ -79,14 +89,25 @@ const filtered = computed(() => {
   if (tab.value === 'done') {
     return items.value.filter((item) => item.dueToday && isQuestDone(item));
   }
-  return items.value;
+  return historyItems.value;
 });
 
-const listView = computed(() => (tab.value === 'routines' ? routinesView.value : view.value));
+const listView = computed(() => {
+  if (tab.value === 'routines') {
+    return routinesView.value;
+  }
+  if (tab.value === 'all') {
+    return historyView.value;
+  }
+  return view.value;
+});
 
-const shownCount = computed(() =>
-  tab.value === 'routines' ? routines.value.length : filtered.value.length,
-);
+const shownCount = computed(() => {
+  if (tab.value === 'routines') {
+    return routines.value.length;
+  }
+  return filtered.value.length;
+});
 
 const abandonTitle = computed(() => {
   const source = abandonKind.value === 'routine' ? routines.value : items.value;
@@ -124,6 +145,50 @@ function questErrorMessage(cause: unknown, action?: 'rest' | 'resume'): string {
   return cause.message || t('quest.errors.generic');
 }
 
+async function loadHistory(silent = false): Promise<void> {
+  const generation = ++historyGeneration;
+  if (!silent) {
+    historyView.value = 'loading';
+  }
+  try {
+    const result = await getQuestHistory(historyPage.value, historySize.value);
+    if (generation !== historyGeneration) {
+      return;
+    }
+    historyItems.value = result.items;
+    historyTotal.value = result.total;
+    historyTotalPages.value = result.totalPages;
+    historyView.value = 'ready';
+  } catch (cause) {
+    if (generation !== historyGeneration) {
+      return;
+    }
+    if (cause instanceof ApiError && cause.status === 400 && historyPage.value !== 1) {
+      historyPage.value = 1;
+      await loadHistory(silent);
+      return;
+    }
+    historyView.value = 'error';
+  }
+}
+
+function onHistoryPage(page: number): void {
+  historyPage.value = page;
+  void loadHistory(true);
+}
+
+function onHistorySize(size: number): void {
+  historySize.value = size;
+  historyPage.value = 1;
+  void loadHistory(true);
+}
+
+watch(tab, (value) => {
+  if (value === 'all') {
+    void loadHistory(false);
+  }
+});
+
 async function onRetryMonster(id: string): Promise<void> {
   if (retryingId.value) {
     return;
@@ -131,13 +196,13 @@ async function onRetryMonster(id: string): Promise<void> {
   retryingId.value = id;
   try {
     await retryQuestMonster(id);
-    await load(true);
+    await Promise.all([load(true), tab.value === 'all' ? loadHistory(true) : Promise.resolve()]);
   } catch (cause) {
     const message = questErrorMessage(cause);
     if (message) {
       showToast(message);
     }
-    await load(true);
+    await Promise.all([load(true), tab.value === 'all' ? loadHistory(true) : Promise.resolve()]);
   } finally {
     retryingId.value = null;
   }
@@ -272,6 +337,14 @@ function requestComplete(id: string): void {
   openComplete(id);
 }
 
+async function onQuestComplete(note: string): Promise<boolean> {
+  const completed = await onConfirmComplete(note);
+  if (tab.value === 'all') {
+    await loadHistory(true);
+  }
+  return completed;
+}
+
 async function onConfirmAbandon(): Promise<void> {
   const id = abandonId.value;
   if (!id || abandonPending.value) {
@@ -286,7 +359,11 @@ async function onConfirmAbandon(): Promise<void> {
       await abandonQuest(id);
     }
     abandonId.value = null;
-    await Promise.all([load(true), loadRoutines(true)]);
+    await Promise.all([
+      load(true),
+      loadRoutines(true),
+      tab.value === 'all' && abandonKind.value === 'quest' ? loadHistory(true) : Promise.resolve(),
+    ]);
     showToast(t(abandonKind.value === 'routine' ? 'quest.toast.deleted' : 'quest.toast.abandoned'));
   } catch (cause) {
     const message = questErrorMessage(cause);
@@ -401,7 +478,13 @@ onUnmounted(() => {
           variant="outline"
           size="sm"
           class="w-auto px-4"
-          @click="tab === 'routines' ? loadRoutines(false) : load(false)"
+          @click="
+            tab === 'routines'
+              ? loadRoutines(false)
+              : tab === 'all'
+                ? loadHistory(false)
+                : load(false)
+          "
         >
           {{ t('quest.retry') }}
         </Button>
@@ -446,6 +529,14 @@ onUnmounted(() => {
           @view-monster="monsterView = $event"
           @retry-monster="onRetryMonster(item.id)"
         />
+        <QuestHistoryPager
+          v-if="tab === 'all' && historyTotal > 0"
+          :page="historyPage"
+          :total-pages="historyTotalPages"
+          :size="historySize"
+          @page="onHistoryPage"
+          @size="onHistorySize"
+        />
       </div>
     </div>
 
@@ -471,7 +562,7 @@ onUnmounted(() => {
       :pending="completePending"
       :error="completeError"
       @cancel="completeId = null"
-      @confirm="onConfirmComplete"
+      @confirm="onQuestComplete"
     />
 
     <QuestCompleteResultDialog

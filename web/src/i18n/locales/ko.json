@@ -304,6 +304,8 @@
     "rewardCard": "예상 +{xp}XP·{gold}G",
     "deadlineRewardMax": "{days}일 모두 체크하면 +{xp}XP·{gold}G",
     "deadlineRewardNote": "체크한 날만큼 나눠서 받아요",
+    "pageSize": "한 페이지",
+    "pageSizeCount": "{n}개",
     "tabs": {
       "today": "오늘 할 것",
       "done": "오늘 완료",

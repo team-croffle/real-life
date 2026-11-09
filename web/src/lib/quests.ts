@@ -2,6 +2,7 @@ import type {
   CreateQuestPayload,
   CreateRoutinePayload,
   DifficultyRecommendation,
+  Paginated,
   Quest,
   QuestCategory,
   QuestCompletionResult,
@@ -16,6 +17,14 @@ export type { QuestListItem };
 
 export async function getQuests(): Promise<QuestListItem[]> {
   return apiFetch<QuestListItem[]>('/quests');
+}
+
+export async function getQuestHistory(
+  page: number,
+  size: number,
+): Promise<Paginated<QuestListItem>> {
+  const query = new URLSearchParams({ page: String(page), size: String(size) });
+  return apiFetch<Paginated<QuestListItem>>(`/quests/history?${query}`);
 }
 
 export async function recommendDifficulty(body: {
