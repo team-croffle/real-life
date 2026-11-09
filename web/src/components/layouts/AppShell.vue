@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Briefcase, Home, ListChecks, Settings, Wallet } from 'lucide-vue-next';
+import { BarChart3, Briefcase, Home, ListChecks, Settings, Swords, Wallet } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { type Component, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -21,6 +21,7 @@ interface NavItem {
 const primaryNav: NavItem[] = [
   { to: '/', label: 'nav.home', icon: Home, exact: true },
   { to: '/quests', label: 'nav.quests', icon: ListChecks, exact: false },
+  { to: '/bosses', label: 'nav.bosses', icon: Swords, exact: false },
   { to: '/stats', label: 'nav.stats', icon: BarChart3, exact: false },
 ];
 
@@ -153,7 +154,7 @@ async function onLogout(): Promise<void> {
     </div>
 
     <nav
-      class="border-border bg-background fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t md:hidden"
+      class="border-border bg-background fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t md:hidden"
     >
       <RouterLink
         v-for="item in tabNav"
