@@ -49,7 +49,9 @@ const numbers = computed(() => {
         :key="number"
         type="button"
         class="size-8 rounded-full text-[13px] font-bold"
-        :class="number === page ? 'bg-surface text-foreground' : 'text-secondary-foreground'"
+        :class="
+          number === page ? 'bg-primary text-primary-foreground' : 'text-secondary-foreground'
+        "
         @click="emit('page', number)"
       >
         {{ number }}
