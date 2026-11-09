@@ -3,6 +3,8 @@ import { Check } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import MonsterImage from '@/components/quest/MonsterImage.vue';
+import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
 import { Button } from '@/components/ui/button';
 import { isQuestDone } from '@/composables/useQuestBoard';
 import type { QuestListItem } from '@/lib/quests';
@@ -15,11 +17,28 @@ const props = defineProps<{
 const emit = defineEmits<{
   complete: [];
   mark: [];
+  viewMonster: [MonsterViewTarget];
 }>();
 
 const { t } = useI18n();
 
 const done = computed(() => isQuestDone(props.item));
+const readyMonster = computed(() =>
+  props.item.monsterStatus === 'ready' && props.item.monster ? props.item.monster : null,
+);
+
+function openMonster(): void {
+  const monster = readyMonster.value;
+  if (!monster) {
+    return;
+  }
+  emit('viewMonster', {
+    name: monster.name,
+    imageKey: monster.imageKey,
+    description: monster.description,
+    title: props.item.title,
+  });
+}
 
 const difficultyClass = computed(() => {
   if (props.item.difficulty === 'easy') {
@@ -60,9 +79,20 @@ const reward = computed(() => {
       <span class="size-1.5 rounded-full bg-current" />
       {{ t(`quest.difficulties.${item.difficulty}`) }}
     </span>
-    <span class="min-w-0 flex-1 basis-36 truncate text-[13.5px] font-semibold">{{
-      item.title
-    }}</span>
+    <div class="flex min-w-0 flex-1 basis-36 flex-col gap-0.5">
+      <button
+        v-if="readyMonster"
+        type="button"
+        class="text-muted-foreground flex min-w-0 items-center gap-1.5 text-left"
+        @click="openMonster"
+      >
+        <MonsterImage :image-key="readyMonster.imageKey" size="thumb" />
+        <span class="truncate text-[11.5px]">{{ item.title }}</span>
+      </button>
+      <span class="truncate text-[13.5px]" :class="readyMonster ? 'font-bold' : 'font-semibold'">
+        {{ readyMonster ? readyMonster.name : item.title }}
+      </span>
+    </div>
     <span v-if="reward" class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">
       {{ reward }}
     </span>

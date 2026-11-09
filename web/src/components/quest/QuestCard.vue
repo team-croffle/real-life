@@ -7,6 +7,9 @@ import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import type { QuestListItem } from '@/lib/quests';
 
+import MonsterImage from './MonsterImage.vue';
+import type { MonsterViewTarget } from './MonsterViewDialog.vue';
+
 const props = defineProps<{
   item: QuestListItem | Routine;
   menuOpen: boolean;
@@ -21,6 +24,7 @@ const emit = defineEmits<{
   rest: [];
   resume: [];
   edit: [];
+  viewMonster: [MonsterViewTarget];
 }>();
 
 const { t } = useI18n();
@@ -31,6 +35,27 @@ function isRoutine(item: QuestListItem | Routine): item is Routine {
 
 const routine = computed(() => (isRoutine(props.item) ? props.item : null));
 const quest = computed(() => (isRoutine(props.item) ? null : props.item));
+const readyMonster = computed(() => {
+  const current = quest.value;
+  if (current?.monsterStatus !== 'ready' || !current.monster) {
+    return null;
+  }
+  return current.monster;
+});
+
+function openMonster(): void {
+  const current = quest.value;
+  const monster = readyMonster.value;
+  if (!current || !monster) {
+    return;
+  }
+  emit('viewMonster', {
+    name: monster.name,
+    imageKey: monster.imageKey,
+    description: monster.description,
+    title: current.title,
+  });
+}
 
 const done = computed(() => quest.value?.completed ?? false);
 
@@ -105,7 +130,27 @@ const difficultyClass = computed(() => {
       {{ t(`quest.difficulties.${item.difficulty}`) }}
     </span>
 
-    <span class="min-w-0 flex-1 basis-40 truncate text-[13.5px] font-semibold">{{
+    <div v-if="quest" class="flex min-w-0 flex-1 basis-40 flex-col gap-0.5">
+      <button
+        v-if="readyMonster"
+        type="button"
+        class="text-muted-foreground flex min-w-0 items-center gap-1.5 text-left"
+        @click="openMonster"
+      >
+        <MonsterImage :image-key="readyMonster.imageKey" size="thumb" />
+        <span class="truncate text-[11.5px]">{{ quest.title }}</span>
+      </button>
+      <span
+        v-else-if="quest.monsterStatus === 'generating'"
+        class="text-muted-foreground animate-pulse truncate text-[11.5px]"
+      >
+        {{ t('quest.monsterGenerating') }}
+      </span>
+      <span class="truncate text-[13.5px]" :class="readyMonster ? 'font-bold' : 'font-semibold'">
+        {{ readyMonster ? readyMonster.name : quest.title }}
+      </span>
+    </div>
+    <span v-else class="min-w-0 flex-1 basis-40 truncate text-[13.5px] font-semibold">{{
       item.title
     }}</span>
 

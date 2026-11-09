@@ -10,6 +10,8 @@ import CharacterStage from '@/components/home/CharacterStage.vue';
 import SummaryCard from '@/components/home/SummaryCard.vue';
 import TodayQuestCard from '@/components/home/TodayQuestCard.vue';
 import AppShell from '@/components/layouts/AppShell.vue';
+import MonsterViewDialog from '@/components/quest/MonsterViewDialog.vue';
+import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
 import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDialog.vue';
 import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
@@ -23,6 +25,7 @@ import { getWallet } from '@/lib/wallet';
 import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
+const monsterView = ref<MonsterViewTarget | null>(null);
 const auth = useAuthStore();
 const { user } = storeToRefs(auth);
 const {
@@ -316,6 +319,7 @@ onUnmounted(() => {
             :busy="busyId === item.id"
             @complete="openComplete(item.id)"
             @mark="onMark(item.id)"
+            @view-monster="monsterView = $event"
           />
           <RouterLink
             v-if="hiddenQuestCount > 0"
@@ -348,6 +352,15 @@ onUnmounted(() => {
       v-if="completionResult"
       :result="completionResult"
       @close="dismissCompletionResult"
+    />
+
+    <MonsterViewDialog
+      v-if="monsterView"
+      :name="monsterView.name"
+      :image-key="monsterView.imageKey"
+      :description="monsterView.description"
+      :title="monsterView.title"
+      @close="monsterView = null"
     />
 
     <p

@@ -5,6 +5,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AppShell from '@/components/layouts/AppShell.vue';
+import MonsterViewDialog from '@/components/quest/MonsterViewDialog.vue';
+import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
 import QuestAbandonDialog from '@/components/quest/QuestAbandonDialog.vue';
 import QuestCard from '@/components/quest/QuestCard.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
@@ -47,6 +49,7 @@ const {
 } = useQuestBoard();
 
 const tab = ref<QuestTab>('today');
+const monsterView = ref<MonsterViewTarget | null>(null);
 const routines = ref<Routine[]>([]);
 const routinesView = ref<'loading' | 'ready' | 'error'>('loading');
 const menuId = ref<string | null>(null);
@@ -410,6 +413,7 @@ onUnmounted(() => {
           @mark="onMark(item.id)"
           @toggle-menu="toggleMenu(item.id)"
           @abandon="openAbandon(item.id, 'quest')"
+          @view-monster="monsterView = $event"
         />
       </div>
     </div>
@@ -442,6 +446,15 @@ onUnmounted(() => {
       v-if="completionResult"
       :result="completionResult"
       @close="dismissCompletionResult"
+    />
+
+    <MonsterViewDialog
+      v-if="monsterView"
+      :name="monsterView.name"
+      :image-key="monsterView.imageKey"
+      :description="monsterView.description"
+      :title="monsterView.title"
+      @close="monsterView = null"
     />
 
     <QuestRestDialog
