@@ -1,7 +1,9 @@
 import type {
   CreateQuestPayload,
   CreateRoutinePayload,
+  DifficultyRecommendation,
   Quest,
+  QuestCategory,
   QuestCompletionResult,
   QuestDayMarkResult,
   QuestListItem,
@@ -14,6 +16,16 @@ export type { QuestListItem };
 
 export async function getQuests(): Promise<QuestListItem[]> {
   return apiFetch<QuestListItem[]>('/quests');
+}
+
+export async function recommendDifficulty(body: {
+  title: string;
+  category: QuestCategory;
+}): Promise<DifficultyRecommendation> {
+  return apiFetch<DifficultyRecommendation>('/ai/difficulty-recommendations', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function createQuest(payload: CreateQuestPayload): Promise<Quest> {
