@@ -1,8 +1,34 @@
 import type { BossKind, BossResult } from '../constants/bosses';
 import type { MonsterStatus } from '../constants/monsters';
-import type { QuestCategory } from '../constants/quests';
+import type { QuestCategory, QuestDifficulty } from '../constants/quests';
 import type { Quest } from './quest';
 import type { Routine } from './routine';
+
+export type BossSubquestStatus = 'open' | 'done' | 'missed';
+
+export type BossSubquest = BossRoutineSubquest | BossDeadlineSubquest;
+
+/** 확정 때 넣은 하위 루틴. done·missed·remaining은 서울 오늘 기준. */
+export interface BossRoutineSubquest {
+  kind: 'routine';
+  id: string;
+  title: string;
+  category: QuestCategory;
+  difficulty: QuestDifficulty;
+  done: number;
+  missed: number;
+  remaining: number;
+}
+
+/** 확정 때 넣은 하위 기한 퀘스트. routine_id가 없는 행만. */
+export interface BossDeadlineSubquest {
+  kind: 'deadline';
+  id: string;
+  title: string;
+  category: QuestCategory;
+  difficulty: QuestDifficulty;
+  status: BossSubquestStatus;
+}
 
 export interface BossAppearance {
   kind: BossKind;
@@ -96,6 +122,7 @@ export interface BossSummary {
   latestLog: BossLatestLog | null;
   /** 서울 어제 놓친 하위 퀘스트의 반격이 있는가 */
   counteredToday: boolean;
+  subquests: BossSubquest[];
 }
 
 /** POST /api/bosses. 체력은 확정 요청에 없고 서버가 저장한 값이다. */
