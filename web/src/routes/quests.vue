@@ -345,6 +345,13 @@ async function onQuestComplete(note: string): Promise<boolean> {
   return completed;
 }
 
+async function onQuestMark(id: string): Promise<void> {
+  await onMark(id);
+  if (tab.value === 'all') {
+    await loadHistory(true);
+  }
+}
+
 async function onConfirmAbandon(): Promise<void> {
   const id = abandonId.value;
   if (!id || abandonPending.value) {
@@ -523,7 +530,7 @@ onUnmounted(() => {
           :menu-open="menuId === item.id"
           :busy="busyId === item.id || retryingId === item.id"
           @complete="requestComplete(item.id)"
-          @mark="onMark(item.id)"
+          @mark="onQuestMark(item.id)"
           @toggle-menu="toggleMenu(item.id)"
           @abandon="openAbandon(item.id, 'quest')"
           @view-monster="monsterView = $event"
