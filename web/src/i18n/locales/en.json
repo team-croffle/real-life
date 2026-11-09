@@ -304,6 +304,8 @@
     "rewardCard": "est. +{xp}XP·{gold}G",
     "deadlineRewardMax": "Check in all {days} days for +{xp}XP·{gold}G",
     "deadlineRewardNote": "You get a share for each day you check in",
+    "pageSize": "Per page",
+    "pageSizeCount": "{n}",
     "tabs": {
       "today": "To do today",
       "done": "Done today",
