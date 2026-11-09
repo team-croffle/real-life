@@ -6,9 +6,14 @@ import type {
   QuestWeekday,
   Routine,
 } from '@nest-vue/shared';
-import { QUEST_CATEGORIES, QUEST_DIFFICULTIES, QUEST_WEEKDAYS } from '@nest-vue/shared';
+import {
+  QUEST_CATEGORIES,
+  QUEST_DIFFICULTIES,
+  QUEST_TITLE_MAX,
+  QUEST_WEEKDAYS,
+} from '@nest-vue/shared';
 import { X } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
@@ -50,6 +55,12 @@ watch(
     error.value = '';
   },
 );
+
+const everyDay = computed(() => weekdays.value.length === QUEST_WEEKDAYS.length);
+
+function toggleEveryDay(): void {
+  weekdays.value = everyDay.value ? [] : [...QUEST_WEEKDAYS];
+}
 
 function toggleWeekday(day: QuestWeekday): void {
   const selected = new Set(weekdays.value);
@@ -176,7 +187,7 @@ async function onSubmit(): Promise<void> {
         id="routine-edit-title"
         v-model="title"
         type="text"
-        maxlength="50"
+        :maxlength="QUEST_TITLE_MAX"
         class="mb-4"
         :placeholder="t('quest.routineTitlePlaceholder')"
         :disabled="pending"
@@ -213,7 +224,19 @@ async function onSubmit(): Promise<void> {
         </Button>
       </div>
 
-      <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.weekdaysLabel') }}</p>
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <p class="text-muted-foreground text-[11.5px]">{{ t('quest.weekdaysLabel') }}</p>
+        <Button
+          type="button"
+          size="sm"
+          class="w-auto"
+          :variant="everyDay ? 'default' : 'outline'"
+          :disabled="pending"
+          @click="toggleEveryDay"
+        >
+          {{ t('quest.repeat.daily') }}
+        </Button>
+      </div>
       <div class="mb-2.5 flex gap-1.5">
         <Button
           v-for="day in QUEST_WEEKDAYS"

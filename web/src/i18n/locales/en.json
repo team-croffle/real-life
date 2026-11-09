@@ -280,6 +280,16 @@
     "templates": "Use a template title",
     "useTemplate": "Use title",
     "difficulty": "Difficulty",
+    "recommend": "AI suggestion",
+    "recommending": "Getting a suggestion",
+    "recommendFailed": "Couldn't get a suggestion",
+    "kindLabel": "Kind",
+    "deadlineQuest": "Deadline quest",
+    "pace": "Pace",
+    "paces": {
+      "steady": "Steady",
+      "once": "All at once"
+    },
     "schedule": "Schedule",
     "weekdaysLabel": "Weekdays",
     "biweekly": "Every other week",

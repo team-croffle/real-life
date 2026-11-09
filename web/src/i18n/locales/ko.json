@@ -280,6 +280,16 @@
     "templates": "템플릿에서 제목 넣기",
     "useTemplate": "제목에 넣기",
     "difficulty": "난이도",
+    "recommend": "AI 추천",
+    "recommending": "추천 받는 중",
+    "recommendFailed": "추천을 받지 못했어요",
+    "kindLabel": "종류",
+    "deadlineQuest": "기한 퀘스트",
+    "pace": "진행 방식",
+    "paces": {
+      "steady": "꾸준히",
+      "once": "한 번에"
+    },
     "schedule": "일정",
     "weekdaysLabel": "요일",
     "biweekly": "격주",

@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import type { QuestCategory, QuestDifficulty, QuestSchedule, QuestWeekday } from '@nest-vue/shared';
+import type {
+  QuestCategory,
+  QuestDifficulty,
+  QuestPace,
+  QuestSchedule,
+  QuestWeekday,
+} from '@nest-vue/shared';
 import {
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
+  QUEST_PACES,
   QUEST_SCHEDULES,
+  QUEST_TITLE_MAX,
   QUEST_TITLE_TEMPLATES,
   QUEST_WEEKDAYS,
   completionTableAmount,
   grantAmount,
   jobRewardMultiplier,
 } from '@nest-vue/shared';
-import { X } from 'lucide-vue-next';
+import { Star, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -18,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
-import { createQuest, createRoutine } from '@/lib/quests';
+import { createQuest, createRoutine, recommendDifficulty } from '@/lib/quests';
 import {
   calendarDaysBetween,
   isCalendarDate,
@@ -45,11 +53,14 @@ const category = ref<QuestCategory>('exercise');
 const title = ref('');
 const difficulty = ref<QuestDifficulty>('normal');
 const schedule = ref<QuestSchedule>('routine');
+const pace = ref<QuestPace>('steady');
 const weekdays = ref<QuestWeekday[]>([seoulWeekday()]);
 const biweekly = ref(false);
 const endsOn = ref(seoulToday());
 const pending = ref(false);
 const error = ref('');
+const recommendState = ref<'idle' | 'pending' | 'ready' | 'failed'>('idle');
+const recommendReason = ref('');
 
 const templates = computed(() => QUEST_TITLE_TEMPLATES[category.value]);
 const routineReward = computed(() => {
@@ -67,7 +78,12 @@ const routineReward = computed(() => {
 // 기한 퀘스트는 기한날에 끝내고 매일 체크했을 때의 최대 보상을 보여 준다.
 const deadlineMaxReward = computed(() => {
   const jobClass = auth.user?.jobClass;
-  if (schedule.value !== 'deadline' || !jobClass || !isCalendarDate(endsOn.value)) {
+  if (
+    schedule.value !== 'deadline' ||
+    pace.value !== 'steady' ||
+    !jobClass ||
+    !isCalendarDate(endsOn.value)
+  ) {
     return null;
   }
   const daySpan = calendarDaysBetween(seoulToday(), endsOn.value);
@@ -82,9 +98,55 @@ const deadlineMaxReward = computed(() => {
     xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
   };
 });
+const deadlineOnceReward = computed(() => {
+  const jobClass = auth.user?.jobClass;
+  if (
+    schedule.value !== 'deadline' ||
+    pace.value !== 'once' ||
+    !jobClass ||
+    !isCalendarDate(endsOn.value)
+  ) {
+    return null;
+  }
+  const daySpan = calendarDaysBetween(seoulToday(), endsOn.value);
+  if (daySpan < 0) {
+    return null;
+  }
+  const table = completionTableAmount(difficulty.value, daySpan, daySpan + 1, 'once');
+  const multiplier = jobRewardMultiplier(jobClass, category.value);
+  return {
+    gold: grantAmount(table.gold, table.markedDays, table.elapsedDays, multiplier, false),
+    xp: grantAmount(table.xp, table.markedDays, table.elapsedDays, multiplier, false),
+  };
+});
+const everyDay = computed(() => weekdays.value.length === QUEST_WEEKDAYS.length);
+const canSubmit = computed(() => {
+  if (pending.value || title.value.trim().length < 1) {
+    return false;
+  }
+  if (schedule.value === 'routine') {
+    return weekdays.value.length > 0;
+  }
+  if (!isCalendarDate(endsOn.value)) {
+    return false;
+  }
+  return calendarDaysBetween(seoulToday(), endsOn.value) >= 0;
+});
+const canRecommend = computed(
+  () => title.value.trim().length > 0 && recommendState.value !== 'pending' && !pending.value,
+);
 
 watch(pending, (value) => {
   emit('busy', value);
+});
+
+function clearRecommendation(): void {
+  recommendState.value = 'idle';
+  recommendReason.value = '';
+}
+
+watch(category, () => {
+  clearRecommendation();
 });
 
 function requestClose(): void {
@@ -104,13 +166,38 @@ watch(
     title.value = '';
     difficulty.value = 'normal';
     schedule.value = 'routine';
+    pace.value = 'steady';
     weekdays.value = [seoulWeekday()];
     biweekly.value = false;
     endsOn.value = seoulToday();
     pending.value = false;
     error.value = '';
+    clearRecommendation();
   },
 );
+
+function toggleEveryDay(): void {
+  weekdays.value = everyDay.value ? [] : [...QUEST_WEEKDAYS];
+}
+
+async function onRecommend(): Promise<void> {
+  if (!canRecommend.value) {
+    return;
+  }
+  recommendState.value = 'pending';
+  recommendReason.value = '';
+  try {
+    const result = await recommendDifficulty({
+      title: title.value.trim(),
+      category: category.value,
+    });
+    difficulty.value = result.difficulty;
+    recommendReason.value = result.reason;
+    recommendState.value = 'ready';
+  } catch {
+    recommendState.value = 'failed';
+  }
+}
 
 function toggleWeekday(day: QuestWeekday): void {
   const selected = new Set(weekdays.value);
@@ -173,6 +260,7 @@ async function onSubmit(): Promise<void> {
             category: category.value,
             title: trimmed,
             difficulty: difficulty.value,
+            pace: pace.value,
             endsOn: endsOn.value,
           });
     emit('created', created.title);
@@ -227,36 +315,34 @@ async function onSubmit(): Promise<void> {
         </Button>
       </div>
 
-      <div class="mb-4 flex flex-col gap-1">
-        <Label for="quest-title">{{ t('quest.titleField') }}</Label>
-        <Input
-          id="quest-title"
-          v-model="title"
-          type="text"
-          :placeholder="t('quest.titlePlaceholder')"
-          @keydown.enter.prevent
-        />
-      </div>
-
-      <p class="text-muted-foreground mb-2 text-[11.5px]">
-        {{ t('quest.templates') }}
-      </p>
-      <div class="mb-4 flex flex-col gap-2">
-        <button
-          v-for="template in templates"
-          :key="template"
+      <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.kindLabel') }}</p>
+      <div class="mb-4 flex gap-2">
+        <Button
+          v-for="value in QUEST_SCHEDULES"
+          :key="value"
           type="button"
-          class="bg-muted flex items-center justify-between rounded-[14px] px-3.5 py-3 text-left"
-          @click="title = template"
+          size="sm"
+          class="w-auto flex-1"
+          :variant="schedule === value ? 'default' : 'outline'"
+          @click="schedule = value"
         >
-          <span class="text-[13.5px] font-semibold">{{ template }}</span>
-          <span class="text-primary text-[11.5px] font-bold">{{ t('quest.useTemplate') }}</span>
-        </button>
+          {{ value === 'deadline' ? t('quest.deadlineQuest') : t(`quest.schedules.${value}`) }}
+        </Button>
       </div>
 
-      <p class="text-muted-foreground mb-2 text-[11.5px]">
-        {{ t('quest.difficulty') }}
-      </p>
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <p class="text-muted-foreground text-[11.5px]">{{ t('quest.difficulty') }}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          class="w-auto"
+          :disabled="!canRecommend"
+          @click="onRecommend"
+        >
+          {{ t('quest.recommend') }}
+        </Button>
+      </div>
       <div class="mb-4 flex gap-2">
         <Button
           v-for="value in QUEST_DIFFICULTIES"
@@ -271,27 +357,69 @@ async function onSubmit(): Promise<void> {
         </Button>
       </div>
 
-      <p class="text-muted-foreground mb-2 text-[11.5px]">
-        {{ t('quest.schedule') }}
+      <p
+        v-if="recommendState === 'pending'"
+        class="text-muted-foreground mb-4 animate-pulse text-[12.5px]"
+      >
+        {{ t('quest.recommending') }}
       </p>
-      <div class="mb-4 flex gap-2">
-        <Button
-          v-for="value in QUEST_SCHEDULES"
-          :key="value"
-          type="button"
-          size="sm"
-          class="w-auto flex-1"
-          :variant="schedule === value ? 'default' : 'outline'"
-          @click="schedule = value"
-        >
-          {{ t(`quest.schedules.${value}`) }}
-        </Button>
-      </div>
+      <p
+        v-else-if="recommendState === 'ready'"
+        class="text-secondary-foreground mb-4 flex items-start gap-1.5 text-[12.5px]"
+      >
+        <Star class="text-gold mt-0.5 size-3.5 shrink-0" />
+        <span>{{ recommendReason }}</span>
+      </p>
+      <p
+        v-else-if="recommendState === 'failed'"
+        class="text-muted-foreground mb-4 flex items-center gap-2 text-[12.5px]"
+      >
+        <span>{{ t('quest.recommendFailed') }}</span>
+        <button type="button" class="text-primary font-bold" @click="onRecommend">
+          {{ t('quest.retry') }}
+        </button>
+      </p>
 
-      <div v-if="schedule === 'routine'" class="mb-4">
-        <p class="text-muted-foreground mb-2 text-[11.5px]">
-          {{ t('quest.weekdaysLabel') }}
-        </p>
+      <template v-if="schedule === 'routine'">
+        <div class="mb-4 flex flex-col gap-1">
+          <Label for="quest-title">{{ t('quest.titleField') }}</Label>
+          <Input
+            id="quest-title"
+            v-model="title"
+            type="text"
+            :maxlength="QUEST_TITLE_MAX"
+            :placeholder="t('quest.titlePlaceholder')"
+            @keydown.enter.prevent
+          />
+        </div>
+        <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.templates') }}</p>
+        <div class="mb-4 flex flex-col gap-2">
+          <button
+            v-for="template in templates"
+            :key="template"
+            type="button"
+            class="bg-muted hover:border-border group flex items-center justify-between rounded-[14px] border border-transparent px-3.5 py-3 text-left"
+            @click="title = template"
+          >
+            <span class="text-[13.5px] font-semibold">{{ template }}</span>
+            <span
+              class="text-primary text-[11.5px] font-bold underline-offset-2 group-hover:underline"
+              >{{ t('quest.useTemplate') }}</span
+            >
+          </button>
+        </div>
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <p class="text-muted-foreground text-[11.5px]">{{ t('quest.weekdaysLabel') }}</p>
+          <Button
+            type="button"
+            size="sm"
+            class="w-auto"
+            :variant="everyDay ? 'default' : 'outline'"
+            @click="toggleEveryDay"
+          >
+            {{ t('quest.repeat.daily') }}
+          </Button>
+        </div>
         <div class="mb-3 flex flex-wrap gap-1.5">
           <Button
             v-for="day in QUEST_WEEKDAYS"
@@ -306,23 +434,58 @@ async function onSubmit(): Promise<void> {
           </Button>
         </div>
         <label
-          class="text-secondary-foreground flex items-center gap-2 text-[12.5px] font-semibold"
+          class="text-secondary-foreground mb-4 flex items-center gap-2 text-[12.5px] font-semibold"
         >
           <input v-model="biweekly" type="checkbox" class="accent-primary size-4" />
           {{ t('quest.biweekly') }}
         </label>
-      </div>
+      </template>
 
-      <div v-else class="mb-4 flex flex-col gap-1">
-        <Label for="quest-ends-on">{{ t('quest.endsOn') }}</Label>
-        <Input id="quest-ends-on" v-model="endsOn" type="date" :min="seoulToday()" />
-      </div>
+      <template v-else>
+        <p class="text-muted-foreground mb-2 text-[11.5px]">{{ t('quest.pace') }}</p>
+        <div class="mb-4 flex gap-2">
+          <Button
+            v-for="value in QUEST_PACES"
+            :key="value"
+            type="button"
+            size="sm"
+            class="w-auto flex-1"
+            :variant="pace === value ? 'default' : 'outline'"
+            @click="pace = value"
+          >
+            {{ t(`quest.paces.${value}`) }}
+          </Button>
+        </div>
+        <div class="mb-4 flex flex-col gap-1">
+          <Label for="quest-title">{{ t('quest.titleField') }}</Label>
+          <Input
+            id="quest-title"
+            v-model="title"
+            type="text"
+            :maxlength="QUEST_TITLE_MAX"
+            :placeholder="t('quest.titlePlaceholder')"
+            @keydown.enter.prevent
+          />
+        </div>
+        <div class="mb-4 flex flex-col gap-1">
+          <Label for="quest-ends-on">{{ t('quest.endsOn') }}</Label>
+          <Input id="quest-ends-on" v-model="endsOn" type="date" :min="seoulToday()" />
+        </div>
+      </template>
 
       <p v-if="routineReward" class="text-muted-foreground mb-4 text-[12px]">
         {{
           t('quest.rewardCard', {
             xp: routineReward.xp,
             gold: routineReward.gold,
+          })
+        }}
+      </p>
+      <p v-else-if="deadlineOnceReward" class="text-muted-foreground mb-4 text-[12px]">
+        {{
+          t('quest.rewardCard', {
+            xp: deadlineOnceReward.xp,
+            gold: deadlineOnceReward.gold,
           })
         }}
       </p>
@@ -341,7 +504,7 @@ async function onSubmit(): Promise<void> {
 
       <p v-if="error" class="text-destructive mb-3 text-[12px]">{{ error }}</p>
 
-      <Button type="submit" :disabled="pending">
+      <Button type="submit" :disabled="!canSubmit">
         {{ pending ? t('quest.submitting') : t('quest.submit') }}
       </Button>
     </form>
