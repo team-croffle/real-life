@@ -36,20 +36,22 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   auth.ts                       Better Auth configuration
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
 quests/                         every quest rule
-  quests.service.ts             register a deadline quest, list (settle, then drop judged boss subroutines, then spawn), delete (free only for an untouched quest registered today)
-  quests.controller.ts          POST/GET /api/quests, complete, check today, DELETE
-  routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, pause, resume, DELETE
+  quests.service.ts             register a deadline quest. prepareForRead (the quest list and boss reads share it) settles, drops judged boss subroutines, then spawns. Delete is free only for an untouched quest registered today
+  quests.controller.ts          POST/GET /api/quests, GET /api/quests/history, POST /api/quests/:id/monster, complete, check today, DELETE
+  dto/list-history-query.dto.ts page and size for quest history and boss history. size is 5, 10, 15 or 20, default 20
+  routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, POST /api/routines/:id/monster, pause, resume, DELETE
   routines.service.ts           routine rules. A new title clears the monster and enqueues again. Updating, pausing, resuming or deleting a boss subroutine is 400
   routine-spawn.service.ts      write today's quest once per routine
-  bosses.controller.ts          POST /api/bosses, GET /api/bosses, POST /api/bosses/:id/abandon
-  boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines, and list bosses still in progress
-  boss-judgment.service.ts      judge due bosses inside settlement, abandon, then drop judged subroutines before spawn
+  bosses.controller.ts          POST /api/bosses, GET /api/bosses, unseen, history, POST /api/bosses/:id/monster, seen, abandon
+  boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines, and list bosses still in progress, unseen results and past bosses
+  boss-judgment.service.ts      judge due bosses inside settlement, abandon, mark a result seen, then drop judged subroutines before spawn
   quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress (XP and the category stat) and the quest row, cut boss HP by the difficulty score, then clear lethargy
   quest-penalty.service.ts      settle missed days. Lethargy when any quest due that day is still open
   quest-settlement.scheduler.ts at 00:01 Seoul: settle (judgment is inside it), drop judged boss subroutines, then spawn
   quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
   quest-calendar.ts             Seoul date helpers
   monster-view.ts               map a monster row and a task status to the list fields
+  monster-retry.service.ts      requeue a failed monster task for a quest, a routine or a boss. A quest a routine wrote retries the routine task
 wallet/                         balance, history, post-hoc deduction
 progress/                       level, XP, titles, streak, gacha tickets
 stats/                          stamina, intellect and sense stored on progress at completion
@@ -65,7 +67,7 @@ ai/                             monster, battle log, difficulty recommendation, 
   quest-plan.service.ts         goal and deadline in, subquests with server-counted times and HP out
   dto/suggest-quest-plan.dto.ts
 ai-queue/                       background monster tasks only
-  ai-queue.ts                   enqueue, find by quest, routine or boss, dequeue, complete, fail
+  ai-queue.ts                   enqueue, requeue a failed task, find by quest, routine or boss, dequeue, complete, fail
   postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
   ai-queue.worker.ts            claims one task. A boss task uses the boss prompt. Any other task uses the monster prompt
 database/schema/                Drizzle tables (one file per table)
@@ -106,6 +108,7 @@ i18n/          Korean and English copy
 - Gold, XP and penalty amounts are computed only by functions in `shared`. The server pays with them; the web uses the same functions only to show estimates.
 - Controllers only take the request and call a service. Rules live in services.
 - Every server call from the web goes through `useApi`. Feature calls such as quests and wallet are collected in `lib/`; account APIs are called from `stores/auth.ts`.
+- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, wallet, progress, bosses.
 
 ## Inside the server
 
@@ -119,13 +122,13 @@ Main call relations:
 
 An active routine writes one quest on each scheduled day. The quest is an all-at-once deadline due that day. It copies the routine's category, title, difficulty, boss and monster. The routine stores that Seoul date, so the day is written once. Deleting the quest, or pausing and resuming the same day, does not write another.
 
-At 00:01 Seoul, for every user who has a job, and on `GET /api/quests`, the order is settlement, then judgment, then removal of subroutines whose boss already has a result, then the write. A subroutine whose boss due date is before today is not written. The write also runs when a routine is registered, when it is resumed, and inside the boss confirm transaction. Deleting a routine leaves the quests it wrote and their monsters.
+At 00:01 Seoul, for every user who has a job, and in `prepareForRead`, the order is settlement, then judgment, then removal of subroutines whose boss already has a result, then the write. The quest list and boss reads share `prepareForRead`. A subroutine whose boss due date is before today is not written. The write also runs when a routine is registered, when it is resumed, and inside the boss confirm transaction. Deleting a routine leaves the quests it wrote and their monsters.
 
 ## Monster task flow
 
 Registering a deadline quest enqueues one monster task for that quest. Registering a routine enqueues one for that routine. Confirming a boss enqueues one for the boss, one for each deadline subquest and one for each subroutine. The task stores exactly one of those ids, and that id is unique. A quest's payload kinds are the eight from `shared/src/constants/monsters.ts`. A routine uses the same eight. A boss uses the eight boss kinds. The response does not wait. If the enqueue fails, the quest, routine or boss stays.
 
-The worker claims one task and calls the AI interface. A boss task uses the boss prompt. A quest or routine task uses the monster prompt. The model picks a kind and writes a name and a description. It does not set gold or XP. On success the result is inserted into `monsters`, and the quest, routine or boss stores that id. A routine's result is also stored on the quests it wrote that do not have one yet. The task is then deleted. On failure the task stays `failed` and no monster row is written. The title stays as registered.
+The worker claims one task and calls the AI interface. A boss task uses the boss prompt. A quest or routine task uses the monster prompt. The model picks a kind and writes a name and a description. It does not set gold or XP. On success the result is inserted into `monsters`, and the quest, routine or boss stores that id. A routine's result is also stored on the quests it wrote that do not have one yet. The task is then deleted. On failure the task stays `failed` and no monster row is written. The title stays as registered. Only a failed task can be queued again, and only by the user. `POST /api/quests/:id/monster`, `POST /api/routines/:id/monster` and `POST /api/bosses/:id/monster` answer 204 when that task is `failed`, 409 otherwise, and 404 when the id is missing or belongs to someone else. A quest a routine wrote retries the routine's task.
 
 The list reads the monster row and any task still in the queue. It maps them to `monsterStatus` and `monster`:
 
@@ -142,17 +145,17 @@ A routine response is `generating` and `monster` is null while its task is `pend
 
 `POST /api/bosses` locks the user, then inserts the boss, the deadline subquests and the subroutines in one transaction. The boss is its own row. HP is stored on that row and counted again from the request. A deadline subquest stores the boss id. A subroutine stores it on the routine. There are at most 10 of them. Today's scheduled subroutines write their quest in that same transaction. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still in progress is 409. If the transaction fails, nothing is created. Updating, pausing, resuming or deleting a subroutine is 400.
 
-After that commit, one task is enqueued for the boss. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each deadline subquest and each subroutine gets its own task with the monster kinds. If an enqueue fails, the boss, the subquests and the subroutines stay. `GET /api/bosses` returns only bosses still in progress. It reads the monster row and any task still in the queue, checking boss kinds. The name comes from the boss prompt. A failed result leaves the title as the goal.
+After that commit, one task is enqueued for the boss. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each deadline subquest and each subroutine gets its own task with the monster kinds. If an enqueue fails, the boss, the subquests and the subroutines stay. `GET /api/bosses` returns only bosses still in progress. It reads the monster row and any task still in the queue, checking boss kinds. The name comes from the boss prompt. A failed result leaves the title as the goal. `latestLog` is a counter whose `missedOn` is yesterday in Seoul, when one exists. Otherwise it is the later date, and on the same day the counter wins over a cut. `counteredToday` is true when `missedOn` is yesterday in Seoul.
 
 ## Boss judgment
 
-Judgment runs at the end of settlement, after the missed days are applied and before that transaction commits. Settlement runs at 00:01 Seoul, when the home page opens, right before a completion, and on `POST /api/quest-penalties/settle`. A boss whose due date is yesterday or earlier, and whose result is still empty, is judged once. Dealt HP of 80% or more of max HP is `cleared`. Anything less is `failed`. The boss row stays, and the result is stored on it.
+Judgment runs at the end of settlement, after the missed days are applied and before that transaction commits. Settlement runs at 00:01 Seoul, when the home page opens, right before a completion, and on `POST /api/quest-penalties/settle`. A boss whose due date is yesterday or earlier, and whose result is still empty, is judged once. Dealt HP of 80% or more of max HP is `cleared`. Anything less is `failed`. The boss row stays, and the result is stored on it. `result_seen_at` is when the result was opened. A clear or a failure leaves it empty. An abandon fills it in the same write as the result. `xp_change` is the XP applied on that judgment. A clear stores the XP granted, and a failure or an abandon stores the XP actually taken off, stopped at 0 inside the current level. Wallet entries do not record XP, so it stays on the boss row.
 
 Clear gold and XP are the dealt HP times 10. Clear tickets are 1, plus 1 for every 40 dealt HP, and they stop at 5. A level-up from that XP adds its own tickets on the same wallet entry. The entry kind is `boss_clear`, with the boss id and no quest id. Clear XP is also added to the boss category's stat. Failure gold and XP are the HP still short of that 80% line times 5. The entry kind is `boss_fail`. Abandon uses the same penalty, and the kind is `boss_abandon`. The job multiplier and the streak multiplier are not applied. 10 and 5 are placeholders, before balance. Gold still stops at -30 and XP at 0 within the current level. A clear can raise the level. A failure only lowers XP inside the current level.
 
 `POST /api/bosses/:id/abandon` answers 200. It leaves the boss row and sets the result to `abandoned`. It deletes the subroutines and the subquests that are not finished. A boss that already has a result is 409. A missing id, or another user's boss, is 404.
 
-After settlement commits, the 00:01 job and `GET /api/quests` delete subroutines whose boss already has a result, then spawn. They do not delete the subquests. A subroutine whose boss due date is before today is not spawned.
+After settlement commits, the 00:01 job and `prepareForRead` delete subroutines whose boss already has a result, then spawn. They do not delete the subquests. A subroutine whose boss due date is before today is not spawned.
 
 ## Quest completion flow
 
