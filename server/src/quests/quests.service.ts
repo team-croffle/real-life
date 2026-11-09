@@ -423,7 +423,7 @@ function toQuestListItem(
   };
 }
 
-function rewardPayout(
+export function rewardPayout(
   difficulty: QuestDifficulty,
   daySpan: number,
   markedDayCount: number,
