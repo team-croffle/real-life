@@ -59,12 +59,25 @@ export interface UnseenBossResult {
 
 export type BossLogKind = 'cut' | 'counter';
 
-/** 진행 중 보스의 가장 최근 깎음 또는 반격. */
-export interface BossLatestLog {
-  kind: BossLogKind;
+/** 진행 중 보스의 가장 최근 깎음 또는 반격. 깎음은 점수, 반격은 골드와 경험치다. */
+export type BossLatestLog = BossLatestCut | BossLatestCounter;
+
+export interface BossLatestCut {
+  kind: 'cut';
   questTitle: string;
-  /** 깎음은 난이도 점수, 반격은 적용된 골드 절대값 */
+  /** 난이도 점수 */
   amount: number;
+  /** 서울 날짜 `YYYY-MM-DD` */
+  on: string;
+}
+
+export interface BossLatestCounter {
+  kind: 'counter';
+  questTitle: string;
+  /** 적용된 골드 절대값 */
+  gold: number;
+  /** 적용된 경험치 절대값. `quest_penalties.xp` */
+  xp: number;
   /** 서울 날짜 `YYYY-MM-DD` */
   on: string;
 }

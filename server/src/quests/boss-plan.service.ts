@@ -353,6 +353,7 @@ export class BossPlanService {
           bossId: questPenalties.bossId,
           questTitle: questPenalties.questTitle,
           gold: questPenalties.gold,
+          xp: questPenalties.xp,
           missedOn: questPenalties.missedOn,
         })
         .from(questPenalties)
@@ -382,7 +383,8 @@ export class BossPlanService {
               {
                 kind: 'counter' as const,
                 questTitle: row.questTitle,
-                amount: Math.abs(row.gold),
+                gold: Math.abs(row.gold),
+                xp: Math.abs(row.xp),
                 on: row.missedOn,
                 tieBreak: row.id,
               },
@@ -628,7 +630,10 @@ function latestBossLog(rows: BossLogCandidate[], yesterday: string): BossLatestL
   if (!top) {
     return null;
   }
-  return { kind: top.kind, questTitle: top.questTitle, amount: top.amount, on: top.on };
+  if (top.kind === 'cut') {
+    return { kind: 'cut', questTitle: top.questTitle, amount: top.amount, on: top.on };
+  }
+  return { kind: 'counter', questTitle: top.questTitle, gold: top.gold, xp: top.xp, on: top.on };
 }
 
 function previousCalendarDate(day: string): string {
