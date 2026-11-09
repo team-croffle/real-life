@@ -1,4 +1,4 @@
-import type { AbandonedBoss, BossSummary, ConfirmedBoss } from '@nest-vue/shared';
+import type { AbandonedBoss, BossSummary, ConfirmedBoss, UnseenBossResult } from '@nest-vue/shared';
 import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
@@ -22,6 +22,12 @@ export class BossesController {
     return this.bossPlanService.confirm(session.user.id, dto);
   }
 
+  @Get('unseen')
+  @UseGuards(AuthGuard)
+  listUnseen(@Session() session: UserSession): Promise<UnseenBossResult[]> {
+    return this.bossPlanService.listUnseen(session.user.id);
+  }
+
   @Get()
   @UseGuards(AuthGuard)
   list(@Session() session: UserSession): Promise<BossSummary[]> {
@@ -33,6 +39,13 @@ export class BossesController {
   @UseGuards(AuthGuard)
   requeueMonster(@Session() session: UserSession, @Param('id') bossId: string): Promise<void> {
     return this.monsterRetryService.requeueBoss(session.user.id, bossId);
+  }
+
+  @Post(':id/seen')
+  @HttpCode(204)
+  @UseGuards(AuthGuard)
+  markSeen(@Session() session: UserSession, @Param('id') bossId: string): Promise<void> {
+    return this.bossJudgmentService.markSeen(session.user.id, bossId);
   }
 
   @Post(':id/abandon')

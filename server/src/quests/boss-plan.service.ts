@@ -8,6 +8,7 @@ import type {
   QuestPace,
   QuestWeekday,
   Routine,
+  UnseenBossResult,
 } from '@nest-vue/shared';
 import {
   BOSS_ACTIVE_MAX,
@@ -29,7 +30,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { DRIZZLE } from '../database/database.constants';
@@ -43,6 +44,7 @@ import type { RoutineRow } from '../database/schema/routines';
 import { routines } from '../database/schema/routines';
 import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
+import { walletEntries } from '../database/schema/wallets';
 import type { ConfirmBossDto, ConfirmBossQuestDto } from './dto/confirm-boss.dto';
 import { monsterView } from './monster-view';
 import {
@@ -53,7 +55,7 @@ import {
   routineOccurrenceCount,
   seoulCalendarDate,
 } from './quest-calendar';
-import { toQuest } from './quests.service';
+import { QuestsService, toQuest } from './quests.service';
 import { RoutineSpawnService } from './routine-spawn.service';
 
 type PlannedSubquest =
@@ -86,6 +88,7 @@ export class BossPlanService {
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     @Inject(AI_QUEUE) private readonly queue: AiQueue,
     private readonly routineSpawnService: RoutineSpawnService,
+    private readonly questsService: QuestsService,
   ) {}
 
   async confirm(userId: string, dto: ConfirmBossDto): Promise<ConfirmedBoss> {
@@ -199,6 +202,77 @@ export class BossPlanService {
       quests: created.questRows.map((questRow) => toDeadlineQuest(questRow, created.today)),
       routines: created.routineRows.map((routineRow) => toRoutine(routineRow, null)),
     };
+  }
+
+  async listUnseen(userId: string): Promise<UnseenBossResult[]> {
+    await this.questsService.prepareForRead(userId);
+    const bossRows = await this.db
+      .select()
+      .from(bosses)
+      .where(
+        and(
+          eq(bosses.userId, userId),
+          inArray(bosses.result, ['cleared', 'failed']),
+          isNull(bosses.resultSeenAt),
+        ),
+      )
+      .orderBy(asc(bosses.judgedAt), asc(bosses.id));
+    if (bossRows.length === 0) {
+      return [];
+    }
+
+    const entryRows = await this.db
+      .select({
+        bossId: walletEntries.bossId,
+        amount: walletEntries.amount,
+        tickets: walletEntries.tickets,
+        kind: walletEntries.kind,
+      })
+      .from(walletEntries)
+      .where(
+        and(
+          eq(walletEntries.userId, userId),
+          inArray(
+            walletEntries.bossId,
+            bossRows.map((bossRow) => bossRow.id),
+          ),
+          inArray(walletEntries.kind, ['boss_clear', 'boss_fail']),
+        ),
+      );
+    const payByBoss = new Map<string, { amount: number; tickets: number }>();
+    for (const entryRow of entryRows) {
+      if (!entryRow.bossId) {
+        continue;
+      }
+      const bossRow = bossRows.find((row) => row.id === entryRow.bossId);
+      const kind = bossRow?.result === 'cleared' ? 'boss_clear' : 'boss_fail';
+      if (entryRow.kind !== kind) {
+        continue;
+      }
+      payByBoss.set(entryRow.bossId, { amount: entryRow.amount, tickets: entryRow.tickets });
+    }
+
+    return bossRows.flatMap((bossRow) => {
+      if (bossRow.result !== 'cleared' && bossRow.result !== 'failed') {
+        return [];
+      }
+      const pay = payByBoss.get(bossRow.id);
+      return [
+        {
+          id: bossRow.id,
+          result: bossRow.result,
+          category: bossRow.category,
+          title: bossRow.goal,
+          endsOn: bossRow.deadlineOn,
+          maxHp: bossRow.maxHp,
+          hp: bossRow.hp,
+          judgedOn: bossRow.judgedAt ? seoulCalendarDate(bossRow.judgedAt) : '',
+          gold: pay?.amount ?? 0,
+          xp: bossRow.xpChange,
+          tickets: pay?.tickets ?? 0,
+        },
+      ];
+    });
   }
 
   async list(userId: string): Promise<BossSummary[]> {

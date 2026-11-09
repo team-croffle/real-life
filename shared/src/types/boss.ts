@@ -21,6 +21,26 @@ export interface AbandonedBoss {
   balance: number;
 }
 
+/** GET /api/bosses/unseen. 처치·실패이고 아직 결과 화면을 안 본 보스. */
+export interface UnseenBossResult {
+  id: string;
+  result: 'cleared' | 'failed';
+  category: QuestCategory;
+  /** 목표 문구 */
+  title: string;
+  endsOn: string;
+  maxHp: number;
+  hp: number;
+  /** 판정한 서울 날짜 */
+  judgedOn: string;
+  /** 지갑 줄의 부호 있는 골드. 줄이 없으면 0 */
+  gold: number;
+  /** bosses.xp_change. 옛 행은 null일 수 있다 */
+  xp: number | null;
+  /** 지갑 줄의 뽑기권. 줄이 없으면 0 */
+  tickets: number;
+}
+
 /** GET /api/bosses. 판정 전만. 제목은 목표 문구이고, 이름은 ready일 때만 있다. */
 export interface BossSummary {
   id: string;
