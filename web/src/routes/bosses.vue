@@ -8,6 +8,9 @@ import { useRoute, useRouter } from 'vue-router';
 
 import AppShell from '@/components/layouts/AppShell.vue';
 import MonsterImage from '@/components/quest/MonsterImage.vue';
+import MonsterViewDialog from '@/components/quest/MonsterViewDialog.vue';
+import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
+import QuestAbandonDialog from '@/components/quest/QuestAbandonDialog.vue';
 import QuestCard from '@/components/quest/QuestCard.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
 import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDialog.vue';
@@ -16,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { useQuestBoard } from '@/composables/useQuestBoard';
 import { abandonBoss, getBosses, getBossHistory, retryBossMonster } from '@/lib/bosses';
+import { abandonQuest, retryQuestMonster } from '@/lib/quests';
 import { calendarDaysBetween, seoulToday } from '@/lib/seoulDate';
 
 const { t } = useI18n();
@@ -46,6 +50,12 @@ const view = ref<'loading' | 'ready' | 'error'>('loading');
 const showingHistory = ref(false);
 const selectedId = ref<string | null>(null);
 const menuOpen = ref(false);
+const menuId = ref<string | null>(null);
+const monsterView = ref<MonsterViewTarget | null>(null);
+const retryingId = ref<string | null>(null);
+const questAbandonId = ref<string | null>(null);
+const questAbandonError = ref('');
+const questAbandonPending = ref(false);
 const abandonOpen = ref(false);
 const abandonPending = ref(false);
 const abandonError = ref('');
@@ -91,6 +101,15 @@ const displayName = computed(() => {
     return '';
   }
   return boss.boss?.name ?? boss.title;
+});
+
+const questAbandonTitle = computed(
+  () => items.value.find((item) => item.id === questAbandonId.value)?.title ?? '',
+);
+
+const questAbandonCost = computed(() => {
+  const item = items.value.find((quest) => quest.id === questAbandonId.value);
+  return { gold: item?.abandonGold ?? 0, xp: item?.abandonXp ?? 0 };
 });
 
 const abandonCost = computed(() => {
@@ -187,17 +206,32 @@ async function loadHistory(silent = false): Promise<void> {
   }
 }
 
+function questErrorMessage(cause: unknown): string {
+  if (!(cause instanceof ApiError) || cause.status === 401) {
+    return '';
+  }
+  if (cause.status === 404) {
+    return t('quest.errors.notFound');
+  }
+  if (cause.message.includes('cannot be abandoned')) {
+    return t('quest.errors.completedDeadline');
+  }
+  return cause.message || t('quest.errors.generic');
+}
+
 function selectBoss(id: string): void {
   showingHistory.value = false;
   selectedId.value = id;
   expanded.value = false;
   menuOpen.value = false;
+  menuId.value = null;
   void router.replace({ path: '/bosses', query: { id } });
 }
 
 function openHistory(): void {
   showingHistory.value = true;
   menuOpen.value = false;
+  menuId.value = null;
   void loadHistory(false);
 }
 
@@ -214,6 +248,69 @@ function onHistorySize(size: number): void {
 
 async function refreshBoard(): Promise<void> {
   await Promise.all([load(true), loadBosses(true)]);
+}
+
+async function onRetryQuestMonster(id: string): Promise<void> {
+  if (retryingId.value) {
+    return;
+  }
+  retryingId.value = id;
+  try {
+    await retryQuestMonster(id);
+    await refreshBoard();
+  } catch (cause) {
+    const message = questErrorMessage(cause);
+    if (message) {
+      showToast(message);
+    }
+    await refreshBoard();
+  } finally {
+    retryingId.value = null;
+  }
+}
+
+function toggleMenu(id: string): void {
+  menuId.value = menuId.value === id ? null : id;
+}
+
+function requestComplete(id: string): void {
+  menuId.value = null;
+  openComplete(id);
+}
+
+function closeQuestAbandon(): void {
+  if (questAbandonPending.value) {
+    return;
+  }
+  questAbandonId.value = null;
+}
+
+function openQuestAbandon(id: string): void {
+  menuId.value = null;
+  questAbandonError.value = '';
+  questAbandonId.value = id;
+}
+
+async function onConfirmQuestAbandon(): Promise<void> {
+  const id = questAbandonId.value;
+  if (!id || questAbandonPending.value) {
+    return;
+  }
+  questAbandonPending.value = true;
+  questAbandonError.value = '';
+  try {
+    await abandonQuest(id);
+    questAbandonId.value = null;
+    await refreshBoard();
+    showToast(t('quest.toast.abandoned'));
+  } catch (cause) {
+    const message = questErrorMessage(cause);
+    if (message) {
+      questAbandonError.value = message;
+    }
+  } finally {
+    questAbandonPending.value = false;
+  }
 }
 
 async function onRetryMonster(): Promise<void> {
@@ -327,10 +424,15 @@ function pastResultClass(result: PastBoss['result']): string {
 
 function onPointerDown(event: PointerEvent): void {
   const target = event.target;
-  if (!(target instanceof Element) || target.closest('[data-boss-menu]')) {
+  if (!(target instanceof Element)) {
     return;
   }
-  menuOpen.value = false;
+  if (!target.closest('[data-boss-menu]')) {
+    menuOpen.value = false;
+  }
+  if (!target.closest('[data-quest-menu]')) {
+    menuId.value = null;
+  }
 }
 
 function onKeyDown(event: KeyboardEvent): void {
@@ -338,6 +440,11 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   menuOpen.value = false;
+  menuId.value = null;
+  if (monsterView.value) {
+    monsterView.value = null;
+    return;
+  }
   if (resultOpen.value) {
     if (completionResult.value) {
       dismissCompletionResult();
@@ -348,6 +455,10 @@ function onKeyDown(event: KeyboardEvent): void {
     if (!completePending.value) {
       completeId.value = null;
     }
+    return;
+  }
+  if (questAbandonId.value) {
+    closeQuestAbandon();
     return;
   }
   closeAbandon();
@@ -604,10 +715,14 @@ onUnmounted(() => {
               v-for="item in todayQuests"
               :key="item.id"
               :item="item"
-              :menu-open="false"
-              :busy="busyId === item.id"
-              @complete="openComplete(item.id)"
+              :menu-open="menuId === item.id"
+              :busy="busyId === item.id || retryingId === item.id"
+              @complete="requestComplete(item.id)"
               @mark="onBossMark(item.id)"
+              @toggle-menu="toggleMenu(item.id)"
+              @abandon="openQuestAbandon(item.id)"
+              @view-monster="monsterView = $event"
+              @retry-monster="onRetryQuestMonster(item.id)"
             />
           </div>
         </section>
@@ -754,6 +869,26 @@ onUnmounted(() => {
       :result="completionResult"
       :monster="completionMonster"
       @close="dismissCompletionResult"
+    />
+
+    <MonsterViewDialog
+      v-if="monsterView"
+      :name="monsterView.name"
+      :image-key="monsterView.imageKey"
+      :description="monsterView.description"
+      :title="monsterView.title"
+      @close="monsterView = null"
+    />
+
+    <QuestAbandonDialog
+      v-if="questAbandonId"
+      :title="questAbandonTitle"
+      :gold="questAbandonCost.gold"
+      :xp="questAbandonCost.xp"
+      :pending="questAbandonPending"
+      :error="questAbandonError"
+      @cancel="closeQuestAbandon"
+      @confirm="onConfirmQuestAbandon"
     />
 
     <p
