@@ -34,7 +34,7 @@ auth/                           가입, 로그인 (Better Auth), 이메일 인�
   auth.ts                       Better Auth 설정
   job-class.guard.ts            직업이 없는 계정의 앱 API를 막는 전역 가드
 quests/                         퀘스트 규칙 전부
-  quests.service.ts             기한 퀘스트 등록. prepareForRead(퀘스트 목록과 보스 읽기가 같이 씀)는 정산, 판정된 보스 하위 루틴 삭제, 찍기. 삭제(오늘 등록하고 손대지 않은 것만 공짜)
+  quests.service.ts             기한 퀘스트 등록. prepareForRead(퀘스트 목록과 보스 읽기가 같이 씀)는 정산, 판정된 보스 하위 루틴 삭제, 찍기. 목록 항목에 bossTitle(목표)과 bossName(보스 몬스터 이름, 없으면 null). 삭제(오늘 등록하고 손대지 않은 것만 공짜)
   quests.controller.ts          POST/GET /api/quests, GET /api/quests/history, POST /api/quests/:id/monster, 완료, 오늘 체크, DELETE
   dto/list-history-query.dto.ts 퀘스트 기록과 보스 기록의 page, size. size는 5, 10, 15, 20이고 기본 20
   routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, POST /api/routines/:id/monster, 끄기, 켜기, DELETE
@@ -59,8 +59,8 @@ ai/                             몬스터, 전투 기록, 난이도 추천, 계�
   ai-call-limiter.ts            바로 부르는 호출(전투 기록, 추천, 계획 제안)만 센다. 큐 워커는 세지 않는다. 서버 메모리에 있어서 서버가 여러 대면 대수만큼 늘어난다
   gemini-ai.ts                  Gemini 호출. 기본 모델 gemini-3.5-flash-lite. Gemini에는 마감을 최소 10초로 보내고, 3초는 우리 쪽에서 끊는다
   difficulty.controller.ts      POST /api/ai/difficulty-recommendations
-  difficulty.service.ts         제목만 받아 난이도와 이유 한 줄을 준다
-  dto/recommend-difficulty.dto.ts
+  difficulty.service.ts         제목과 카테고리를 받아 최근 14일(서울) 완료·놓침을 센 뒤, 바로 부르는 한도를 보고 난이도와 이유 한 줄을 준다
+  dto/recommend-difficulty.dto.ts  제목과 카테고리. 카테고리는 필수
   quest-plan.controller.ts      POST /api/ai/quest-plans
   quest-plan.service.ts         목표와 마감을 받아, 서버가 센 횟수와 체력이 붙은 하위 퀘스트를 준다
   dto/suggest-quest-plan.dto.ts
@@ -83,6 +83,7 @@ constants/            보상표, 패널티표, 크리티컬 확률, 직업과 �
 boss-hp.ts            횟수와 난이도 점수로 하위 퀘스트 체력
 boss-reward.ts        80% 처치선, 처치 보상과 실패 패널티. 직업·연속 배율은 없다
 types/                서버와 웹이 주고받는 응답 타입
+  quest.ts            퀘스트 목록 항목. bossTitle은 목표, bossName은 보스 몬스터 이름 또는 null
   difficulty-recommendation.ts
   boss.ts           보스 목록 항목
   routine.ts        루틴 목록 항목
@@ -94,12 +95,17 @@ types/                서버와 웹이 주고받는 응답 타입
 ```
 routes/        페이지 (파일 이름이 URL): home, quests, stats, wallet, job, sign-up/sign-in/onboarding
 components/    페이지마다 폴더 (home, quest, wallet, stats, job, settings, auth)와 공통 ui/
+  quest/MonsterImage.vue         /monsters/{imageKey}.svg, 없으면 /fallback/unknown.svg
+  quest/MonsterViewDialog.vue    몬스터 이름, 그림, 설명
+  quest/QuestHistoryPager.vue    번호 페이지. size는 5, 10, 15, 20이고 기본 20
 lib/           서버 호출 (quests, wallet, home, stats, jobChange), 화면용 계산 (questReward), 색종이, 효과음, 저장한 설정
-composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태)
+composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
 stores/        로그인 상태와 계정 API 호출 (Pinia)
 auth/          Better Auth 클라이언트
 i18n/          한국어와 영어 문구
 ```
+
+몬스터 그림은 `web/public/monsters`와 `web/public/bosses`에 있다. 파일이 없으면 `web/public/fallback/unknown.svg`를 쓴다.
 
 ### 코드가 지키는 규칙
 
@@ -136,6 +142,10 @@ i18n/          한국어와 영어 문구
 - 몬스터 행도 작업도 없으면 둘 다 null이다.
 
 루틴 응답은 그 작업이 `pending` 또는 `running`이면 `generating`이고 `monster`는 null이다. 몬스터 행이 남아 있어도 그렇다. 제목을 바꾸는 `PATCH /api/routines/:id`는 `monster_id`를 비운 뒤, 새 제목으로 몬스터 작업을 넣는다. 응답은 작업을 기다리지 않는다. 넣기에 실패하면 루틴은 `monster_id`가 빈 채로 남는다. 제목이 그대로면 몬스터도 그대로다.
+
+## 난이도 추천
+
+`POST /api/ai/difficulty-recommendations`는 제목과 카테고리를 받는다. 카테고리는 필수다. 빈 제목은 400이다. 서버는 그다음 그 사용자의 그 카테고리 퀘스트를 최근 14일(서울 오늘 포함)에서 센다. 완료는 그 구간의 `completedOn`이고, 놓침은 `completedOn`이 비어 있고 `endsOn`이 그 구간의 어제 이전인 행이다. 그다음 바로 부르는 한도를 본다. 한도가 차면 503이고 AI는 부르지 않는다. 그다음 제목, 카테고리, 그 두 수로 AI 인터페이스를 부른다. 모델은 난이도와 이유 한 줄만 돌려준다. 금액은 정하지 않는다. 그 뒤 실패도 503이다.
 
 ## 보스 계획 흐름
 
