@@ -21,6 +21,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
+import { aiTasks } from '../database/schema/ai-tasks';
 import type { BossRow } from '../database/schema/bosses';
 import { bosses } from '../database/schema/bosses';
 import { quests } from '../database/schema/quests';
@@ -230,20 +231,57 @@ export class BossJudgmentService {
     });
   }
 
-  /** 정산이 커밋된 뒤, 찍기 전에 호출한다. 결과가 있는 보스의 루틴만 지운다. */
+  /**
+   * 정산이 커밋된 뒤, 찍기 전에 호출한다. 결과가 있는 보스의 루틴만 지운다.
+   * 일꾼 complete와 같이 작업 행을 루틴보다 먼저 잠근다.
+   */
   async clearJudgedSubroutines(userId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      const routineRows = await tx
+      const candidateRows = await tx
         .select({ id: routines.id })
         .from(routines)
         .innerJoin(bosses, eq(routines.bossId, bosses.id))
         .where(and(eq(routines.userId, userId), isNotNull(bosses.result)))
-        .orderBy(asc(routines.id))
-        .for('update', { of: routines });
-      if (routineRows.length === 0) {
+        .orderBy(asc(routines.id));
+      if (candidateRows.length === 0) {
         return;
       }
-      const routineIds = routineRows.map((routineRow) => routineRow.id);
+      const candidateIds = candidateRows.map((routineRow) => routineRow.id);
+
+      await tx
+        .select({ id: aiTasks.id })
+        .from(aiTasks)
+        .where(inArray(aiTasks.routineId, candidateIds))
+        .orderBy(asc(aiTasks.id))
+        .for('update');
+
+      const lockedRoutineRows = await tx
+        .select({ id: routines.id })
+        .from(routines)
+        .where(and(eq(routines.userId, userId), inArray(routines.id, candidateIds)))
+        .orderBy(asc(routines.id))
+        .for('update');
+      if (lockedRoutineRows.length === 0) {
+        return;
+      }
+      const lockedIds = lockedRoutineRows.map((routineRow) => routineRow.id);
+      const judgedRoutineRows = await tx
+        .select({ id: routines.id })
+        .from(routines)
+        .innerJoin(bosses, eq(routines.bossId, bosses.id))
+        .where(
+          and(
+            eq(routines.userId, userId),
+            inArray(routines.id, lockedIds),
+            isNotNull(bosses.result),
+          ),
+        )
+        .orderBy(asc(routines.id));
+      if (judgedRoutineRows.length === 0) {
+        return;
+      }
+      const routineIds = judgedRoutineRows.map((routineRow) => routineRow.id);
+
       await tx
         .select({ id: quests.id })
         .from(quests)
