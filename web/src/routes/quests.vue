@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Routine } from '@nest-vue/shared';
-import { ListChecks, Plus, TriangleAlert } from 'lucide-vue-next';
+import { ListChecks, Plus, Sword, TriangleAlert } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import BossRegisterDialog from '@/components/boss/BossRegisterDialog.vue';
 import AppShell from '@/components/layouts/AppShell.vue';
 import MonsterViewDialog from '@/components/quest/MonsterViewDialog.vue';
 import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
@@ -79,6 +80,8 @@ const resumeId = ref<string | null>(null);
 let routinesGeneration = 0;
 const registerOpen = ref(false);
 const registerBusy = ref(false);
+const bossRegisterOpen = ref(false);
+const bossRegisterBusy = ref(false);
 const editRoutine = ref<Routine | null>(null);
 const editBusy = ref(false);
 
@@ -247,6 +250,13 @@ function onKeyDown(event: KeyboardEvent): void {
   }
   if (editRoutine.value) {
     closeEdit();
+    return;
+  }
+  if (bossRegisterBusy.value) {
+    return;
+  }
+  if (bossRegisterOpen.value) {
+    bossRegisterOpen.value = false;
     return;
   }
   if (registerBusy.value) {
@@ -446,10 +456,21 @@ onUnmounted(() => {
     <div>
       <div class="mb-5 flex items-center justify-between gap-3">
         <h1 class="text-2xl font-bold">{{ t('nav.quests') }}</h1>
-        <Button type="button" class="w-auto gap-2 px-5" @click="openRegister">
-          <Plus class="size-4" />
-          {{ t('quest.add') }}
-        </Button>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            class="border-gold text-gold hover:bg-gold-soft w-auto gap-2 px-5"
+            @click="bossRegisterOpen = true"
+          >
+            <Sword class="size-4" />
+            {{ t('boss.create') }}
+          </Button>
+          <Button type="button" class="w-auto gap-2 px-5" @click="openRegister">
+            <Plus class="size-4" />
+            {{ t('quest.add') }}
+          </Button>
+        </div>
       </div>
 
       <div class="bg-muted mb-5 inline-flex gap-0.5 rounded-[10px] p-[3px]">
@@ -560,6 +581,13 @@ onUnmounted(() => {
       @close="registerOpen = false"
       @created="onCreated"
       @busy="registerBusy = $event"
+    />
+
+    <BossRegisterDialog
+      :open="bossRegisterOpen"
+      @close="bossRegisterOpen = false"
+      @created="bossRegisterOpen = false"
+      @busy="bossRegisterBusy = $event"
     />
 
     <QuestCompleteDialog
