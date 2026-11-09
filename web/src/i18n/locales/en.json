@@ -235,6 +235,7 @@
     "monsterGenerating": "Creating monster",
     "monsterFailed": "Couldn't create the monster",
     "monsterRetry": "Create again",
+    "missed": "Missed",
     "cancel": "Cancel",
     "completeTitle": "Complete this quest?",
     "completeBody": "Complete “{title}”.",

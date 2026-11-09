@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Routine } from '@nest-vue/shared';
-import { Check, Ellipsis } from 'lucide-vue-next';
+import { Check, Ellipsis, Sword } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
 import type { QuestListItem } from '@/lib/quests';
+import { seoulToday } from '@/lib/seoulDate';
 
 import MonsterImage from './MonsterImage.vue';
 import type { MonsterViewTarget } from './MonsterViewDialog.vue';
@@ -60,10 +61,27 @@ function openMonster(): void {
 
 const done = computed(() => quest.value?.completed ?? false);
 
+const bossChip = computed(() => {
+  const current = quest.value;
+  if (!current?.bossId) {
+    return '';
+  }
+  return current.bossName ?? current.bossTitle ?? '';
+});
+
+const missed = computed(() => {
+  const current = quest.value;
+  return current !== null && !current.completed && current.endsOn < seoulToday();
+});
+
 const scheduleText = computed(() => {
   const current = routine.value;
   if (!current) {
-    return t('quest.repeat.deadline', { date: quest.value?.endsOn ?? '' });
+    const currentQuest = quest.value;
+    if (currentQuest?.bossId) {
+      return currentQuest.bossName ? (currentQuest.bossTitle ?? '') : '';
+    }
+    return t('quest.repeat.deadline', { date: currentQuest?.endsOn ?? '' });
   }
   if (current.weekdays.length === 7 && !current.biweekly) {
     return t('quest.repeat.daily');
@@ -130,6 +148,19 @@ const difficultyClass = computed(() => {
       <span class="size-1.5 rounded-full bg-current" />
       {{ t(`quest.difficulties.${item.difficulty}`) }}
     </span>
+    <span
+      v-if="bossChip"
+      class="bg-gold-soft text-gold inline-flex max-w-36 shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+    >
+      <Sword class="size-3" />
+      <span class="truncate">{{ bossChip }}</span>
+    </span>
+    <span
+      v-if="missed"
+      class="bg-destructive shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold text-white"
+    >
+      {{ t('quest.missed') }}
+    </span>
 
     <div v-if="quest" class="flex min-w-0 flex-1 basis-40 flex-col gap-0.5">
       <button
@@ -169,14 +200,18 @@ const difficultyClass = computed(() => {
     }}</span>
 
     <span
-      v-if="quest && !quest.dueToday"
+      v-if="quest && !quest.dueToday && !missed"
       class="text-muted-foreground shrink-0 text-[11px] whitespace-nowrap"
     >
       {{ t('quest.notToday') }}
     </span>
-    <span class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">{{
-      scheduleText
-    }}</span>
+    <span
+      v-if="scheduleText"
+      class="text-muted-foreground text-[11.5px]"
+      :class="routine ? 'shrink-0 whitespace-nowrap' : 'max-w-40 shrink truncate'"
+    >
+      {{ scheduleText }}
+    </span>
     <span
       v-if="quest && quest.expectedGold !== null && quest.expectedXp !== null"
       class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
