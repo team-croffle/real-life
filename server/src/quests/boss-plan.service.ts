@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   BossLatestLog,
+  BossSubquest,
   BossSummary,
   ConfirmedBoss,
   Paginated,
@@ -336,7 +337,7 @@ export class BossPlanService {
     }
     const summaries = await this.withAppearance(bossRows);
     const bossIds = bossRows.map((bossRow) => bossRow.id);
-    const [cutRows, counterRows] = await Promise.all([
+    const [cutRows, counterRows, routineRows, questRows] = await Promise.all([
       this.db
         .select({
           id: quests.id,
@@ -358,6 +359,21 @@ export class BossPlanService {
         })
         .from(questPenalties)
         .where(and(inArray(questPenalties.bossId, bossIds), eq(questPenalties.reason, 'missed'))),
+      this.db.select().from(routines).where(inArray(routines.bossId, bossIds)),
+      this.db
+        .select({
+          id: quests.id,
+          bossId: quests.bossId,
+          routineId: quests.routineId,
+          title: quests.title,
+          category: quests.category,
+          difficulty: quests.difficulty,
+          completedOn: quests.completedOn,
+          endsOn: quests.endsOn,
+          createdAt: quests.createdAt,
+        })
+        .from(quests)
+        .where(inArray(quests.bossId, bossIds)),
     ]);
     return bossRows.flatMap((bossRow) => {
       const summary = summaries.get(bossRow.id);
@@ -396,6 +412,13 @@ export class BossPlanService {
           ...summary,
           latestLog: latestBossLog([...cuts, ...counters], yesterday),
           counteredToday: counters.some((row) => row.on === yesterday),
+          subquests: bossSubquests(
+            bossRow,
+            routineRows.filter((row) => row.bossId === bossRow.id),
+            questRows.filter((row) => row.bossId === bossRow.id),
+            today,
+            yesterday,
+          ),
         },
       ];
     });
@@ -609,7 +632,92 @@ function deadlineReward(
   return QUEST_REWARDS[difficulty][period];
 }
 
-type BossCard = Omit<BossSummary, 'latestLog' | 'counteredToday'>;
+type BossCard = Omit<BossSummary, 'latestLog' | 'counteredToday' | 'subquests'>;
+
+type SubquestQuestRow = {
+  id: string;
+  bossId: string | null;
+  routineId: string | null;
+  title: string;
+  category: QuestRow['category'];
+  difficulty: QuestDifficulty;
+  completedOn: string | null;
+  endsOn: string;
+  createdAt: Date;
+};
+
+function bossSubquests(
+  bossRow: BossRow,
+  routineRows: RoutineRow[],
+  questRows: SubquestQuestRow[],
+  today: string,
+  yesterday: string,
+): BossSubquest[] {
+  const ranked = [
+    ...routineRows.map((routineRow) => {
+      const spawned = questRows.filter((row) => row.routineId === routineRow.id);
+      const done = spawned.filter((row) => row.completedOn !== null).length;
+      const missed = spawned.filter((row) => row.completedOn === null && row.endsOn < today).length;
+      const createdOn = seoulCalendarDate(routineRow.createdAt);
+      const todayQuest = spawned.find((row) => row.endsOn === today);
+      const todayConsumed =
+        routineRow.spawnedOn === today &&
+        (todayQuest === undefined || todayQuest.completedOn !== null)
+          ? 1
+          : 0;
+      const remaining =
+        routineOccurrenceCount(routineRow, createdOn, bossRow.deadlineOn) -
+        routineOccurrenceCount(routineRow, createdOn, yesterday) -
+        todayConsumed;
+      return {
+        rank: remaining > 0 ? 0 : missed === 0 ? 1 : 2,
+        createdAt: routineRow.createdAt,
+        id: routineRow.id,
+        item: {
+          kind: 'routine' as const,
+          id: routineRow.id,
+          title: routineRow.title,
+          category: routineRow.category,
+          difficulty: routineRow.difficulty,
+          done,
+          missed,
+          remaining,
+        },
+      };
+    }),
+    ...questRows
+      .filter((row) => row.routineId === null)
+      .map((row) => {
+        const status: 'open' | 'done' | 'missed' =
+          row.completedOn !== null ? 'done' : row.endsOn < today ? 'missed' : 'open';
+        return {
+          rank: status === 'open' ? 0 : status === 'done' ? 1 : 2,
+          createdAt: row.createdAt,
+          id: row.id,
+          item: {
+            kind: 'deadline' as const,
+            id: row.id,
+            title: row.title,
+            category: row.category,
+            difficulty: row.difficulty,
+            status,
+          },
+        };
+      }),
+  ];
+  return ranked
+    .toSorted((left, right) => {
+      if (left.rank !== right.rank) {
+        return left.rank - right.rank;
+      }
+      const byTime = left.createdAt.getTime() - right.createdAt.getTime();
+      if (byTime !== 0) {
+        return byTime;
+      }
+      return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+    })
+    .map((row) => row.item);
+}
 
 type BossLogCandidate = BossLatestLog & { tieBreak: string };
 
