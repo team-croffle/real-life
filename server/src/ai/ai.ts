@@ -13,6 +13,9 @@ export const AI = Symbol('AI');
 
 export const GEMINI_MODEL_DEFAULT = 'gemini-3.5-flash-lite';
 
+/** 서울 오늘을 포함한 최근 일수. 프롬프트의 "최근 14일"과 같다. */
+export const DIFFICULTY_HISTORY_DAYS = 14;
+
 /** 이 시간을 넘기면 일반 실패로 친다. */
 export const AI_CALL_TIMEOUT_MS_DEFAULT = 30_000;
 

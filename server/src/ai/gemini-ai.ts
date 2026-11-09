@@ -21,6 +21,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   AI_CALL_TIMEOUT_MS_DEFAULT,
   AiRateLimitError,
+  DIFFICULTY_HISTORY_DAYS,
   GEMINI_MODEL_DEFAULT,
   type Ai,
   type BattleLogDraft,
@@ -31,7 +32,6 @@ import {
   type QuestPlanDraft,
   type SuggestedQuest,
 } from './ai';
-import { DIFFICULTY_HISTORY_DAYS } from './difficulty.service';
 
 const TEXT_MAX = 200;
 const GEMINI_MIN_DEADLINE_MS = 10_000;
