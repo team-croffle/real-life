@@ -21,6 +21,22 @@ export interface AbandonedBoss {
   balance: number;
 }
 
+/** GET /api/bosses/history. 처치·실패·포기. 제목은 목표 문구다. */
+export interface PastBoss {
+  id: string;
+  result: BossResult;
+  category: QuestCategory;
+  title: string;
+  endsOn: string;
+  maxHp: number;
+  hp: number;
+  /** 판정한 서울 날짜 */
+  judgedOn: string;
+  createdOn: string;
+  bossStatus: MonsterStatus | null;
+  boss: BossAppearance | null;
+}
+
 /** GET /api/bosses/unseen. 처치·실패이고 아직 결과 화면을 안 본 보스. */
 export interface UnseenBossResult {
   id: string;

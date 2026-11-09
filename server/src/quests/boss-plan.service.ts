@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import type {
   BossSummary,
   ConfirmedBoss,
+  Paginated,
+  PastBoss,
   Quest,
   QuestDifficulty,
   QuestPace,
@@ -30,7 +32,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { DRIZZLE } from '../database/database.constants';
@@ -46,6 +48,7 @@ import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import { walletEntries } from '../database/schema/wallets';
 import type { ConfirmBossDto, ConfirmBossQuestDto } from './dto/confirm-boss.dto';
+import { HISTORY_DEFAULT_PAGE_SIZE, type ListHistoryQueryDto } from './dto/list-history-query.dto';
 import { monsterView } from './monster-view';
 import {
   APP_TIME_ZONE,
@@ -275,6 +278,46 @@ export class BossPlanService {
     });
   }
 
+  async listHistory(userId: string, query: ListHistoryQueryDto): Promise<Paginated<PastBoss>> {
+    await this.questsService.prepareForRead(userId);
+    const page = query.page ?? 1;
+    const size = query.size ?? HISTORY_DEFAULT_PAGE_SIZE;
+    const where = and(eq(bosses.userId, userId), isNotNull(bosses.result));
+    const [countRow] = await this.db.select({ total: count() }).from(bosses).where(where);
+    const total = Number(countRow?.total ?? 0);
+    const totalPages = Math.ceil(total / size);
+    if (page > Math.max(totalPages, 1)) {
+      throw new BadRequestException('page is out of range');
+    }
+
+    const bossRows = await this.db
+      .select()
+      .from(bosses)
+      .where(where)
+      .orderBy(desc(bosses.judgedAt), desc(bosses.id))
+      .limit(size)
+      .offset((page - 1) * size);
+    const summaries = await this.withAppearance(bossRows);
+    return {
+      items: bossRows.flatMap((bossRow) => {
+        if (bossRow.result === null || bossRow.judgedAt === null) {
+          return [];
+        }
+        const summary = summaries.get(bossRow.id);
+        if (!summary) {
+          return [];
+        }
+        return [
+          { ...summary, result: bossRow.result, judgedOn: seoulCalendarDate(bossRow.judgedAt) },
+        ];
+      }),
+      page,
+      size,
+      total,
+      totalPages,
+    };
+  }
+
   async list(userId: string): Promise<BossSummary[]> {
     const bossRows = await this.db
       .select()
@@ -285,7 +328,17 @@ export class BossPlanService {
     if (bossRows.length === 0) {
       return [];
     }
+    const summaries = await this.withAppearance(bossRows);
+    return bossRows.flatMap((bossRow) => {
+      const summary = summaries.get(bossRow.id);
+      return summary ? [summary] : [];
+    });
+  }
 
+  private async withAppearance(bossRows: BossRow[]): Promise<Map<string, BossSummary>> {
+    if (bossRows.length === 0) {
+      return new Map();
+    }
     const monsterIds = bossRows.flatMap((bossRow) =>
       bossRow.monsterId ? [bossRow.monsterId] : [],
     );
@@ -299,12 +352,15 @@ export class BossPlanService {
     const taskByBoss = new Map(
       tasks.flatMap((task) => (task.bossId ? [[task.bossId, task] as const] : [])),
     );
-    return bossRows.map((bossRow) =>
-      toBossSummary(
-        bossRow,
-        bossRow.monsterId ? monsterById.get(bossRow.monsterId) : undefined,
-        taskByBoss.get(bossRow.id),
-      ),
+    return new Map(
+      bossRows.map((bossRow) => [
+        bossRow.id,
+        toBossSummary(
+          bossRow,
+          bossRow.monsterId ? monsterById.get(bossRow.monsterId) : undefined,
+          taskByBoss.get(bossRow.id),
+        ),
+      ]),
     );
   }
 
