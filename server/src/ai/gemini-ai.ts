@@ -2,6 +2,7 @@ import { ApiError, GoogleGenAI } from '@google/genai';
 import {
   BOSS_SUBQUEST_MAX,
   QUEST_CATEGORIES,
+  QUEST_CATEGORY_LABELS,
   QUEST_DIFFICULTIES,
   QUEST_NOTE_MAX_LENGTH,
   QUEST_PACES,
@@ -23,12 +24,14 @@ import {
   GEMINI_MODEL_DEFAULT,
   type Ai,
   type BattleLogDraft,
+  type DifficultyDraft,
   type DifficultyRecommendation,
   type MonsterDescription,
   type MonsterDraft,
   type QuestPlanDraft,
   type SuggestedQuest,
 } from './ai';
+import { DIFFICULTY_HISTORY_DAYS } from './difficulty.service';
 
 const TEXT_MAX = 200;
 const GEMINI_MIN_DEADLINE_MS = 10_000;
@@ -128,14 +131,18 @@ export class GeminiAi implements Ai {
     return body.lines.map((line) => oneLine(line, TEXT_MAX)).join('\n');
   }
 
-  async recommendDifficulty(input: { title: string }): Promise<DifficultyRecommendation> {
+  async recommendDifficulty(input: DifficultyDraft): Promise<DifficultyRecommendation> {
     const title = oneLine(input.title, TEXT_MAX);
     const body = await this.generate(
       [
         '할 일의 난이도를 easy, normal, hard 중 하나로 고르고, 이유를 한국어 한 줄로 써라.',
+        `할 일이 얼마나 힘든지 먼저 보고, 이 사용자의 최근 ${DIFFICULTY_HISTORY_DAYS}일 기록에 맞게 조정해라. 많이 놓쳤으면 낮게, 잘 해냈으면 높게.`,
+        '기록이 둘 다 0이면 할 일만 보고 골라라.',
         '금액은 정하지 마라.',
         '',
         `할 일: ${title}`,
+        `카테고리: ${QUEST_CATEGORY_LABELS[input.category]}`,
+        `최근 ${DIFFICULTY_HISTORY_DAYS}일 이 카테고리: 완료 ${input.completedCount}개, 놓침 ${input.missedCount}개`,
       ].join('\n'),
       {
         type: 'object',
