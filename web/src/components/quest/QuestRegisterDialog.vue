@@ -345,10 +345,11 @@ async function onSubmit(): Promise<void> {
           type="button"
           size="sm"
           variant="outline"
-          class="w-auto"
+          class="bg-gold-soft text-gold hover:bg-gold-soft hover:text-gold w-auto border-0 [&_svg]:size-3"
           :disabled="!canRecommend"
           @click="onRecommend"
         >
+          <Star class="size-3 fill-current" />
           {{ t('quest.recommend') }}
         </Button>
       </div>
