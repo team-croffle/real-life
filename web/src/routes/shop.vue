@@ -10,7 +10,7 @@ import ShopConfirmDialog from '@/components/shop/ShopConfirmDialog.vue';
 import ShopItemCard from '@/components/shop/ShopItemCard.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
-import { createShopPurchase, getShop } from '@/lib/shop';
+import { createShopPurchase, deleteUserReward, getShop } from '@/lib/shop';
 import { getWallet } from '@/lib/wallet';
 
 type SectionState = 'loading' | 'ready' | 'error';
@@ -27,6 +27,10 @@ const buyPending = ref(false);
 const buyError = ref('');
 const formOpen = ref(false);
 const formReward = ref<ShopItem | null>(null);
+const menuId = ref<string | null>(null);
+const deleteTarget = ref<ShopItem | null>(null);
+const deletePending = ref(false);
+const deleteError = ref('');
 const toast = ref('');
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -98,6 +102,7 @@ function openBuy(item: ShopItem): void {
   if (gold.value === null || gold.value < item.price) {
     return;
   }
+  menuId.value = null;
   buyTarget.value = item;
   buyPending.value = false;
   buyError.value = '';
@@ -148,8 +153,71 @@ async function confirmBuy(): Promise<void> {
 }
 
 function openCreate(): void {
+  menuId.value = null;
   formReward.value = null;
   formOpen.value = true;
+}
+
+function toggleMenu(id: string): void {
+  menuId.value = menuId.value === id ? null : id;
+}
+
+function openEdit(item: ShopItem): void {
+  menuId.value = null;
+  formReward.value = item;
+  formOpen.value = true;
+}
+
+function openDelete(item: ShopItem): void {
+  menuId.value = null;
+  deleteTarget.value = item;
+  deletePending.value = false;
+  deleteError.value = '';
+}
+
+function closeDelete(): void {
+  if (deletePending.value) {
+    return;
+  }
+  deleteTarget.value = null;
+  deleteError.value = '';
+}
+
+async function confirmDelete(): Promise<void> {
+  const item = deleteTarget.value;
+  if (!item || deletePending.value) {
+    return;
+  }
+  deletePending.value = true;
+  deleteError.value = '';
+  try {
+    await deleteUserReward(item.id);
+    if (leftShop) {
+      return;
+    }
+    deleteTarget.value = null;
+    showToast(t('shop.toastDeleted'));
+    void loadShop();
+  } catch (cause) {
+    if (leftShop) {
+      return;
+    }
+    deletePending.value = false;
+    if (cause instanceof ApiError && cause.status === 401) {
+      return;
+    }
+    deleteError.value = t('shop.deleteFailed');
+    return;
+  }
+  deletePending.value = false;
+}
+
+function onPointerDown(event: PointerEvent): void {
+  const target = event.target;
+  if (!(target instanceof Element) || target.closest('[data-shop-menu]')) {
+    return;
+  }
+  menuId.value = null;
 }
 
 function closeForm(): void {
@@ -162,11 +230,15 @@ function onRewardSaved(): void {
   void loadShop();
 }
 
-onMounted(reload);
+onMounted(() => {
+  reload();
+  window.addEventListener('pointerdown', onPointerDown);
+});
 
 onUnmounted(() => {
   leftShop = true;
   clearTimeout(toastTimer);
+  window.removeEventListener('pointerdown', onPointerDown);
 });
 </script>
 
@@ -276,7 +348,12 @@ onUnmounted(() => {
           :key="item.id"
           :item="item"
           :gold="gold"
+          show-menu
+          :menu-open="menuId === item.id"
           @buy="openBuy(item)"
+          @toggle-menu="toggleMenu(item.id)"
+          @edit="openEdit(item)"
+          @remove="openDelete(item)"
         />
       </div>
     </div>
@@ -289,7 +366,19 @@ onUnmounted(() => {
     />
 
     <ShopConfirmDialog
-      v-if="buyTarget && gold !== null"
+      v-if="deleteTarget"
+      :title="t('shop.deleteTitle')"
+      :body="t('shop.deleteBody', { name: deleteTarget.name })"
+      :confirm-label="t('shop.delete')"
+      danger
+      :pending="deletePending"
+      :error="deleteError"
+      @cancel="closeDelete"
+      @confirm="confirmDelete"
+    />
+
+    <ShopConfirmDialog
+      v-if="buyTarget && gold !== null && !deleteTarget"
       :title="t('shop.buyTitle', { name: buyTarget.name })"
       :body="t('shop.buyBody')"
       :confirm-label="t('shop.buy')"

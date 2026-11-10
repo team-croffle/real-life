@@ -204,7 +204,14 @@
     "limitReached": "보상은 20개까지 등록할 수 있어요",
     "saveFailed": "보상을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
     "toastCreated": "보상을 등록했어요",
-    "toastUpdated": "보상을 고쳤어요"
+    "toastUpdated": "보상을 고쳤어요",
+    "menu": "메뉴",
+    "edit": "수정",
+    "delete": "삭제",
+    "deleteTitle": "보상을 삭제할까요?",
+    "deleteBody": "\"{name}\"을(를) 지워도 지갑 내역은 그대로 남아요.",
+    "deleteFailed": "보상을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요.",
+    "toastDeleted": "보상을 삭제했어요"
   },
   "stats": {
     "statusLethargy": "상태이상: 무기력",

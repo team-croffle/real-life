@@ -204,7 +204,14 @@
     "limitReached": "You can register up to 20 rewards",
     "saveFailed": "Could not save the reward. Please try again.",
     "toastCreated": "Reward registered",
-    "toastUpdated": "Reward updated"
+    "toastUpdated": "Reward updated",
+    "menu": "Menu",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete this reward?",
+    "deleteBody": "Deleting \"{name}\" does not change the wallet history.",
+    "deleteFailed": "Could not delete the reward. Please try again.",
+    "toastDeleted": "Reward deleted"
   },
   "stats": {
     "statusLethargy": "Status effect: Lethargy",
