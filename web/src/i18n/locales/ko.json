@@ -215,9 +215,11 @@
     "toastDeleted": "보상을 삭제했어요"
   },
   "stats": {
+    "characterName": "{name}의 캐릭터",
+    "level": "Lv.{level}",
     "statusLethargy": "상태이상: 무기력",
     "loadError": "스탯을 불러오지 못했어요",
-    "progressLoadError": "상태이상을 불러오지 못했어요",
+    "progressLoadError": "진행도를 불러오지 못했어요",
     "retry": "다시 시도"
   },
   "jobChange": {
