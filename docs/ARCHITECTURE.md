@@ -122,7 +122,7 @@ Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missin
 - Gold, XP and penalty amounts are computed only by functions in `shared`. The server pays with them; the web uses the same functions only to show estimates.
 - Controllers only take the request and call a service. Rules live in services.
 - Every server call from the web goes through `useApi`. Feature calls such as quests and wallet are collected in `lib/`; account APIs are called from `stores/auth.ts`.
-- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, wallet, progress, bosses.
+- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_rewards, wallet, progress, bosses.
 
 ## Inside the server
 
