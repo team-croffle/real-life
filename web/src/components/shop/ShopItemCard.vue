@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 const props = withDefaults(
   defineProps<{
     item: ShopItem;
-    gold: number;
+    gold: number | null;
     showMenu?: boolean;
     menuOpen?: boolean;
   }>(),
@@ -45,7 +45,8 @@ const KIND_ICON_CLASS: Record<ShopKind, string> = {
   shopping: 'text-gold',
 };
 
-const canBuy = computed(() => props.gold >= props.item.price);
+const canBuy = computed(() => props.gold !== null && props.gold >= props.item.price);
+const shortGold = computed(() => props.gold !== null && props.gold < props.item.price);
 </script>
 
 <template>
@@ -94,8 +95,8 @@ const canBuy = computed(() => props.gold >= props.item.price);
       {{ t('shop.buy') }}
     </Button>
     <Button v-else type="button" variant="outline" size="sm" class="w-full rounded-full" disabled>
-      <Lock class="size-3" />
-      {{ t('shop.shortGold') }}
+      <Lock v-if="shortGold" class="size-3" />
+      {{ shortGold ? t('shop.shortGold') : t('shop.buy') }}
     </Button>
   </div>
 </template>
