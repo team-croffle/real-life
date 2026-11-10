@@ -9,6 +9,7 @@ import { DatabaseModule } from './database/database.module';
 import { JobChangeModule } from './job-change/job-change.module';
 import { ProgressModule } from './progress/progress.module';
 import { QuestsModule } from './quests/quests.module';
+import { ShopModule } from './shop/shop.module';
 import { StatsModule } from './stats/stats.module';
 import { WalletModule } from './wallet/wallet.module';
 
@@ -29,6 +30,7 @@ import { WalletModule } from './wallet/wallet.module';
     ProgressModule,
     StatsModule,
     WalletModule,
+    ShopModule,
     JobChangeModule,
   ],
 })
