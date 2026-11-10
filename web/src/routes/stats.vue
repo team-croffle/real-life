@@ -99,7 +99,7 @@ onUnmounted(() => {
         <p class="text-[11.5px] font-bold">{{ t('stats.statusLethargy') }}</p>
       </div>
 
-      <div class="grid items-start gap-4 md:grid-cols-2">
+      <div class="grid items-start gap-4 md:grid-cols-[300px_minmax(0,1fr)]">
         <div
           v-if="progressState === 'loading'"
           class="bg-surface border-border h-[280px] animate-pulse rounded-[18px] border"

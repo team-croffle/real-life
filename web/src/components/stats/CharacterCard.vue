@@ -48,11 +48,11 @@ const lethargy = computed(() => props.progress.statusEffect === 'lethargy');
         <CharacterFigure class="h-[120px]" :job-class="jobClass" :lethargy="lethargy" />
       </div>
     </div>
-    <div class="px-4 pt-3 pb-4">
+    <div class="px-4 pt-3 pb-4 text-center">
       <p class="text-[13px] font-bold">
         {{ t('stats.characterName', { name: nickname }) }}
       </p>
-      <div class="mt-2 flex flex-wrap items-center gap-1.5">
+      <div class="mt-2 flex flex-wrap items-center justify-center gap-1.5">
         <span
           v-if="jobLabel"
           class="bg-surface border-border text-secondary-foreground rounded-full border px-3 py-1 text-[11px] font-bold"
@@ -70,6 +70,12 @@ const lethargy = computed(() => props.progress.statusEffect === 'lethargy');
       <div class="bg-muted mt-2 h-2 overflow-hidden rounded-full" aria-hidden="true">
         <div class="bg-primary h-full" :style="{ width: xpWidth }" />
       </div>
+      <p
+        v-if="progress.xpToNext !== null"
+        class="text-muted-foreground mt-1.5 text-[11px] font-medium"
+      >
+        {{ t('stats.xpProgress', { levelXp: progress.levelXp, xpToNext: progress.xpToNext }) }}
+      </p>
     </div>
   </section>
 </template>

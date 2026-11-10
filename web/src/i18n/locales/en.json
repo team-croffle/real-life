@@ -220,6 +220,7 @@
   "stats": {
     "characterName": "{name}'s character",
     "level": "Lv.{level}",
+    "xpProgress": "{levelXp} / {xpToNext} XP",
     "statusLethargy": "Status effect: Lethargy",
     "loadError": "Could not load stats",
     "progressLoadError": "Could not load your progress",
