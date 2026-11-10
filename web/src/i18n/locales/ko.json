@@ -220,6 +220,7 @@
   "stats": {
     "characterName": "{name}의 캐릭터",
     "level": "Lv.{level}",
+    "xpProgress": "{levelXp} / {xpToNext} XP",
     "statusLethargy": "상태이상: 무기력",
     "loadError": "스탯을 불러오지 못했어요",
     "progressLoadError": "진행도를 불러오지 못했어요",
