@@ -9,6 +9,7 @@ export * from './quests';
 export * from './routines';
 export * from './sessions';
 export * from './user-progress';
+export * from './user-rewards';
 export * from './user-titles';
 export * from './users';
 export * from './verifications';

@@ -55,6 +55,7 @@ export class WalletService {
         kind: walletEntries.kind,
         questId: walletEntries.questId,
         bossId: walletEntries.bossId,
+        purchasedName: walletEntries.purchasedName,
         createdAt: walletEntries.createdAt,
       })
       .from(walletEntries)
@@ -71,6 +72,7 @@ export class WalletService {
         kind: entryRow.kind,
         questId: entryRow.questId,
         bossId: entryRow.bossId,
+        purchasedName: entryRow.purchasedName,
         createdAt: entryRow.createdAt.toISOString(),
       })),
       page,

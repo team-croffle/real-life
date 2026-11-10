@@ -8,6 +8,7 @@ export const WALLET_ENTRY_KINDS = [
   'boss_clear',
   'boss_fail',
   'boss_abandon',
+  'purchase',
 ] as const;
 
 export type WalletEntryKind = (typeof WALLET_ENTRY_KINDS)[number];

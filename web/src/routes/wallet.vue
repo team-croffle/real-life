@@ -54,6 +54,7 @@ const KIND_CLASSES: Record<WalletEntryKind, string> = {
   boss_clear: 'bg-accent text-accent-foreground',
   boss_fail: 'bg-destructive/10 text-destructive',
   boss_abandon: 'bg-destructive/10 text-destructive',
+  purchase: 'bg-intel/15 text-intel',
 };
 
 function amountClass(amount: number): string {
