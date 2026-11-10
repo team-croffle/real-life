@@ -83,7 +83,7 @@ quest-penalty.ts      패널티 금액, 골드·경험치 하한
 constants/            보상표, 패널티표, 크리티컬 확률, 직업과 그 밖의 상수
   monsters.ts         몬스터 8종, 그림 키, 목록 상태
   bosses.ts           보스 8종, 그림 키, 진행 상한 3, 체력당 자리값 보상 10과 패널티 5
-  shop.ts             종류 5개, 기본 이름·자리값 가격, 직접 등록 상한 20, 가격 1~99,999
+  shop.ts             종류 5개(hobby, rest, food, outing, shopping), 종류별 추천 가격, 기본 아이템 id와 자리값 가격, 직접 등록 상한 20, 가격 1~99,999
 boss-hp.ts            횟수와 난이도 점수로 하위 퀘스트 체력
 boss-reward.ts        80% 처치선, 처치 보상과 실패 패널티. 직업·연속 배율은 없다
 quest-calendar.ts     서울 달력 날짜 계산. 서버가 다시 내보내고, 웹은 보스 체력 예상에 쓴다
@@ -99,14 +99,17 @@ types/                서버와 웹이 주고받는 응답 타입
 ### 웹 (`web/src/`)
 
 ```
-routes/        페이지 (파일 이름이 URL): home, quests, bosses, stats, wallet, job, sign-up/sign-in/onboarding
-components/    페이지마다 폴더 (home, quest, boss, wallet, stats, job, settings, auth)와 공통 ui/
+routes/        페이지 (파일 이름이 URL): home, quests, bosses, stats, wallet, shop, job, sign-up/sign-in/onboarding
+components/    페이지마다 폴더 (home, quest, boss, wallet, shop, stats, job, settings, auth)와 공통 ui/
   boss/BossRegisterDialog.vue    메인 퀘스트 계획과 확정
   boss/BossResultDialog.vue      안 본 처치·실패
   quest/MonsterImage.vue         /monsters/{imageKey}.svg 또는 /bosses/{imageKey}.svg, 없으면 /fallback/unknown.svg
   quest/MonsterViewDialog.vue    몬스터 이름, 그림, 설명
   quest/QuestHistoryPager.vue    번호 페이지. size는 5, 10, 15, 20이고 기본 20
-lib/           서버 호출 (quests, bosses, unseenBosses, wallet, home, stats, jobChange), 화면용 계산 (questReward), 색종이, 효과음, 저장한 설정
+  shop/RewardFormDialog.vue      직접 등록 추가·수정
+  shop/ShopConfirmDialog.vue     구매·삭제 확인
+  shop/ShopItemCard.vue          기본 또는 직접 등록 한 줄
+lib/           서버 호출 (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), 화면용 계산 (questReward), 색종이, 효과음, 저장한 설정
 composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
 stores/        로그인 상태와 계정 API 호출 (Pinia)
 auth/          Better Auth 클라이언트

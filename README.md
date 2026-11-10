@@ -17,7 +17,8 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **Jobs** — student, office worker or freelancer, each earning more in its own categories. More jobs will come
 - **AI monsters** — registering a deadline quest or a routine turns the to-do into one monster in the background. The kind is one of eight, the picture key matches the kind, and AI writes the name and the description. The title stays as entered while that runs, and if it fails. Gold and XP are set by the rules, not by AI
 - **AI bosses** — a big goal becomes a boss. Confirming a goal, a due date and a category creates the deadline subquests, the subroutines and the boss HP in one step. At most three bosses are in progress. Completing a subquest cuts HP by the difficulty score. The first settlement after the due date clears the boss at 80% of max HP and fails it otherwise. The name is written with a boss prompt. If that fails, the title stays the goal
-- **Shop and character (planned)** — buy real-life rewards with gold, and dress up a cat character with accessories from the gacha
+- **Shop** — buy real-life rewards with gold: a shared catalog and rewards you register yourself
+- **Character (planned)** — dress up a cat character with accessories from the gacha
 - **Notifications (planned)** — due soon, a streak about to break, level-ups, friend and raid news, each one switchable
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
 - **Admin (planned)** — manage accounts, notices and reward multipliers
@@ -143,7 +144,7 @@ The catalog is five items, the same for everyone, not stored in the database. Pr
 | 배달음식 주문권          | 500  |
 | 카페 / 영화권            | 1000 |
 
-You can register up to 20 of your own rewards. A name is 1–50 characters. The kind is one of the five catalog kinds. The price is 1–99,999 gold. The suggested price is the catalog price of that kind. AI does not set it.
+You can register up to 20 of your own rewards. A name is 1–50 characters. The kind is hobby, rest, food, outing or shopping. The price is 1–99,999 gold. The suggested price is a placeholder for that kind: 100, 100, 300, 1000 and 1000. It is not the catalog item's price. AI does not set it.
 
 ## Levels, titles and stats
 
@@ -193,8 +194,8 @@ real-life/
 │   └── drizzle/           # migrations
 ├── web/                   # Vue 3 + Vite client
 │   └── src/
-│       ├── routes/        # pages (home, quests, bosses, stats, wallet, job, auth)
-│       ├── components/    # per-page components (including boss/) and shared UI
+│       ├── routes/        # pages (home, quests, bosses, stats, wallet, shop, job, auth)
+│       ├── components/    # per-page components (including boss/, shop/) and shared UI
 │       ├── lib/           # API calls, reward display, confetti, sounds, saved settings
 │       ├── composables/   # useApi, useQuestBoard
 │       ├── stores/        # sign-in state (Pinia)
