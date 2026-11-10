@@ -231,13 +231,21 @@ onUnmounted(() => {
             class="flex items-center justify-between gap-3 py-3"
             :class="index < entries.length - 1 ? 'border-border border-b' : ''"
           >
-            <div class="flex min-w-0 flex-col items-start gap-1">
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                :class="KIND_CLASSES[entry.kind]"
-              >
-                {{ t(`wallet.kinds.${entry.kind}`) }}
-              </span>
+            <div class="min-w-0">
+              <div class="mb-0.5 flex flex-wrap items-center gap-[7px]">
+                <span
+                  class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                  :class="KIND_CLASSES[entry.kind]"
+                >
+                  {{ t(`wallet.kinds.${entry.kind}`) }}
+                </span>
+                <p
+                  v-if="entry.kind === 'purchase' && entry.purchasedName"
+                  class="text-[13px] font-semibold"
+                >
+                  {{ entry.purchasedName }}
+                </p>
+              </div>
               <p class="text-muted-foreground text-[11px]">
                 {{ formatCreatedAt(entry.createdAt) }}
               </p>
