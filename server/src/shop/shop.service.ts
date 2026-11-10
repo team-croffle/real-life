@@ -1,5 +1,5 @@
 import type { ShopItem, WalletBalance } from '@nest-vue/shared';
-import { SHOP_CATALOG, USER_REWARDS_MAX, isShopKind } from '@nest-vue/shared';
+import { SHOP_CATALOG, USER_REWARDS_MAX, isShopCatalogId } from '@nest-vue/shared';
 import {
   BadRequestException,
   ConflictException,
@@ -32,7 +32,7 @@ export class ShopService {
 
   async list(userId: string): Promise<ShopItem[]> {
     const catalogItems = SHOP_CATALOG.map((item) =>
-      toCatalogItem(item.kind, item.name, item.price),
+      toCatalogItem(item.id, item.kind, item.name, item.price),
     );
     const rewardRows = await this.db
       .select()
@@ -110,8 +110,8 @@ export class ShopService {
   }
 
   async purchase(userId: string, id: string): Promise<WalletBalance> {
-    if (isShopKind(id)) {
-      const catalogItem = SHOP_CATALOG.find((item) => item.kind === id);
+    if (isShopCatalogId(id)) {
+      const catalogItem = SHOP_CATALOG.find((item) => item.id === id);
       if (!catalogItem) {
         throw new NotFoundException();
       }
@@ -146,8 +146,13 @@ function assertRewardId(rewardId: string): void {
   }
 }
 
-function toCatalogItem(kind: ShopItem['kind'], name: string, price: number): ShopItem {
-  return { source: 'catalog', id: kind, kind, name, price };
+function toCatalogItem(
+  id: ShopItem['id'],
+  kind: ShopItem['kind'],
+  name: string,
+  price: number,
+): ShopItem {
+  return { source: 'catalog', id, kind, name, price };
 }
 
 function toCustomItem(rewardRow: UserRewardRow): ShopItem {
