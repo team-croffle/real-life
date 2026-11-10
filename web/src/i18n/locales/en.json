@@ -215,9 +215,11 @@
     "toastDeleted": "Reward deleted"
   },
   "stats": {
+    "characterName": "{name}'s character",
+    "level": "Lv.{level}",
     "statusLethargy": "Status effect: Lethargy",
     "loadError": "Could not load stats",
-    "progressLoadError": "Could not load the status effect",
+    "progressLoadError": "Could not load your progress",
     "retry": "Try again"
   },
   "jobChange": {
