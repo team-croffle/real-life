@@ -12,7 +12,7 @@ A web app where you register to-dos as quests and receive gold and XP when you c
 4. XP is deducted only down to 0 within the current level, and the level never drops. Why: to avoid losing levels.
 5. Days are counted on the Seoul calendar. Why: to match the day the user actually lives.
 6. After a Google account is created, or after a session is created, the server checks: only when the user exists, the email is not verified yet, and a Google account is linked, it marks the email verified and clears the password of the email (credential) account. It does not check whether a password exists. Why: to stop someone who signed up first with an unverified email from later getting into that account.
-7. A wallet entry stores a kind, a gold amount and a ticket count. The cause is a quest id or a boss id. Deleting a quest clears the quest id. XP is not stored on the entry. Kinds include completion, penalty, post-hoc deduction, `boss_clear`, `boss_fail` and `boss_abandon`.
+7. A wallet entry stores a kind, a gold amount and a ticket count. The cause is a quest id or a boss id. A purchase stores the reward name instead, with no quest or boss id. Deleting a quest clears the quest id. XP is not stored on the entry. Kinds include completion, penalty, post-hoc deduction, `boss_clear`, `boss_fail`, `boss_abandon` and `purchase`.
 8. Sign-in is Better Auth, and sessions are stored in the `session` table.
 
 ## System (development)
@@ -52,7 +52,10 @@ quests/                         every quest rule
   quest-calendar.ts             Seoul date helpers. Calendar-day functions are re-exported from shared
   monster-view.ts               map a monster row and a task status to the list fields
   monster-retry.service.ts      requeue a failed monster task for a quest, a routine or a boss. A quest a routine wrote retries the routine task
-wallet/                         balance, history, post-hoc deduction
+wallet/                         balance, history, post-hoc deduction, purchase
+shop/                           catalog list, custom rewards, purchase
+  shop.controller.ts            GET /api/shop, POST/PATCH/DELETE /api/shop/rewards, POST /api/shop/purchases
+  shop.service.ts               catalog from shared constants; custom rows in user_rewards; purchase deducts gold only when the balance is enough
 progress/                       level, XP, titles, streak, gacha tickets
 stats/                          stamina, intellect and sense stored on progress at completion
 job-change/                     job change
@@ -82,6 +85,7 @@ quest-penalty.ts      penalty amounts, gold and XP floors
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
   monsters.ts         eight monster kinds, picture keys and list statuses
   bosses.ts           eight boss kinds, picture keys, active cap of 3, placeholder reward 10 and penalty 5 per HP
+  shop.ts             five kinds, catalog names and placeholder prices, custom cap 20, price 1–99,999
 boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
 boss-reward.ts        80% clear line, clear reward and fail penalty, with no job or streak multiplier
 quest-calendar.ts     Seoul calendar-day helpers. The server re-exports them; the web uses them to preview boss HP
@@ -91,6 +95,7 @@ types/                response types exchanged by the server and the web
   boss.ts           boss list item, including subquests on GET /api/bosses and boss plus bossStatus on unseen
   routine.ts        routine list item
   quest-plan.ts     suggested plan: subquests, times, HP
+  shop.ts           catalog and custom shop items
 ```
 
 ### Web (`web/src/`)
@@ -126,6 +131,7 @@ Main call relations:
 - A quest completion calls settlement, then adds gold to the wallet. A subquest also cuts the boss HP by the difficulty score.
 - Settlement deducts gold for missed quests, then judges bosses whose due date is already past.
 - A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
+- A shop purchase deducts gold when the balance is enough. It does not go into debt. The entry kind is `purchase`, with the reward name at that time. There is no inventory.
 
 ## Routine spawn
 

@@ -123,11 +123,27 @@ XP only goes down to 0 within the current level, and the level never drops. Gold
 
 ## Wallet and debt
 
-The wallet shows the balance and the history. Each entry has a kind, a gold amount and a ticket count. The cause is a quest id or a boss id. Deleting a quest clears the quest id. XP is not stored on the entry. Kinds include completion, penalty, post-hoc deduction, boss clear, boss fail and boss abandon.
+The wallet shows the balance and the history. Each entry has a kind, a gold amount and a ticket count. The cause is a quest id or a boss id. A purchase stores the reward name instead, with no quest or boss id. Deleting a quest clears the quest id. XP is not stored on the entry. Kinds include completion, penalty, post-hoc deduction, boss clear, boss fail, boss abandon and purchase.
 
 Gold can go down to -30. That is **debt**. Debt is not paid back separately; it fills up as the next rewards come in. No critical hits happen while in debt.
 
 On a day you gave in and enjoyed a reward before buying it in the shop, you take the gold off yourself with a **post-hoc deduction**. It takes an amount only, and refuses an amount that would go past the debt limit.
+
+## Shop
+
+Gold buys a real-life reward. Buying deducts the gold and stops there; there is no inventory. A purchase is allowed only when the balance is at least the price. It does not go into debt.
+
+The catalog is five items, the same for everyone, not stored in the database. Prices are placeholders, before balance:
+
+| Item                     | Gold |
+| ------------------------ | ---- |
+| 게임 플레이권 1시간      | 100  |
+| 유튜브/영상 시청권 1시간 | 100  |
+| 디저트 / 커피 구매권     | 300  |
+| 배달음식 주문권          | 500  |
+| 카페 / 영화권            | 1000 |
+
+You can register up to 20 of your own rewards. A name is 1–50 characters. The kind is one of the five catalog kinds. The price is 1–99,999 gold. The suggested price is the catalog price of that kind. AI does not set it.
 
 ## Levels, titles and stats
 
@@ -166,6 +182,7 @@ real-life/
 │   │   ├── auth/          # sign-up, sign-in, email verification, onboarding, account deletion (Better Auth)
 │   │   ├── quests/        # deadline quests, routines, completion, check today, penalty settlement
 │   │   ├── wallet/        # balance, history, debt, post-hoc deduction
+│   │   ├── shop/          # catalog, custom rewards, purchase
 │   │   ├── progress/      # level, XP, titles, streak, gacha tickets
 │   │   ├── stats/         # stat totals
 │   │   ├── job-change/    # job change
