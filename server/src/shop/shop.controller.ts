@@ -49,6 +49,7 @@ export class ShopController {
   }
 
   @Post('purchases')
+  @HttpCode(200)
   purchase(
     @Session() session: UserSession,
     @Body() dto: CreateShopPurchaseDto,
