@@ -131,7 +131,8 @@
       "employment": "취업 보상 (예전)",
       "boss_clear": "보스 처치",
       "boss_fail": "보스 실패",
-      "boss_abandon": "보스 포기"
+      "boss_abandon": "보스 포기",
+      "purchase": "구매"
     },
     "postHoc": {
       "title": "사후 차감",

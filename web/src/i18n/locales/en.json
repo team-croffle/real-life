@@ -131,7 +131,8 @@
       "employment": "Job reward (legacy)",
       "boss_clear": "Boss defeated",
       "boss_fail": "Boss failed",
-      "boss_abandon": "Boss abandoned"
+      "boss_abandon": "Boss abandoned",
+      "purchase": "Purchase"
     },
     "postHoc": {
       "title": "Self-reported deduction",

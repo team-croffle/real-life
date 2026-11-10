@@ -1,6 +1,6 @@
 import { WALLET_ENTRY_KINDS } from '@nest-vue/shared';
 import { sql } from 'drizzle-orm';
-import { check, index, integer, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { bosses } from './bosses';
 import { quests } from './quests';
@@ -33,6 +33,8 @@ export const walletEntries = pgTable(
     questId: uuid().references(() => quests.id, { onDelete: 'set null' }),
     /** 이 내역을 만든 보스. 퀘스트 원인이면 비운다. 보스가 지워지면 비워진다. */
     bossId: uuid().references(() => bosses.id, { onDelete: 'set null' }),
+    /** 구매 당시 보상 이름. 구매가 아니면 비운다. */
+    purchasedName: text(),
     createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => [
