@@ -162,6 +162,13 @@
       "when": 1794297029696,
       "tag": "0022_shop",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794310466578,
+      "tag": "0023_shop_kinds",
+      "breakpoints": true
     }
   ]
 }
