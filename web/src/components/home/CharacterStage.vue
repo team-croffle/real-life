@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import type { Progress } from '@nest-vue/shared';
+import type { JobClass, Progress } from '@nest-vue/shared';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import CharacterFigure from '@/components/character/CharacterFigure.vue';
+
 const props = defineProps<{
+  jobClass: JobClass | null;
   jobLabel: string;
   progress: Progress | null;
 }>();
@@ -46,6 +49,8 @@ const xpWidth = computed(() => {
 const statusLabel = computed(() =>
   props.progress?.statusEffect === 'lethargy' ? t('home.lethargy') : '',
 );
+
+const lethargy = computed(() => props.progress?.statusEffect === 'lethargy');
 </script>
 
 <template>
@@ -53,7 +58,10 @@ const statusLabel = computed(() =>
     <div class="relative h-[228px]">
       <div class="bg-stage absolute inset-x-0 top-0 h-[62%]" />
       <div class="bg-auth-stage absolute inset-x-0 bottom-0 h-[38%]" />
-      <div class="relative flex h-full flex-col items-center justify-end pb-5">
+      <div
+        v-if="titleText || statusLabel"
+        class="absolute inset-x-0 top-3 z-10 flex flex-col items-center"
+      >
         <p
           v-if="titleText"
           class="bg-surface border-border text-secondary-foreground rounded-full border px-3 py-1 text-[11px] font-bold"
@@ -62,15 +70,14 @@ const statusLabel = computed(() =>
         </p>
         <p
           v-if="statusLabel"
-          class="bg-surface border-border text-destructive mt-2 rounded-full border px-3 py-1 text-[11px] font-bold"
+          class="bg-surface border-border text-destructive rounded-full border px-3 py-1 text-[11px] font-bold"
+          :class="titleText ? 'mt-2' : ''"
         >
           {{ statusLabel }}
         </p>
-        <div
-          class="character-image border-border bg-surface/80 mt-3 size-[104px] rounded-[28px] border"
-          role="img"
-          :aria-label="t('home.characterLabel')"
-        />
+      </div>
+      <div class="relative flex h-full flex-col items-center justify-end pb-3">
+        <CharacterFigure class="h-[140px]" :job-class="jobClass" :lethargy="lethargy" />
       </div>
     </div>
     <div class="px-4 pt-3 pb-4">

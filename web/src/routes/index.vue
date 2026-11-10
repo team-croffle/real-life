@@ -327,7 +327,11 @@ onUnmounted(() => {
       </div>
 
       <div class="grid items-start gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.85fr)]">
-        <CharacterStage :job-label="jobLabel" :progress="progress" />
+        <CharacterStage
+          :job-class="user?.jobClass ?? null"
+          :job-label="jobLabel"
+          :progress="progress"
+        />
         <SummaryCard :stats="stats" :balance="balance" :progress="progress" />
       </div>
 
