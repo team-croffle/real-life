@@ -85,7 +85,7 @@ quest-penalty.ts      penalty amounts, gold and XP floors
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
   monsters.ts         eight monster kinds, picture keys and list statuses
   bosses.ts           eight boss kinds, picture keys, active cap of 3, placeholder reward 10 and penalty 5 per HP
-  shop.ts             five kinds, catalog names and placeholder prices, custom cap 20, price 1–99,999
+  shop.ts             five kinds (hobby, rest, food, outing, shopping), suggested prices per kind, catalog ids and placeholder prices, custom cap 20, price 1–99,999
 boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
 boss-reward.ts        80% clear line, clear reward and fail penalty, with no job or streak multiplier
 quest-calendar.ts     Seoul calendar-day helpers. The server re-exports them; the web uses them to preview boss HP
@@ -101,14 +101,17 @@ types/                response types exchanged by the server and the web
 ### Web (`web/src/`)
 
 ```
-routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, job, sign-up/sign-in/onboarding
-components/    a folder per page (home, quest, boss, wallet, stats, job, settings, auth) and shared ui/
+routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, shop, job, sign-up/sign-in/onboarding
+components/    a folder per page (home, quest, boss, wallet, shop, stats, job, settings, auth) and shared ui/
   boss/BossRegisterDialog.vue    main-quest plan and confirm
   boss/BossResultDialog.vue      unseen clear or fail
   quest/MonsterImage.vue         /monsters/{imageKey}.svg or /bosses/{imageKey}.svg, then /fallback/unknown.svg
   quest/MonsterViewDialog.vue    monster name, picture and description
   quest/QuestHistoryPager.vue    numbered pages; size 5, 10, 15 or 20, default 20
-lib/           server calls (quests, bosses, unseenBosses, wallet, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings
+  shop/RewardFormDialog.vue      create or edit a custom reward
+  shop/ShopConfirmDialog.vue     confirm a purchase or a delete
+  shop/ShopItemCard.vue          one catalog or custom item
+lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings
 composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
