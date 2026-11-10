@@ -178,6 +178,7 @@
     "toastShortGold": "Not enough gold",
     "createTitle": "Register reward",
     "editTitle": "Edit reward",
+    "add": "Add",
     "save": "Save",
     "kindLabel": "Kind",
     "kindExample": "e.g. {example}",

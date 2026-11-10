@@ -36,7 +36,7 @@ const error = ref('');
 
 const isEdit = computed(() => props.reward !== null);
 const heading = computed(() => (isEdit.value ? t('shop.editTitle') : t('shop.createTitle')));
-const submitLabel = computed(() => (isEdit.value ? t('shop.save') : t('shop.register')));
+const submitLabel = computed(() => (isEdit.value ? t('shop.save') : t('shop.add')));
 
 function resetForm(): void {
   const reward = props.reward;
@@ -135,6 +135,7 @@ async function onSubmit(): Promise<void> {
     />
     <form
       class="bg-surface relative z-10 max-h-[80vh] w-full max-w-[440px] overflow-y-auto rounded-[22px] p-[26px] shadow-xl"
+      novalidate
       @submit.prevent="onSubmit"
     >
       <div class="mb-[18px] flex items-center justify-between">

@@ -178,6 +178,7 @@
     "toastShortGold": "골드가 부족해요",
     "createTitle": "보상 등록",
     "editTitle": "보상 수정",
+    "add": "등록",
     "save": "저장",
     "kindLabel": "종류",
     "kindExample": "예: {example}",
