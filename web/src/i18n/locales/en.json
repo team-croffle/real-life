@@ -167,7 +167,15 @@
     "customEmpty": "You have not registered a reward yet. Use [Register reward] to make your own.",
     "price": "{amount} G",
     "buy": "Buy",
-    "shortGold": "Not enough gold"
+    "shortGold": "Not enough gold",
+    "cancel": "Cancel",
+    "buyTitle": "Buy \"{name}\"?",
+    "buyBody": "A purchase cannot be undone.",
+    "buyDelta": "−{amount} G",
+    "buyBalance": "{before} G → {after} G",
+    "buyFailed": "Could not buy this. Please try again.",
+    "toastBought": "Purchased: {name}",
+    "toastShortGold": "Not enough gold"
   },
   "stats": {
     "statusLethargy": "Status effect: Lethargy",
