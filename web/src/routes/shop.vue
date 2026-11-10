@@ -128,6 +128,7 @@ async function confirmBuy(): Promise<void> {
     if (leftShop) {
       return;
     }
+    goldGeneration += 1;
     gold.value = next.balance;
     goldState.value = 'ready';
     buyTarget.value = null;
@@ -295,7 +296,7 @@ onUnmounted(() => {
           {{ t('shop.retry') }}
         </Button>
       </div>
-      <div v-else-if="gold !== null" class="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div v-else class="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
         <ShopItemCard
           v-for="item in catalogItems"
           :key="item.id"
@@ -342,7 +343,7 @@ onUnmounted(() => {
       >
         {{ t('shop.customEmpty') }}
       </div>
-      <div v-else-if="gold !== null" class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <ShopItemCard
           v-for="item in customItems"
           :key="item.id"
