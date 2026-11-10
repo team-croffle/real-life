@@ -138,6 +138,43 @@ export class WalletService {
     return amount === 0 ? walletRow.balance : nextBalance;
   }
 
+  /** 보유 골드 안에서만 깎는다. 모자라면 400. 외상 한도까지는 내려가지 않는다. */
+  async applyPurchase(
+    tx: DrizzleTx,
+    userId: string,
+    price: number,
+    purchasedName: string,
+  ): Promise<number> {
+    await tx.insert(wallets).values({ userId }).onConflictDoNothing();
+
+    const [walletRow] = await tx
+      .select({ balance: wallets.balance })
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .for('update');
+
+    if (!walletRow) {
+      throw new InternalServerErrorException('wallet row missing after insert');
+    }
+
+    if (walletRow.balance < price) {
+      throw new BadRequestException('insufficient gold');
+    }
+
+    const nextBalance = walletRow.balance - price;
+    await tx.insert(walletEntries).values({
+      userId,
+      amount: -price,
+      tickets: 0,
+      kind: 'purchase',
+      questId: null,
+      bossId: null,
+      purchasedName,
+    });
+    await tx.update(wallets).set({ balance: nextBalance }).where(eq(wallets.userId, userId));
+    return nextBalance;
+  }
+
   /** 외상 한도까지만 깎는다. 적용액이 0이면 내역을 넣지 않고 잔액도 바꾸지 않는다. */
   async applyClampedPenalty(
     tx: DrizzleTx,
