@@ -8,6 +8,7 @@
     "quests": "Quests",
     "bosses": "Bosses",
     "stats": "Stats",
+    "shop": "Shop",
     "wallet": "Wallet",
     "job": "Job",
     "account": "Account",
@@ -153,6 +154,20 @@
     "prev": "Previous",
     "next": "Next",
     "page": "{page} / {totalPages}"
+  },
+  "shop": {
+    "loadError": "Could not load the shop",
+    "retry": "Try again",
+    "goldLabel": "Gold",
+    "goldAmount": "{amount} G",
+    "catalogTitle": "Small everyday treats",
+    "customTitle": "My rewards",
+    "customCount": "{count}/{max}",
+    "register": "Register reward",
+    "customEmpty": "You have not registered a reward yet. Use [Register reward] to make your own.",
+    "price": "{amount} G",
+    "buy": "Buy",
+    "shortGold": "Not enough gold"
   },
   "stats": {
     "statusLethargy": "Status effect: Lethargy",
