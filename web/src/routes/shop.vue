@@ -5,10 +5,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AppShell from '@/components/layouts/AppShell.vue';
+import ShopConfirmDialog from '@/components/shop/ShopConfirmDialog.vue';
 import ShopItemCard from '@/components/shop/ShopItemCard.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
-import { getShop } from '@/lib/shop';
+import { createShopPurchase, getShop } from '@/lib/shop';
 import { getWallet } from '@/lib/wallet';
 
 type SectionState = 'loading' | 'ready' | 'error';
@@ -19,6 +20,12 @@ const items = ref<ShopItem[]>([]);
 const shopState = ref<SectionState>('loading');
 const gold = ref<number | null>(null);
 const goldState = ref<SectionState>('loading');
+
+const buyTarget = ref<ShopItem | null>(null);
+const buyPending = ref(false);
+const buyError = ref('');
+const toast = ref('');
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 let shopGeneration = 0;
 let goldGeneration = 0;
@@ -74,10 +81,72 @@ function reload(): void {
   void loadGold();
 }
 
+function showToast(message: string): void {
+  toast.value = message;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.value = '';
+  }, 2400);
+}
+
+function openBuy(item: ShopItem): void {
+  if (gold.value === null || gold.value < item.price) {
+    return;
+  }
+  buyTarget.value = item;
+  buyPending.value = false;
+  buyError.value = '';
+}
+
+function closeBuy(): void {
+  if (buyPending.value) {
+    return;
+  }
+  buyTarget.value = null;
+  buyError.value = '';
+}
+
+async function confirmBuy(): Promise<void> {
+  const item = buyTarget.value;
+  if (!item || buyPending.value) {
+    return;
+  }
+  buyPending.value = true;
+  buyError.value = '';
+  try {
+    const next = await createShopPurchase({ id: item.id });
+    if (leftShop) {
+      return;
+    }
+    gold.value = next.balance;
+    goldState.value = 'ready';
+    buyTarget.value = null;
+    showToast(t('shop.toastBought', { name: item.name }));
+  } catch (cause) {
+    if (leftShop) {
+      return;
+    }
+    buyPending.value = false;
+    if (cause instanceof ApiError && cause.status === 401) {
+      return;
+    }
+    if (cause instanceof ApiError && cause.status === 400) {
+      buyTarget.value = null;
+      showToast(t('shop.toastShortGold'));
+      void loadGold();
+      return;
+    }
+    buyError.value = t('shop.buyFailed');
+    return;
+  }
+  buyPending.value = false;
+}
+
 onMounted(reload);
 
 onUnmounted(() => {
   leftShop = true;
+  clearTimeout(toastTimer);
 });
 </script>
 
@@ -135,7 +204,13 @@ onUnmounted(() => {
         </Button>
       </div>
       <div v-else-if="gold !== null" class="mb-7 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <ShopItemCard v-for="item in catalogItems" :key="item.id" :item="item" :gold="gold" />
+        <ShopItemCard
+          v-for="item in catalogItems"
+          :key="item.id"
+          :item="item"
+          :gold="gold"
+          @buy="openBuy(item)"
+        />
       </div>
 
       <div class="mb-3.5 flex items-center justify-between gap-3">
@@ -171,8 +246,35 @@ onUnmounted(() => {
         {{ t('shop.customEmpty') }}
       </div>
       <div v-else-if="gold !== null" class="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <ShopItemCard v-for="item in customItems" :key="item.id" :item="item" :gold="gold" />
+        <ShopItemCard
+          v-for="item in customItems"
+          :key="item.id"
+          :item="item"
+          :gold="gold"
+          @buy="openBuy(item)"
+        />
       </div>
     </div>
+
+    <ShopConfirmDialog
+      v-if="buyTarget && gold !== null"
+      :title="t('shop.buyTitle', { name: buyTarget.name })"
+      :body="t('shop.buyBody')"
+      :confirm-label="t('shop.buy')"
+      :pending="buyPending"
+      :error="buyError"
+      :price="buyTarget.price"
+      :before-gold="gold"
+      :after-gold="gold - buyTarget.price"
+      @cancel="closeBuy"
+      @confirm="confirmBuy"
+    />
+
+    <p
+      v-if="toast"
+      class="bg-foreground text-background fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full px-5 py-2.5 text-[12.5px] font-semibold md:bottom-8"
+    >
+      {{ toast }}
+    </p>
   </AppShell>
 </template>

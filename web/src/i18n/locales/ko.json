@@ -167,7 +167,15 @@
     "customEmpty": "아직 등록한 보상이 없어요. [보상 등록]으로 나만의 보상을 만들어 보세요.",
     "price": "{amount} G",
     "buy": "구매",
-    "shortGold": "골드 부족"
+    "shortGold": "골드 부족",
+    "cancel": "취소",
+    "buyTitle": "\"{name}\"을(를) 살까요?",
+    "buyBody": "산 보상은 되돌릴 수 없어요.",
+    "buyDelta": "−{amount} G",
+    "buyBalance": "보유 {before} G → {after} G",
+    "buyFailed": "구매하지 못했어요. 잠시 후 다시 시도해 주세요.",
+    "toastBought": "구매 완료: {name}",
+    "toastShortGold": "골드가 부족해요"
   },
   "stats": {
     "statusLethargy": "상태이상: 무기력",
