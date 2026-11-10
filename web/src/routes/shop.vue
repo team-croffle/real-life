@@ -5,6 +5,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AppShell from '@/components/layouts/AppShell.vue';
+import RewardFormDialog from '@/components/shop/RewardFormDialog.vue';
 import ShopConfirmDialog from '@/components/shop/ShopConfirmDialog.vue';
 import ShopItemCard from '@/components/shop/ShopItemCard.vue';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,8 @@ const goldState = ref<SectionState>('loading');
 const buyTarget = ref<ShopItem | null>(null);
 const buyPending = ref(false);
 const buyError = ref('');
+const formOpen = ref(false);
+const formReward = ref<ShopItem | null>(null);
 const toast = ref('');
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -36,7 +39,9 @@ const customItems = computed(() => items.value.filter((item) => item.source === 
 
 async function loadShop(): Promise<void> {
   const generation = ++shopGeneration;
-  shopState.value = 'loading';
+  if (shopState.value !== 'ready') {
+    shopState.value = 'loading';
+  }
   try {
     const next = await getShop();
     if (generation !== shopGeneration || leftShop) {
@@ -142,6 +147,21 @@ async function confirmBuy(): Promise<void> {
   buyPending.value = false;
 }
 
+function openCreate(): void {
+  formReward.value = null;
+  formOpen.value = true;
+}
+
+function closeForm(): void {
+  formOpen.value = false;
+  formReward.value = null;
+}
+
+function onRewardSaved(): void {
+  showToast(formReward.value ? t('shop.toastUpdated') : t('shop.toastCreated'));
+  void loadShop();
+}
+
 onMounted(reload);
 
 onUnmounted(() => {
@@ -220,7 +240,12 @@ onUnmounted(() => {
             {{ t('shop.customCount', { count: customItems.length, max: USER_REWARDS_MAX }) }}
           </span>
         </h2>
-        <Button type="button" size="sm" class="w-auto gap-1.5 rounded-full px-3.5">
+        <Button
+          type="button"
+          size="sm"
+          class="w-auto gap-1.5 rounded-full px-3.5"
+          @click="openCreate"
+        >
           <Plus class="size-3" />
           {{ t('shop.register') }}
         </Button>
@@ -255,6 +280,13 @@ onUnmounted(() => {
         />
       </div>
     </div>
+
+    <RewardFormDialog
+      v-if="formOpen"
+      :reward="formReward"
+      @close="closeForm"
+      @saved="onRewardSaved"
+    />
 
     <ShopConfirmDialog
       v-if="buyTarget && gold !== null"

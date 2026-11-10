@@ -175,7 +175,36 @@
     "buyBalance": "보유 {before} G → {after} G",
     "buyFailed": "구매하지 못했어요. 잠시 후 다시 시도해 주세요.",
     "toastBought": "구매 완료: {name}",
-    "toastShortGold": "골드가 부족해요"
+    "toastShortGold": "골드가 부족해요",
+    "createTitle": "보상 등록",
+    "editTitle": "보상 수정",
+    "save": "저장",
+    "kindLabel": "종류",
+    "kindExample": "예: {example}",
+    "kinds": {
+      "hobby": "취미·놀이",
+      "rest": "쉬기",
+      "food": "음식",
+      "outing": "약속·나들이",
+      "shopping": "쇼핑"
+    },
+    "kindExamples": {
+      "hobby": "게임, 영상, 웹툰",
+      "rest": "늦잠, 낮잠, 멍때리기",
+      "food": "디저트, 커피, 배달",
+      "outing": "친구, 영화, 카페",
+      "shopping": "사고 싶던 물건"
+    },
+    "nameLabel": "이름",
+    "namePlaceholder": "예: 친구랑 보드게임 카페",
+    "nameRequired": "이름을 적어 주세요",
+    "priceLabel": "가격",
+    "priceHint": "종류를 고르면 추천 가격이 채워져요. 1~99,999 G 사이로 바꿀 수 있어요.",
+    "priceInvalid": "가격은 1~99,999 G 사이 정수로 적어 주세요",
+    "limitReached": "보상은 20개까지 등록할 수 있어요",
+    "saveFailed": "보상을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
+    "toastCreated": "보상을 등록했어요",
+    "toastUpdated": "보상을 고쳤어요"
   },
   "stats": {
     "statusLethargy": "상태이상: 무기력",

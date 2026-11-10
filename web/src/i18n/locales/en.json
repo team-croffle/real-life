@@ -175,7 +175,36 @@
     "buyBalance": "{before} G → {after} G",
     "buyFailed": "Could not buy this. Please try again.",
     "toastBought": "Purchased: {name}",
-    "toastShortGold": "Not enough gold"
+    "toastShortGold": "Not enough gold",
+    "createTitle": "Register reward",
+    "editTitle": "Edit reward",
+    "save": "Save",
+    "kindLabel": "Kind",
+    "kindExample": "e.g. {example}",
+    "kinds": {
+      "hobby": "Hobby",
+      "rest": "Rest",
+      "food": "Food",
+      "outing": "Outing",
+      "shopping": "Shopping"
+    },
+    "kindExamples": {
+      "hobby": "games, videos, webtoons",
+      "rest": "sleeping in, a nap, doing nothing",
+      "food": "dessert, coffee, delivery",
+      "outing": "friends, a movie, a cafe",
+      "shopping": "something you wanted"
+    },
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. board-game cafe with friends",
+    "nameRequired": "Enter a name",
+    "priceLabel": "Price",
+    "priceHint": "Picking a kind fills in a suggested price. You can change it between 1 and 99,999 G.",
+    "priceInvalid": "Enter a whole number between 1 and 99,999 G",
+    "limitReached": "You can register up to 20 rewards",
+    "saveFailed": "Could not save the reward. Please try again.",
+    "toastCreated": "Reward registered",
+    "toastUpdated": "Reward updated"
   },
   "stats": {
     "statusLethargy": "Status effect: Lethargy",
