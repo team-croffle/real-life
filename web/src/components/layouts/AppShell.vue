@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import {
+  Backpack,
   BarChart3,
   Briefcase,
   Home,
   ListChecks,
   Settings,
+  Sparkles,
   Store,
   Swords,
   Wallet,
@@ -29,12 +31,22 @@ interface NavItem {
   exact: boolean;
 }
 
+interface UpcomingNavItem {
+  label: string;
+  icon: Component;
+}
+
 const primaryNav: NavItem[] = [
   { to: '/', label: 'nav.home', icon: Home, exact: true },
   { to: '/quests', label: 'nav.quests', icon: ListChecks, exact: false },
   { to: '/bosses', label: 'nav.bosses', icon: Swords, exact: false },
   { to: '/stats', label: 'nav.stats', icon: BarChart3, exact: false },
   { to: '/shop', label: 'nav.shop', icon: Store, exact: false },
+];
+
+const upcomingNav: UpcomingNavItem[] = [
+  { label: 'nav.inventory', icon: Backpack },
+  { label: 'nav.gacha', icon: Sparkles },
 ];
 
 const accountNav: NavItem[] = [
@@ -86,6 +98,18 @@ async function onLogout(): Promise<void> {
           <component :is="item.icon" class="size-[18px]" />
           {{ t(item.label) }}
         </RouterLink>
+        <div
+          v-for="item in upcomingNav"
+          :key="item.label"
+          class="text-muted-foreground flex cursor-default items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-bold opacity-60"
+          aria-disabled="true"
+        >
+          <component :is="item.icon" class="size-[18px] shrink-0" />
+          <span class="min-w-0 flex-1 truncate">{{ t(item.label) }}</span>
+          <span class="bg-muted shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold">
+            {{ t('nav.comingSoon') }}
+          </span>
+        </div>
       </nav>
 
       <p class="text-muted-foreground px-3.5 pt-4 pb-1.5 text-[10px] font-bold">
