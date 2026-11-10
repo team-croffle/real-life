@@ -8,6 +8,7 @@
     "quests": "퀘스트",
     "bosses": "보스",
     "stats": "스탯",
+    "shop": "상점",
     "wallet": "지갑",
     "job": "직업",
     "account": "계정",
@@ -153,6 +154,20 @@
     "prev": "이전",
     "next": "다음",
     "page": "{page} / {totalPages}"
+  },
+  "shop": {
+    "loadError": "상점을 불러오지 못했어요",
+    "retry": "다시 시도",
+    "goldLabel": "보유 골드",
+    "goldAmount": "{amount} G",
+    "catalogTitle": "작은 일상의 즐거움",
+    "customTitle": "내가 등록한 보상",
+    "customCount": "{count}/{max}",
+    "register": "보상 등록",
+    "customEmpty": "아직 등록한 보상이 없어요. [보상 등록]으로 나만의 보상을 만들어 보세요.",
+    "price": "{amount} G",
+    "buy": "구매",
+    "shortGold": "골드 부족"
   },
   "stats": {
     "statusLethargy": "상태이상: 무기력",
