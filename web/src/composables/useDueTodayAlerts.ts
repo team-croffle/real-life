@@ -1,13 +1,13 @@
 import type { QuestListItem } from '@nest-vue/shared';
 import { computed, ref, type Ref } from 'vue';
 
+import { appCalendarDate } from '@/lib/appCalendar';
 import { getQuests } from '@/lib/quests';
-import { seoulToday } from '@/lib/seoulDate';
 
 const items: Ref<QuestListItem[]> = ref([]);
 let loadGeneration = 0;
 
-export function isDueTodayOpen(item: QuestListItem, today = seoulToday()): boolean {
+export function isDueTodayOpen(item: QuestListItem, today = appCalendarDate()): boolean {
   return item.endsOn === today && !item.completed;
 }
 

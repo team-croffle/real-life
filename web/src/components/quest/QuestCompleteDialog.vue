@@ -5,8 +5,8 @@ import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { appCalendarDate } from '@/lib/appCalendar';
 import type { QuestListItem } from '@/lib/quests';
-import { seoulToday } from '@/lib/seoulDate';
 import { preloadSounds } from '@/lib/sound';
 
 const props = defineProps<{
@@ -29,7 +29,7 @@ onMounted(preloadSounds);
 
 const steady = computed(() => props.item.pace === 'steady');
 
-const sameDayDeadline = computed(() => steady.value && props.item.createdOn === seoulToday());
+const sameDayDeadline = computed(() => steady.value && props.item.createdOn === appCalendarDate());
 
 const zeroReward = computed(
   () => steady.value && props.item.expectedGold === 0 && props.item.expectedXp === 0,

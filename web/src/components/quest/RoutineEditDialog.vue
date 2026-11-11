@@ -20,8 +20,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
+import { sortWeekdays } from '@/lib/appCalendar';
 import { updateRoutine } from '@/lib/quests';
-import { sortWeekdays } from '@/lib/seoulDate';
 
 const props = defineProps<{
   routine: Routine;
