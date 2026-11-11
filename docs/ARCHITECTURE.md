@@ -33,10 +33,21 @@ A web app where you register to-dos as quests and receive gold and XP when you c
 
 ```
 auth/                           sign-up, sign-in (Better Auth), email verification, onboarding, account deletion
-  auth.ts                       Better Auth configuration
+  auth.ts                       Better Auth configuration. Session create is refused when the account is suspended
+  account-status.guard.ts       global guard that blocks app APIs for a suspended account
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
+admin/                          admin users, announcements, one reward event
+  admin.guard.ts                session role must be admin
+  admin-users.controller.ts     GET /api/admin/users, POST suspend/unsuspend, DELETE
+  admin-users.service.ts        list (email/nickname search, page size 20), suspend (clears sessions), unsuspend, delete (same cleanup as withdraw)
+  admin-announcements.controller.ts  GET/POST /api/admin/announcements, PATCH/DELETE /:id
+  announcements.controller.ts   GET /api/announcements for a signed-in user
+  announcements.service.ts      title and body, trimmed, newest first
+  admin-reward-events.controller.ts  GET/PUT /api/admin/reward-events, POST /end
+  reward-events.controller.ts   GET /api/reward-events/current
+  reward-events.service.ts      one row; active multiplier for completion and list estimates
 quests/                         every quest rule
-  quests.service.ts             register a deadline quest. prepareForRead (the quest list and boss reads share it) settles, drops judged boss subroutines, then spawns. List items include bossTitle (the goal) and bossName (the boss monster name, or null). Delete is free only for an untouched quest registered today
+  quests.service.ts             register a deadline quest. prepareForRead (the quest list and boss reads share it) settles, drops judged boss subroutines, then spawns. List items include bossTitle (the goal) and bossName (the boss monster name, or null). The list estimate includes the active event multiplier. Delete is free only for an untouched quest registered today
   quests.controller.ts          POST/GET /api/quests, GET /api/quests/history, POST /api/quests/:id/monster, complete, check today, DELETE
   dto/list-history-query.dto.ts page and size for quest history and boss history. size is 5, 10, 15 or 20, default 20
   routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, POST /api/routines/:id/monster, pause, resume, DELETE
@@ -45,7 +56,7 @@ quests/                         every quest rule
   bosses.controller.ts          POST /api/bosses, GET /api/bosses, unseen, history, POST /api/bosses/:id/monster, seen, abandon
   boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines, and list bosses still in progress (with subquests), unseen results and past bosses
   boss-judgment.service.ts      judge due bosses inside settlement, abandon, mark a result seen, then drop judged subroutines before spawn
-  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress (XP and the category stat) and the quest row, cut boss HP by the difficulty score, then clear lethargy
+  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress (XP and the category stat) and the quest row, cut boss HP by the difficulty score, then clear lethargy. Gold and XP use the active event multiplier
   quest-penalty.service.ts      settle missed days. Lethargy when any quest due that day is still open
   quest-settlement.scheduler.ts at 00:01 Seoul: settle (judgment is inside it), drop judged boss subroutines, then spawn
   quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
@@ -80,14 +91,16 @@ common/filters/                 filter that turns exceptions into HTTP responses
 ### Shared (`shared/src/`)
 
 ```
-quest-completion.ts   reward table amounts, job and streak multipliers, final amount, level-up
+quest-completion.ts   reward table amounts, job, streak and event multipliers, final amount, level-up
 quest-penalty.ts      penalty amounts, gold and XP floors
+account-status.ts     whether a suspend is still in force, and the ACCOUNT_SUSPENDED body
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
+  admin.ts            suspend reason max, announcement lengths, event multiplier range, admin page size
   monsters.ts         eight monster kinds, picture keys and list statuses
   bosses.ts           eight boss kinds, picture keys, active cap of 3, placeholder reward 10 and penalty 5 per HP
   shop.ts             five kinds (hobby, rest, food, outing, shopping), suggested prices per kind, catalog ids and placeholder prices, custom cap 20, price 1–99,999
 boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
-boss-reward.ts        80% clear line, clear reward and fail penalty, with no job or streak multiplier
+boss-reward.ts        80% clear line, clear reward and fail penalty, with no job, streak or event multiplier
 quest-calendar.ts     Seoul calendar-day helpers. The server re-exports them; the web uses them to preview boss HP
 types/                response types exchanged by the server and the web
   quest.ts            quest list item: bossTitle is the goal, bossName is the boss monster name or null
@@ -96,6 +109,7 @@ types/                response types exchanged by the server and the web
   routine.ts        routine list item
   quest-plan.ts     suggested plan: subquests, times, HP
   shop.ts           catalog and custom shop items
+  admin.ts          admin user list item, announcement, reward event
 ```
 
 ### Web (`web/src/`)
@@ -134,7 +148,8 @@ Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missin
 
 Main call relations:
 
-- A quest completion calls settlement, then adds gold to the wallet. A subquest also cuts the boss HP by the difficulty score.
+- A quest completion calls settlement, then adds gold to the wallet. A subquest also cuts the boss HP by the difficulty score. If a reward event is active, that multiplier is applied to the completion gold and XP.
+- Sign-in and app APIs are refused while the account is suspended. The body includes `ACCOUNT_SUSPENDED`, the end time and the reason.
 - Settlement deducts gold for missed quests, then judges bosses whose due date is already past.
 - A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
 - A shop purchase deducts gold when the balance is enough. It does not go into debt. The entry kind is `purchase`, with the reward name at that time. There is no inventory.
@@ -176,7 +191,7 @@ After that commit, one task is enqueued for the boss. The task kind stays `monst
 
 Judgment runs at the end of settlement, after the missed days are applied and before that transaction commits. Settlement runs at 00:01 Seoul, when the home page opens, right before a completion, and on `POST /api/quest-penalties/settle`. A boss whose due date is yesterday or earlier, and whose result is still empty, is judged once. Dealt HP of 80% or more of max HP is `cleared`. Anything less is `failed`. The boss row stays, and the result is stored on it. `result_seen_at` is when the result was opened. A clear or a failure leaves it empty. An abandon fills it in the same write as the result. `xp_change` is the XP applied on that judgment. A clear stores the XP granted, and a failure or an abandon stores the XP actually taken off, stopped at 0 inside the current level. Wallet entries do not record XP, so it stays on the boss row.
 
-Clear gold and XP are the dealt HP times 10. Clear tickets are 1, plus 1 for every 40 dealt HP, and they stop at 5. A level-up from that XP adds its own tickets on the same wallet entry. The entry kind is `boss_clear`, with the boss id and no quest id. Clear XP is also added to the boss category's stat. Failure gold and XP are the HP still short of that 80% line times 5. The entry kind is `boss_fail`. Abandon uses the same penalty, and the kind is `boss_abandon`. The job multiplier and the streak multiplier are not applied. 10 and 5 are placeholders, before balance. Gold still stops at -30 and XP at 0 within the current level. A clear can raise the level. A failure only lowers XP inside the current level.
+Clear gold and XP are the dealt HP times 10. Clear tickets are 1, plus 1 for every 40 dealt HP, and they stop at 5. A level-up from that XP adds its own tickets on the same wallet entry. The entry kind is `boss_clear`, with the boss id and no quest id. Clear XP is also added to the boss category's stat. Failure gold and XP are the HP still short of that 80% line times 5. The entry kind is `boss_fail`. Abandon uses the same penalty, and the kind is `boss_abandon`. The job multiplier, the streak multiplier and the event multiplier are not applied. 10 and 5 are placeholders, before balance. Gold still stops at -30 and XP at 0 within the current level. A clear can raise the level. A failure only lowers XP inside the current level.
 
 `POST /api/bosses/:id/abandon` answers 200. It leaves the boss row and sets the result to `abandoned`. It deletes the subroutines and the subquests that are not finished. A boss that already has a result is 409. A missing id, or another user's boss, is 404.
 
@@ -232,9 +247,9 @@ With a streak of 3 days or more, the streak multiplier also applies to gold and 
 
 With a note, 10% is added to that result. Without one, nothing is added.
 
-Gold can get a critical hit. Each completion has a 10% chance; a hit is ×2 nine times out of ten and ×3 one time in ten — 9% and 1% overall. XP is not affected. No roll happens when the balance just before completion is below 0. The job multiplier, streak multiplier, note and critical hit are all multiplied, then rounded once at the end.
+Gold can get a critical hit. Each completion has a 10% chance; a hit is ×2 nine times out of ten and ×3 one time in ten — 9% and 1% overall. XP is not affected. No roll happens when the balance just before completion is below 0. The job multiplier, streak multiplier, note, event multiplier and critical hit are all multiplied, then rounded once at the end. The event multiplier is 1 when no event is running. Penalties and boss clear, fail and abandon amounts do not use it.
 
-The completion response's `applied` holds the base amount, check-ins and elapsed days, job multiplier, streak multiplier, note bonus and critical multiplier used in the calculation.
+The completion response's `applied` holds the base amount, check-ins and elapsed days, job multiplier, streak multiplier, note bonus, event multiplier and critical multiplier used in the calculation.
 
 ### XP and levels
 

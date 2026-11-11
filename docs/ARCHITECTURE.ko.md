@@ -31,10 +31,21 @@
 
 ```
 auth/                           가입, 로그인 (Better Auth), 이메일 인증, 온보딩, 계정 삭제
-  auth.ts                       Better Auth 설정
+  auth.ts                       Better Auth 설정. 정지면 세션 생성을 거절한다
+  account-status.guard.ts       정지된 계정의 앱 API를 막는 전역 가드
   job-class.guard.ts            직업이 없는 계정의 앱 API를 막는 전역 가드
+admin/                          관리자 사용자, 공지, 보상 이벤트 하나
+  admin.guard.ts                세션 role이 admin이어야 한다
+  admin-users.controller.ts     GET /api/admin/users, POST 정지/해제, DELETE
+  admin-users.service.ts        목록(이메일·닉네임 검색, 페이지 20), 정지(세션 삭제), 해제, 삭제(탈퇴와 같은 정리)
+  admin-announcements.controller.ts  GET/POST /api/admin/announcements, PATCH/DELETE /:id
+  announcements.controller.ts   로그인한 사용자의 GET /api/announcements
+  announcements.service.ts      제목과 본문, 공백 자름, 최신순
+  admin-reward-events.controller.ts  GET/PUT /api/admin/reward-events, POST /end
+  reward-events.controller.ts   GET /api/reward-events/current
+  reward-events.service.ts      행 하나. 활성 배율은 완료와 목록 예상에 쓴다
 quests/                         퀘스트 규칙 전부
-  quests.service.ts             기한 퀘스트 등록. prepareForRead(퀘스트 목록과 보스 읽기가 같이 씀)는 정산, 판정된 보스 하위 루틴 삭제, 찍기. 목록 항목에 bossTitle(목표)과 bossName(보스 몬스터 이름, 없으면 null). 삭제(오늘 등록하고 손대지 않은 것만 공짜)
+  quests.service.ts             기한 퀘스트 등록. prepareForRead(퀘스트 목록과 보스 읽기가 같이 씀)는 정산, 판정된 보스 하위 루틴 삭제, 찍기. 목록 항목에 bossTitle(목표)과 bossName(보스 몬스터 이름, 없으면 null). 목록 예상은 활성 이벤트 배율을 넣는다. 삭제(오늘 등록하고 손대지 않은 것만 공짜)
   quests.controller.ts          POST/GET /api/quests, GET /api/quests/history, POST /api/quests/:id/monster, 완료, 오늘 체크, DELETE
   dto/list-history-query.dto.ts 퀘스트 기록과 보스 기록의 page, size. size는 5, 10, 15, 20이고 기본 20
   routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, POST /api/routines/:id/monster, 끄기, 켜기, DELETE
@@ -43,7 +54,7 @@ quests/                         퀘스트 규칙 전부
   bosses.controller.ts          POST /api/bosses, GET /api/bosses, unseen, history, POST /api/bosses/:id/monster, seen, 포기
   boss-plan.service.ts          계획을 보스, 하위 기한 퀘스트, 하위 루틴으로 확정하고, 진행 중인 보스(하위 항목 포함), 안 본 결과, 지난 보스를 조회한다
   boss-judgment.service.ts      정산 안에서 마감이 지난 보스를 판정하고, 포기하고, 결과를 봤다고 남긴 뒤, 찍기 전에 판정된 하위 루틴을 지운다
-  quest-completion.service.ts   완료: 정산 → 잠금 없이 확인 → 전투 기록 → 잠그고 다시 확인 → 지갑, 진행도(경험치와 카테고리 스탯), 퀘스트 행 갱신, 난이도 점수만큼 보스 체력을 깎은 뒤 무기력 해제
+  quest-completion.service.ts   완료: 정산 → 잠금 없이 확인 → 전투 기록 → 잠그고 다시 확인 → 지갑, 진행도(경험치와 카테고리 스탯), 퀘스트 행 갱신, 난이도 점수만큼 보스 체력을 깎은 뒤 무기력 해제. 골드와 경험치에 활성 이벤트 배율을 곱한다
   quest-penalty.service.ts      놓친 날 정산. 그날 마감인 퀘스트가 열려 있으면 무기력
   quest-settlement.scheduler.ts 서울 00:01에 정산(판정은 그 안) 뒤, 판정된 보스 하위 루틴을 지우고 오늘 퀘스트를 찍는다
   quest-crit.roller.ts          크리티컬 판정 (CRIT_FORCE)
@@ -78,14 +89,16 @@ common/filters/                 예외를 HTTP 응답으로 바꾸는 필터
 ### 공유 (`shared/src/`)
 
 ```
-quest-completion.ts   보상표 금액, 직업·연속 배율, 최종 금액, 레벨업
+quest-completion.ts   보상표 금액, 직업·연속·이벤트 배율, 최종 금액, 레벨업
 quest-penalty.ts      패널티 금액, 골드·경험치 하한
+account-status.ts     정지가 아직 유효한지, ACCOUNT_SUSPENDED 본문
 constants/            보상표, 패널티표, 크리티컬 확률, 직업과 그 밖의 상수
+  admin.ts            정지 사유 상한, 공지 길이, 이벤트 배율 범위, 관리자 페이지 크기
   monsters.ts         몬스터 8종, 그림 키, 목록 상태
   bosses.ts           보스 8종, 그림 키, 진행 상한 3, 체력당 자리값 보상 10과 패널티 5
   shop.ts             종류 5개(hobby, rest, food, outing, shopping), 종류별 추천 가격, 기본 아이템 id와 자리값 가격, 직접 등록 상한 20, 가격 1~99,999
 boss-hp.ts            횟수와 난이도 점수로 하위 퀘스트 체력
-boss-reward.ts        80% 처치선, 처치 보상과 실패 패널티. 직업·연속 배율은 없다
+boss-reward.ts        80% 처치선, 처치 보상과 실패 패널티. 직업·연속·이벤트 배율은 없다
 quest-calendar.ts     서울 달력 날짜 계산. 서버가 다시 내보내고, 웹은 보스 체력 예상에 쓴다
 types/                서버와 웹이 주고받는 응답 타입
   quest.ts            퀘스트 목록 항목. bossTitle은 목표, bossName은 보스 몬스터 이름 또는 null
@@ -94,6 +107,7 @@ types/                서버와 웹이 주고받는 응답 타입
   routine.ts        루틴 목록 항목
   quest-plan.ts     제안된 계획: 하위 퀘스트, 횟수, 체력
   shop.ts           기본·직접 등록 상점 항목
+  admin.ts          관리자 사용자 목록 항목, 공지, 보상 이벤트
 ```
 
 ### 웹 (`web/src/`)
@@ -132,7 +146,8 @@ i18n/          한국어와 영어 문구
 
 주요 호출 관계는 다음과 같다.
 
-- 퀘스트 완료는 정산을 호출한 다음 지갑에 골드를 넣는다. 하위 퀘스트면 난이도 점수만큼 보스 체력도 깎는다.
+- 퀘스트 완료는 정산을 호출한 다음 지갑에 골드를 넣는다. 하위 퀘스트면 난이도 점수만큼 보스 체력도 깎는다. 보상 이벤트가 켜져 있으면 그 배율을 완료 골드·경험치에 곱한다.
+- 정지면 로그인과 앱 API를 거절한다. 본문에 `ACCOUNT_SUSPENDED`, 끝 시각, 사유가 있다.
 - 정산은 놓친 퀘스트의 골드를 깎은 다음, 마감이 지난 보스를 판정한다.
 - 직업 변경은 지갑에 골드를 넣지 않는다. 레벨과 경험치만 1과 0으로 되돌리고, 마지막 변경 시각부터 7×24시간이 지나기 전에는 다시 바꾸지 못한다.
 - 상점 구매는 보유 골드가 가격 이상일 때만 깎는다. 외상으로 내려가지 않는다. 내역 종류는 `purchase`이고, 그때의 보상 이름을 남긴다. 보관·사용은 없다.
@@ -174,7 +189,7 @@ i18n/          한국어와 영어 문구
 
 판정은 정산의 끝에서, 놓친 날을 반영한 뒤, 그 트랜잭션이 커밋되기 전에 돈다. 정산은 서울 00:01, 홈을 열 때, 완료 직전, `POST /api/quest-penalties/settle`에서 돈다. 마감이 어제 이전이고 결과가 아직 비어 있는 보스를 한 번 판정한다. 깎은 체력이 최대 체력의 80% 이상이면 `cleared`다. 아니면 `failed`다. 보스 행은 남고, 결과는 그 행에 저장한다. `result_seen_at`은 결과를 본 시각이다. 처치와 실패는 비워 두고, 포기는 판정과 같이 채운다. `xp_change`는 그 판정에서 적용한 경험치다. 처치는 받은 경험치고, 실패와 포기는 현재 레벨 안에서 실제로 깎은 경험치다. 지갑 내역에는 경험치를 적지 않으므로 보스 행에 둔다.
 
-처치 골드와 경험치는 깎은 체력 × 10이다. 처치 뽑기권은 1장에, 깎은 체력 40마다 1장이고, 5장에서 멈춘다. 그 경험치로 레벨이 오르면 그 뽑기권도 같은 지갑 내역에 더한다. 내역 종류는 `boss_clear`이고, 보스 id가 있으며 퀘스트 id는 없다. 처치 경험치는 보스 카테고리 스탯에도 더한다. 실패 골드와 경험치는 80% 선까지 모자란 체력 × 5다. 내역 종류는 `boss_fail`이다. 포기는 같은 패널티이고, 종류는 `boss_abandon`이다. 직업 배율과 연속 배율은 곱하지 않는다. 10과 5는 자리값이며 밸런스 전이다. 골드는 -30, 경험치는 현재 레벨 안에서 0에서 멈춘다. 처치면 레벨이 오를 수 있다. 실패는 현재 레벨 안에서 경험치만 깎인다.
+처치 골드와 경험치는 깎은 체력 × 10이다. 처치 뽑기권은 1장에, 깎은 체력 40마다 1장이고, 5장에서 멈춘다. 그 경험치로 레벨이 오르면 그 뽑기권도 같은 지갑 내역에 더한다. 내역 종류는 `boss_clear`이고, 보스 id가 있으며 퀘스트 id는 없다. 처치 경험치는 보스 카테고리 스탯에도 더한다. 실패 골드와 경험치는 80% 선까지 모자란 체력 × 5다. 내역 종류는 `boss_fail`이다. 포기는 같은 패널티이고, 종류는 `boss_abandon`이다. 직업 배율, 연속 배율, 이벤트 배율은 곱하지 않는다. 10과 5는 자리값이며 밸런스 전이다. 골드는 -30, 경험치는 현재 레벨 안에서 0에서 멈춘다. 처치면 레벨이 오를 수 있다. 실패는 현재 레벨 안에서 경험치만 깎인다.
 
 `POST /api/bosses/:id/abandon`은 200이다. 보스 행을 남기고 결과를 `abandoned`로 적는다. 하위 루틴과 안 끝난 하위 퀘스트는 지운다. 이미 결과가 있는 보스는 409다. id가 없거나 내 보스가 아니면 404다.
 
@@ -230,9 +245,9 @@ i18n/          한국어와 영어 문구
 
 메모가 있으면 그 결과에 10%를 더해 반올림한다. 메모가 없으면 더하지 않는다.
 
-골드에는 크리티컬이 붙을 수 있다. 완료할 때마다 10% 확률로 터지고, 터지면 90%는 2배, 10%는 3배다. 전체로 보면 2배가 9%, 3배가 1%다. 경험치에는 적용하지 않는다. 완료 직전 잔액이 0보다 작으면 굴리지 않는다. 직업 배율, 연속 배율, 메모, 크리티컬은 각각 곱한 뒤 마지막에 한 번만 반올림한다.
+골드에는 크리티컬이 붙을 수 있다. 완료할 때마다 10% 확률로 터지고, 터지면 90%는 2배, 10%는 3배다. 전체로 보면 2배가 9%, 3배가 1%다. 경험치에는 적용하지 않는다. 완료 직전 잔액이 0보다 작으면 굴리지 않는다. 직업 배율, 연속 배율, 메모, 이벤트 배율, 크리티컬은 각각 곱한 뒤 마지막에 한 번만 반올림한다. 이벤트가 없으면 배율은 1이다. 패널티와 보스 처치·실패·포기 금액에는 쓰지 않는다.
 
-완료 응답의 `applied`에는 계산에 쓰인 기본 금액, 체크 횟수와 경과 일수, 직업 배율, 연속 배율, 메모 보너스, 크리티컬 배수가 담긴다.
+완료 응답의 `applied`에는 계산에 쓰인 기본 금액, 체크 횟수와 경과 일수, 직업 배율, 연속 배율, 메모 보너스, 이벤트 배율, 크리티컬 배수가 담긴다.
 
 ### 경험치와 레벨
 
