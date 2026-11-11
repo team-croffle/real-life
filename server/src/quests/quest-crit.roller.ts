@@ -28,9 +28,10 @@ export class QuestCritRoller {
       : QUEST_CRIT.doubleMultiplier;
   }
 
-  /** 운영 환경에서는 검증용 스위치를 무시한다. */
+  /** 개발·테스트가 아니면 검증용 스위치를 무시한다. */
   private forcedValue(): CritForce | null {
-    if (this.config.get<string>('NODE_ENV') === 'production') {
+    const nodeEnv = this.config.get<string>('NODE_ENV');
+    if (nodeEnv !== 'development' && nodeEnv !== 'test') {
       return null;
     }
     const value = this.config.get<string>('CRIT_FORCE');
