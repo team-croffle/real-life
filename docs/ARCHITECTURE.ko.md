@@ -44,7 +44,7 @@ admin/                          관리자 사용자, 공지, 보상 이벤트 �
   admin-users.service.ts        목록(이메일·닉네임 검색, 페이지 20), 정지(세션 삭제), 해제, 삭제(탈퇴와 같은 정리)
   admin-announcements.controller.ts  GET/POST /api/admin/announcements, PATCH/DELETE /:id
   announcements.controller.ts   로그인한 사용자의 GET /api/announcements
-  announcements.service.ts      제목과 본문, 공백 자름, 최신순
+  announcements.service.ts      제목과 본문, 최신순. POST·PATCH에서 sanitize-html로 h3, p, strong, ul, li, br만 남김. 남은 글자가 없으면 400. 2000자는 거른 HTML 기준. <br>은 <br />로 저장
   admin-reward-events.controller.ts  GET/PUT /api/admin/reward-events, POST /end
   reward-events.controller.ts   GET /api/reward-events/current
   reward-events.service.ts      행 하나. 활성 배율은 완료와 목록 예상에 쓴다
@@ -101,7 +101,7 @@ quest-penalty.ts      패널티 금액, 골드·경험치 하한
 account-status.ts     정지가 아직 유효한지, ACCOUNT_SUSPENDED 본문
 constants/            보상표, 패널티표, 크리티컬 확률, 직업과 그 밖의 상수
   daily-limits.ts     생성 10, 보스 1, AI 버튼 20, 429 code
-  admin.ts            정지 사유 상한, 공지 길이, 이벤트 배율 범위, 관리자 페이지 크기
+  admin.ts            정지 사유 상한, 공지 길이와 허용 태그, 이벤트 배율 범위, 관리자 페이지 크기
   monsters.ts         몬스터 8종, 그림 키, 목록 상태
   bosses.ts           보스 8종, 그림 키, 진행 상한 3, 체력당 자리값 보상 10과 패널티 5
   shop.ts             종류 5개(hobby, rest, food, outing, shopping), 종류별 추천 가격, 기본 아이템 id와 자리값 가격, 직접 등록 상한 20, 가격 1~99,999
@@ -121,9 +121,13 @@ types/                서버와 웹이 주고받는 응답 타입
 ### 웹 (`web/src/`)
 
 ```
-routes/        페이지 (파일 이름이 URL): home, quests, bosses, stats, wallet, shop, job, sign-up/sign-in/onboarding
-components/    페이지마다 폴더 (home, quest, boss, wallet, shop, stats, job, settings, auth, character)와 공통 ui/
+routes/        페이지 (파일 이름이 URL): home, quests, bosses, stats, wallet, shop, job, notices, admin, sign-up/sign-in/onboarding
+components/    페이지마다 폴더 (home, quest, boss, wallet, shop, stats, job, settings, auth, character, admin, notice)와 공통 ui/
+  layouts/AppShell.vue           앱 셸. 마운트할 때 현재 보상 이벤트를 다시 읽는다
+  layouts/AdminShell.vue         관리자 콘솔 셸. /admin. 세션 role이 admin이어야 한다
   layouts/DueTodayAlerts.vue     앱 달력 오늘 마감·미완료. GET /api/quests에서 골라 종 숫자와 목록
+  admin/AnnouncementEditor.vue   Tiptap: 제목 h3, 굵게, 목록
+  notice/NoticeDialog.vue        공지 본문을 announcementHtml로 거른다
   boss/BossRegisterDialog.vue    메인 퀘스트 계획과 확정
   boss/BossResultDialog.vue      안 본 처치·실패
   character/CharacterFigure.vue  직업마다 고양이 WebP 한 장. 무기력은 회색 70%, 발 기준 키 4% 줄이기
@@ -134,8 +138,8 @@ components/    페이지마다 폴더 (home, quest, boss, wallet, shop, stats, j
   shop/ShopConfirmDialog.vue     구매·삭제 확인
   shop/ShopItemCard.vue          기본 또는 직접 등록 한 줄
   stats/CharacterCard.vue        스탯 화면의 캐릭터, 직업, 칭호, 경험치
-lib/           서버 호출 (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), 화면용 계산 (questReward), appCalendarDate, formatAmount, 색종이, 효과음, 저장한 설정, characterAppearance (직업 → /character/*.webp)
-composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태), useDueTodayAlerts.ts (앱 달력 오늘 마감·미완료, GET /api/quests에서 고름), useVerificationResendWait.ts (가입 성공·재발송 성공 뒤 60초). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
+lib/           서버 호출 (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange, announcements, admin, rewardEvents), 화면용 계산 (questReward), announcementHtml (shared 허용 목록으로 DOMPurify), appDateTime (앱 시간대 벽시계), appCalendarDate, formatAmount, 색종이, 효과음, 저장한 설정, characterAppearance (직업 → /character/*.webp)
+composables/   useApi (서버 호출의 입구. 403 ACCOUNT_SUSPENDED이면 세션을 비우고 reason 없이 /login), useQuestBoard (퀘스트 목록, 완료와 체크 상태. 완료 뒤 현재 보상 이벤트를 다시 읽음), useCurrentRewardEvent.ts (GET /api/reward-events/current), useDueTodayAlerts.ts (앱 달력 오늘 마감·미완료, GET /api/quests에서 고름), useVerificationResendWait.ts (가입 성공·재발송 성공 뒤 60초). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
 stores/        로그인 상태와 계정 API 호출 (Pinia)
 auth/          Better Auth 클라이언트
 i18n/          한국어와 영어 문구
@@ -155,7 +159,7 @@ i18n/          한국어와 영어 문구
 주요 호출 관계는 다음과 같다.
 
 - 퀘스트 완료는 정산을 호출한 다음 지갑에 골드를 넣는다. 하위 퀘스트면 난이도 점수만큼 보스 체력도 깎는다. 보상 이벤트가 켜져 있으면 그 배율을 완료 골드·경험치에 곱한다.
-- 정지면 로그인과 앱 API를 거절한다. 본문에 `ACCOUNT_SUSPENDED`, 끝 시각, 사유가 있다.
+- 정지면 로그인과 앱 API를 거절한다. 본문에 `ACCOUNT_SUSPENDED`, 끝 시각, 사유가 있다. 웹은 그 내용을 로그인 화면에 보여 준다. 앱 API가 그 code로 403이면 세션을 비우고 reason 없이 `/login`으로 보낸다.
 - 정산은 놓친 퀘스트의 골드를 깎은 다음, 마감이 지난 보스를 판정한다.
 - 직업 변경은 지갑에 골드를 넣지 않는다. 레벨과 경험치만 1과 0으로 되돌리고, 마지막 변경 시각부터 7×24시간이 지나기 전에는 다시 바꾸지 못한다.
 - 상점 구매는 보유 골드가 가격 이상일 때만 깎는다. 외상으로 내려가지 않는다. 내역 종류는 `purchase`이고, 그때의 보상 이름을 남긴다. 보관·사용은 없다.

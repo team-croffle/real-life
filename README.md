@@ -20,15 +20,18 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **Shop** — buy real-life rewards with gold: a shared catalog and rewards you register yourself
 - **Character** — one cat picture per job, shown on home and stats. When lethargic, the cat turns grey and sinks slightly. Accessories from the gacha come later
 - **Notifications** — quests due today in Seoul that are still open show as a bell count and a list. Out-of-app alerts (due soon, a streak about to break, level-ups, friend and raid news) and turning each kind off come after the web is finished, with the mobile work
+- **Notices** — signed-in users can read notices. The body is HTML (heading h3, bold, lists). On save the server keeps only `h3`, `p`, `strong`, `ul`, `li` and `br`; if no text remains it is rejected; the 2000-character limit is on that filtered HTML (`sanitize-html` stores `<br>` as `<br />`). The user screen filters the HTML again with DOMPurify
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
-- **Admin (planned)** — manage accounts, notices and reward multipliers
+- **Admin** — an admin role can list accounts (search, 20 per page), suspend (1, 3, 7 or 30 days, or no end, plus an optional reason of up to 200 characters), unsuspend and delete. An admin account cannot be suspended or deleted. Notices can be created, edited and deleted. A reward-event multiplier is 1.0–3.0 in steps of 0.1; start and end are in the app time zone. A scheduled event can be cancelled; a running one can be ended now
 - **Mobile (planned)** — after the web is finished: use it like an app on a phone (PWA), and out-of-app web push. iPhone needs the PWA install first
 
-v0.4 (shop / character) is done. v0.5 (stabilization) is in progress. Progress by version is in [ROADMAP.md](./ROADMAP.md).
+v0.4 (shop / character) and v0.5 (stabilization) are done. v0.6 (social / raid) is next. Progress by version is in [ROADMAP.md](./ROADMAP.md).
 
 ## Account and jobs
 
 Sign up with an email and password, or sign in with Google. An email account can sign in only after the verification link in the email (valid for 24 hours) is opened. A Google account counts as verified. A four-digit tag is added to the nickname automatically, as in `nickname#1234`. Verification mail is one per email per 60 seconds, and ten per IP per 10 minutes. The slot is released when sending fails. After sign-up or a successful resend, the next resend waits those 60 seconds.
+
+A suspended account cannot sign in, by email or Google. Sign-in shows the end time, or that an admin must unsuspend, and the reason only when there is one. If an app API answers 403 `ACCOUNT_SUSPENDED`, the session is cleared and the user is sent to sign-in without the reason.
 
 After signing up you pick a job before you can use the app. Each job earns more in some categories.
 
@@ -82,9 +85,9 @@ Then, in order:
 
 Gold and XP are each rounded once, at the end. Penalties and boss clear, fail and abandon amounts are not multiplied by the event.
 
-The register form shows the expected amount: the job multiplier is included; the note, the event and critical hits are not. The quest list estimate includes the event when one is running. For a steady deadline quest the register form is the amount for checking in every day until the due date. For one done all at once it is the daily amount, the same shape as a routine: expected gold and XP.
+The register form shows the expected amount: the job multiplier is included; the note, the event and critical hits are not. When an event is running, the multiplier is shown next to that estimate without multiplying it; the payout is calculated at completion. The quest list estimate already includes the event when one is running. While an event is running the multiplier is shown, with the end time. For a steady deadline quest the register form is the amount for checking in every day until the due date. For one done all at once it is the daily amount, the same shape as a routine: expected gold and XP.
 
-On completion the result opens first. After the response it shows the amount received, what raised it (job, streak, note, critical hit) and how much it was reduced by missed check-ins, together with the battle log.
+On completion the result opens first. After the response it shows the amount received, what raised it (job, streak, note, event ×N, critical hit) and how much it was reduced by missed check-ins, together with the battle log.
 
 The completion record stores a battle log. When there is a note, AI writes 2 or 3 lines within 3 seconds. When there is no note, or it takes longer than 3 seconds, or it fails, or the limit on calls made inside the request is full, the log is two fixed lines. With no monster the name is "이름 모를 몬스터".
 
@@ -170,8 +173,8 @@ Settings are saved in this browser, not in the account.
 
 ## Stack
 
-- **Server**: NestJS 12, Drizzle ORM (PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API (`@google/genai`, AI assistant)
-- **Web**: Vue 3, Vite 8, Vue Router 5 (file-based routing), Pinia, vue-i18n, Tailwind CSS v4, `@lucide/vue`, canvas-confetti, Howler
+- **Server**: NestJS 12, Drizzle ORM (PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API (`@google/genai`, AI assistant), sanitize-html
+- **Web**: Vue 3, Vite 8, Vue Router 5 (file-based routing), Pinia, vue-i18n, Tailwind CSS v4, `@lucide/vue`, canvas-confetti, Howler, Tiptap, DOMPurify
 - **Shared**: TypeScript. The `shared` workspace holds types, constants, the reward calculation and Seoul calendar helpers used by both the server and the web
 - **Tooling**: pnpm workspace, oxlint, oxfmt, husky + lint-staged, Docker Compose
 - **Planned**: S3-compatible storage (AWS SDK v3 + MinIO, character images)
@@ -198,10 +201,10 @@ real-life/
 │   └── drizzle/           # migrations
 ├── web/                   # Vue 3 + Vite client
 │   └── src/
-│       ├── routes/        # pages (home, quests, bosses, stats, wallet, shop, job, auth)
-│       ├── components/    # per-page components (including character/, boss/, shop/) and shared UI
-│       ├── lib/           # API calls, reward display, confetti, sounds, saved settings, character picture path
-│       ├── composables/   # useApi, useQuestBoard
+│       ├── routes/        # pages (home, quests, bosses, stats, wallet, shop, job, notices, admin, auth)
+│       ├── components/    # per-page components (including character/, boss/, shop/, admin/, notice/) and shared UI
+│       ├── lib/           # API calls, reward display, announcement HTML, app date-time, confetti, sounds, saved settings, character picture path
+│       ├── composables/   # useApi, useQuestBoard, useCurrentRewardEvent
 │       ├── stores/        # sign-in state (Pinia)
 │       └── i18n/          # Korean and English copy
 ├── shared/                # types, constants, reward/penalty calculation and Seoul calendar helpers shared by server and web

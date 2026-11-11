@@ -46,7 +46,7 @@ admin/                          admin users, announcements, one reward event
   admin-users.service.ts        list (email/nickname search, page size 20), suspend (clears sessions), unsuspend, delete (same cleanup as withdraw)
   admin-announcements.controller.ts  GET/POST /api/admin/announcements, PATCH/DELETE /:id
   announcements.controller.ts   GET /api/announcements for a signed-in user
-  announcements.service.ts      title and body, trimmed, newest first
+  announcements.service.ts      title and body, newest first. POST/PATCH run sanitize-html: keep h3, p, strong, ul, li, br; empty remaining text is 400; 2000 is the filtered HTML; <br> is stored as <br />
   admin-reward-events.controller.ts  GET/PUT /api/admin/reward-events, POST /end
   reward-events.controller.ts   GET /api/reward-events/current
   reward-events.service.ts      one row; active multiplier for completion and list estimates
@@ -103,7 +103,7 @@ quest-penalty.ts      penalty amounts, gold and XP floors
 account-status.ts     whether a suspend is still in force, and the ACCOUNT_SUSPENDED body
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
   daily-limits.ts     10 creates, 1 boss, 20 AI buttons, and the 429 codes
-  admin.ts            suspend reason max, announcement lengths, event multiplier range, admin page size
+  admin.ts            suspend reason max, announcement lengths and allowed tags, event multiplier range, admin page size
   monsters.ts         eight monster kinds, picture keys and list statuses
   bosses.ts           eight boss kinds, picture keys, active cap of 3, placeholder reward 10 and penalty 5 per HP
   shop.ts             five kinds (hobby, rest, food, outing, shopping), suggested prices per kind, catalog ids and placeholder prices, custom cap 20, price 1–99,999
@@ -123,9 +123,13 @@ types/                response types exchanged by the server and the web
 ### Web (`web/src/`)
 
 ```
-routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, shop, job, sign-up/sign-in/onboarding
-components/    a folder per page (home, quest, boss, wallet, shop, stats, job, settings, auth, character) and shared ui/
+routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, shop, job, notices, admin, sign-up/sign-in/onboarding
+components/    a folder per page (home, quest, boss, wallet, shop, stats, job, settings, auth, character, admin, notice) and shared ui/
+  layouts/AppShell.vue           app shell. Refreshes the current reward event on mount
+  layouts/AdminShell.vue         admin console shell. /admin; session role must be admin
   layouts/DueTodayAlerts.vue     app calendar today due and still open; bell count and list from GET /api/quests
+  admin/AnnouncementEditor.vue   Tiptap: heading h3, bold, lists
+  notice/NoticeDialog.vue        announcement body through announcementHtml
   boss/BossRegisterDialog.vue    main-quest plan and confirm
   boss/BossResultDialog.vue      unseen clear or fail
   character/CharacterFigure.vue  one cat WebP per job; lethargy greys 70% and shortens 4% from the feet
@@ -136,8 +140,8 @@ components/    a folder per page (home, quest, boss, wallet, shop, stats, job, s
   shop/ShopConfirmDialog.vue     confirm a purchase or a delete
   shop/ShopItemCard.vue          one catalog or custom item
   stats/CharacterCard.vue        stats page character, job, title and XP
-lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), display calculation (questReward), appCalendarDate, formatAmount, confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
-composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state), useDueTodayAlerts.ts (app calendar today due and still open, from GET /api/quests), useVerificationResendWait.ts (60s after sign-up or a successful resend). Completion opens the result first, then fills gold, XP and the battle log after the response
+lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange, announcements, admin, rewardEvents), display calculation (questReward), announcementHtml (DOMPurify with the shared allowlist), appDateTime (app-zone wall clock), appCalendarDate, formatAmount, confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
+composables/   useApi (the single entry for server calls; 403 ACCOUNT_SUSPENDED clears the session and goes to /login with no reason), useQuestBoard (quest list, completion and check-in state; refreshes the current reward event after a completion), useCurrentRewardEvent.ts (GET /api/reward-events/current), useDueTodayAlerts.ts (app calendar today due and still open, from GET /api/quests), useVerificationResendWait.ts (60s after sign-up or a successful resend). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
 i18n/          Korean and English copy
@@ -157,7 +161,7 @@ Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missin
 Main call relations:
 
 - A quest completion calls settlement, then adds gold to the wallet. A subquest also cuts the boss HP by the difficulty score. If a reward event is active, that multiplier is applied to the completion gold and XP.
-- Sign-in and app APIs are refused while the account is suspended. The body includes `ACCOUNT_SUSPENDED`, the end time and the reason.
+- Sign-in and app APIs are refused while the account is suspended. The body includes `ACCOUNT_SUSPENDED`, the end time and the reason. The web shows that on the sign-in form. An app-API 403 with that code clears the session and goes to `/login` without the reason.
 - Settlement deducts gold for missed quests, then judges bosses whose due date is already past.
 - A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
 - A shop purchase deducts gold when the balance is enough. It does not go into debt. The entry kind is `purchase`, with the reward name at that time. There is no inventory.
