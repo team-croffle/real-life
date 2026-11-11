@@ -31,7 +31,7 @@ v0.4 (shop / character) and v0.5 (stabilization) are done. v0.6 (social / raid) 
 
 Sign up with an email and password, or sign in with Google. An email account can sign in only after the verification link in the email (valid for 24 hours) is opened. A Google account counts as verified. A four-digit tag is added to the nickname automatically, as in `nickname#1234`. Verification mail is one per email per 60 seconds, and ten per IP per 10 minutes. The slot is released when sending fails. After sign-up or a successful resend, the next resend waits those 60 seconds.
 
-A suspended account cannot sign in, by email or Google. Sign-in shows the end time, or that an admin must unsuspend, and the reason only when there is one. If an app API answers 403 `ACCOUNT_SUSPENDED`, the session is cleared and the user is sent to sign-in without the reason.
+A suspended account cannot sign in, by email or Google. Sign-in shows the end time, or that an admin must unsuspend, and the reason only when there is one. If an account is suspended while signed in, the next request signs it out and opens the sign-in page, without the session-expired message.
 
 After signing up you pick a job before you can use the app. Each job earns more in some categories.
 

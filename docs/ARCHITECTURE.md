@@ -141,7 +141,7 @@ components/    a folder per page (home, quest, boss, wallet, shop, stats, job, s
   shop/ShopItemCard.vue          one catalog or custom item
   stats/CharacterCard.vue        stats page character, job, title and XP
 lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange, announcements, admin, rewardEvents), display calculation (questReward), announcementHtml (DOMPurify with the shared allowlist), appDateTime (app-zone wall clock), appCalendarDate, formatAmount, confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
-composables/   useApi (the single entry for server calls; 403 ACCOUNT_SUSPENDED clears the session and goes to /login with no reason), useQuestBoard (quest list, completion and check-in state; refreshes the current reward event after a completion), useCurrentRewardEvent.ts (GET /api/reward-events/current), useDueTodayAlerts.ts (app calendar today due and still open, from GET /api/quests), useVerificationResendWait.ts (60s after sign-up or a successful resend). Completion opens the result first, then fills gold, XP and the battle log after the response
+composables/   useApi (the single entry for server calls; 403 ACCOUNT_SUSPENDED clears the session and goes to /login without the sessionExpired query), useQuestBoard (quest list, completion and check-in state; refreshes the current reward event after a completion), useCurrentRewardEvent.ts (GET /api/reward-events/current), useDueTodayAlerts.ts (app calendar today due and still open, from GET /api/quests), useVerificationResendWait.ts (60s after sign-up or a successful resend). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
 i18n/          Korean and English copy
@@ -161,7 +161,7 @@ Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missin
 Main call relations:
 
 - A quest completion calls settlement, then adds gold to the wallet. A subquest also cuts the boss HP by the difficulty score. If a reward event is active, that multiplier is applied to the completion gold and XP.
-- Sign-in and app APIs are refused while the account is suspended. The body includes `ACCOUNT_SUSPENDED`, the end time and the reason. The web shows that on the sign-in form. An app-API 403 with that code clears the session and goes to `/login` without the reason.
+- Sign-in and app APIs are refused while the account is suspended. The body includes `ACCOUNT_SUSPENDED`, the end time and the reason. The web shows that on the sign-in form. An app-API 403 with that code clears the session and goes to `/login` without the sessionExpired query.
 - Settlement deducts gold for missed quests, then judges bosses whose due date is already past.
 - A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
 - A shop purchase deducts gold when the balance is enough. It does not go into debt. The entry kind is `purchase`, with the reward name at that time. There is no inventory.
