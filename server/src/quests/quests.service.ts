@@ -47,6 +47,7 @@ import { quests } from '../database/schema/quests';
 import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
+import { consumeQuestCreate } from '../limits/daily-usage';
 import { WalletService } from '../wallet/wallet.service';
 import { BossJudgmentService } from './boss-judgment.service';
 import type { CreateQuestDto } from './dto/create-quest.dto';
@@ -100,19 +101,21 @@ export class QuestsService {
     const period = rewardPeriodForRemainingDays(remainingDays);
     const reward =
       pace === 'once' ? QUEST_REWARDS[dto.difficulty].daily : QUEST_REWARDS[dto.difficulty][period];
-    const [questRow] = await this.db
-      .insert(quests)
-      .values({
-        userId,
-        category: dto.category,
-        title,
-        difficulty: dto.difficulty,
-        pace,
-        endsOn,
-      })
-      .returning();
-
-    const inserted = requireInserted(questRow);
+    const inserted = await this.db.transaction(async (tx) => {
+      await consumeQuestCreate(tx, userId, appCalendarDate());
+      const [questRow] = await tx
+        .insert(quests)
+        .values({
+          userId,
+          category: dto.category,
+          title,
+          difficulty: dto.difficulty,
+          pace,
+          endsOn,
+        })
+        .returning();
+      return requireInserted(questRow);
+    });
     await this.enqueueMonster(userId, inserted.id, title);
     return toQuest(inserted, reward);
   }

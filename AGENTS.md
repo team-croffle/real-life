@@ -29,7 +29,7 @@ Reading order for a new task — stop once you know enough, and do not search th
 - Gold, XP and penalties come only from the calculation in `shared`. The server computes what is paid; the web uses the same functions only to show estimates. AI never decides an amount.
 - Dates are Seoul calendar dates (`Asia/Seoul`), not the server's local time.
 - Settlement can run any number of times with the same result. A completion commits settlement first, then completes in its own transaction.
-- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_rewards, wallet, progress, bosses.
+- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_daily_usage, user_rewards, wallet, progress, bosses.
 - Types and constants used by both sides live in `shared`. Do not copy them into `server` or `web`.
 - AI and the job queue are used only through their interfaces. The current implementations (Gemini, a Postgres-backed queue) must be replaceable through Nest DI without touching the callers.
 
