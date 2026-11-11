@@ -6,19 +6,21 @@ import { useI18n } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 
 import { Button } from '@/components/ui/button';
+import { useVerificationResendWait } from '@/composables/useVerificationResendWait';
 import { authErrorI18nKey } from '@/lib/authErrors';
 import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
 const auth = useAuthStore();
 const { pendingEmail } = storeToRefs(auth);
+const { remainingSeconds, sync: syncResendWait } = useVerificationResendWait(pendingEmail);
 
 const pending = ref(false);
 const formError = ref('');
 const resent = ref(false);
 
 async function onResend(): Promise<void> {
-  if (!pendingEmail.value) {
+  if (!pendingEmail.value || remainingSeconds.value > 0) {
     return;
   }
 
@@ -27,6 +29,7 @@ async function onResend(): Promise<void> {
   resent.value = false;
   try {
     await auth.resendVerification(pendingEmail.value);
+    syncResendWait();
     resent.value = true;
   } catch (error) {
     formError.value = t(authErrorI18nKey(error));
@@ -46,9 +49,18 @@ async function onResend(): Promise<void> {
     <p v-if="formError" class="text-destructive mb-3 text-[12px]" role="alert">{{ formError }}</p>
     <p v-if="resent" class="text-primary mb-3 text-[12px]">{{ t('auth.checkEmail.resent') }}</p>
 
-    <Button type="button" class="mb-3.5" :disabled="pending" @click="onResend">
+    <Button
+      type="button"
+      class="mb-3.5"
+      :disabled="pending || remainingSeconds > 0"
+      @click="onResend"
+    >
       <Loader2 v-if="pending" class="animate-spin" />
-      {{ t('auth.checkEmail.resend') }}
+      {{
+        remainingSeconds > 0
+          ? t('auth.checkEmail.resendWait', { n: remainingSeconds })
+          : t('auth.checkEmail.resend')
+      }}
     </Button>
 
     <p class="text-muted-foreground text-center text-xs">

@@ -336,6 +336,7 @@
       "title": "Check your email",
       "subtitle": "We sent a verification link to {email}. Open it to choose your job class.",
       "resend": "Resend verification email",
+      "resendWait": "You can send again in {n} seconds",
       "resent": "Verification email sent again.",
       "backToLogin": "Back to log in"
     },
