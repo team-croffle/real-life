@@ -5,9 +5,11 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
+import { useCurrentRewardEvent } from '@/composables/useCurrentRewardEvent';
 import { appCalendarDate } from '@/lib/appCalendar';
 import { formatAmount } from '@/lib/formatAmount';
 import type { QuestListItem } from '@/lib/quests';
+import { formatEventMultiplier } from '@/lib/rewardEvents';
 
 import MonsterImage from './MonsterImage.vue';
 import type { MonsterViewTarget } from './MonsterViewDialog.vue';
@@ -31,6 +33,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { current: rewardEvent } = useCurrentRewardEvent();
+const eventMultText = computed(() =>
+  rewardEvent.value ? formatEventMultiplier(rewardEvent.value.multiplier) : '',
+);
 
 function isRoutine(item: QuestListItem | Routine): item is Routine {
   return 'weekdays' in item;
@@ -223,6 +229,12 @@ const difficultyClass = computed(() => {
           gold: formatAmount(quest.expectedGold),
         })
       }}
+    </span>
+    <span
+      v-if="eventMultText"
+      class="bg-gold-soft text-gold shrink-0 rounded-full px-[7px] py-0.5 text-[10px] font-extrabold whitespace-nowrap"
+    >
+      ×{{ eventMultText }}
     </span>
     <Button
       v-if="quest?.canMarkToday"

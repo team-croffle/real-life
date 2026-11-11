@@ -14,6 +14,8 @@
     "comingSoon": "Soon",
     "wallet": "Wallet",
     "job": "Job",
+    "notices": "Notices",
+    "admin": "Admin",
     "account": "Account",
     "about": "About",
     "users": "Users"
@@ -43,6 +45,8 @@
       "failed": "Could not load",
       "refresh": "Refresh"
     },
+    "noticeBadge": "Notice",
+    "noticeMore": "Details ›",
     "counterBanner": "Boss counter! You missed a subquest for \"{name}\"",
     "counterBannerAction": "See the boss"
   },
@@ -261,6 +265,21 @@
     "open": "Open alerts",
     "close": "Close alerts",
     "empty": "No quests you might miss today"
+  },
+  "event": {
+    "chip": "Reward ×{n} event",
+    "until": "Until {time}",
+    "hint": "Finish a quest to get {n}× gold and XP",
+    "register": "×{n} event · finish before {time} for {n}×"
+  },
+  "notice": {
+    "title": "Notices",
+    "badge": "Notice",
+    "empty": "No notices yet",
+    "seeAll": "See all notices ›",
+    "close": "Close",
+    "loadError": "Could not load notices",
+    "retry": "Try again"
   },
   "admin": {
     "brand": "RealLife Admin",
@@ -522,6 +541,7 @@
     "resultTagJob": "Job x{value}",
     "resultTagCombo": "Streak x{value}",
     "resultTagNote": "Note x{value}",
+    "resultTagEvent": "Event ×{value}",
     "resultTagCrit": "Critical x{value}",
     "resultTagJackpot": "Critical x3 · Jackpot!",
     "resultJackpot": "Jackpot!",

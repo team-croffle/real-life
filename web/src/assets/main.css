@@ -227,6 +227,35 @@
   opacity: 0.55;
 }
 
+.notice-body {
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.notice-body h3 {
+  margin: 12px 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.notice-body p {
+  margin: 6px 0;
+}
+
+.notice-body ul {
+  margin: 6px 0;
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.notice-body li {
+  margin: 2px 0;
+}
+
+.notice-body strong {
+  font-weight: 700;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .result-pop,
   .result-glow,

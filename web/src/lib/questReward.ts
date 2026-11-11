@@ -19,7 +19,7 @@ import { appCalendarDate } from '@/lib/appCalendar';
 /** 메모를 적으면 붙는 배율. 서버 grantAmount의 10분의 11과 같다. */
 const NOTE_MULTIPLIER = 1.1;
 
-export type RewardTagType = 'job' | 'combo' | 'note' | 'crit';
+export type RewardTagType = 'job' | 'combo' | 'note' | 'event' | 'crit';
 
 /** 보상을 늘린 항목 하나. 배율이 1이면 만들지 않는다. */
 export interface RewardTag {
@@ -91,6 +91,9 @@ export function rewardBreakdown(gold: number, applied: QuestRewardApplied): Rewa
   }
   if (applied.noteBonus) {
     tags.push({ type: 'note', multiplier: NOTE_MULTIPLIER });
+  }
+  if (applied.eventMultiplier !== 1) {
+    tags.push({ type: 'event', multiplier: applied.eventMultiplier });
   }
   if (applied.critMultiplier > 1) {
     tags.push({ type: 'crit', multiplier: applied.critMultiplier });

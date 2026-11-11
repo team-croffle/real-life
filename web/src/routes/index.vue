@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Plus, TriangleAlert } from '@lucide/vue';
-import type { BossSummary, Progress, Stats } from '@nest-vue/shared';
+import { Megaphone, Plus, TriangleAlert } from '@lucide/vue';
+import type { Announcement, BossSummary, Progress, Stats } from '@nest-vue/shared';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -10,6 +10,7 @@ import CharacterStage from '@/components/home/CharacterStage.vue';
 import SummaryCard from '@/components/home/SummaryCard.vue';
 import TodayQuestCard from '@/components/home/TodayQuestCard.vue';
 import AppShell from '@/components/layouts/AppShell.vue';
+import NoticeDialog from '@/components/notice/NoticeDialog.vue';
 import MonsterViewDialog from '@/components/quest/MonsterViewDialog.vue';
 import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
 import QuestCompleteDialog from '@/components/quest/QuestCompleteDialog.vue';
@@ -18,6 +19,8 @@ import QuestRegisterDialog from '@/components/quest/QuestRegisterDialog.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { isQuestDone, useQuestBoard } from '@/composables/useQuestBoard';
+import { listAnnouncements } from '@/lib/announcements';
+import { formatAppDate } from '@/lib/appDateTime';
 import { getBosses } from '@/lib/bosses';
 import { getProgress, settleQuestPenalties } from '@/lib/home';
 import type { QuestListItem } from '@/lib/quests';
@@ -60,6 +63,8 @@ const progress = ref<Progress | null>(null);
 const registerOpen = ref(false);
 const registerBusy = ref(false);
 const counterBanner = ref<{ id: string; name: string } | null>(null);
+const latestNotice = ref<Announcement | null>(null);
+const noticeOpen = ref(false);
 
 // 홈 배너. 정산과 진행도·지갑 조회가 끝나면 사라진다. 실패하면 한 번 더 시도한 뒤 실패를 띄운다.
 type HomeLoadState = 'ready' | 'settling' | 'retrying' | 'failed';
@@ -153,6 +158,21 @@ function pickCounteredBoss(bosses: BossSummary[]): BossSummary | null {
   });
 }
 
+async function loadLatestNotice(): Promise<void> {
+  try {
+    const notices = await listAnnouncements();
+    if (leftHome) {
+      return;
+    }
+    latestNotice.value = notices[0] ?? null;
+  } catch {
+    if (leftHome) {
+      return;
+    }
+    latestNotice.value = null;
+  }
+}
+
 async function loadCounterBanner(): Promise<void> {
   const generation = ++bossesGeneration;
   try {
@@ -235,6 +255,10 @@ function onKeyDown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') {
     return;
   }
+  if (noticeOpen.value) {
+    noticeOpen.value = false;
+    return;
+  }
   if (monsterView.value) {
     monsterView.value = null;
     return;
@@ -261,6 +285,7 @@ onMounted(() => {
   void load();
   void loadStats();
   void settleThenRead();
+  void loadLatestNotice();
   document.addEventListener('keydown', onKeyDown);
 });
 
@@ -312,6 +337,27 @@ onUnmounted(() => {
           {{ t('home.load.refresh') }}
         </Button>
       </div>
+
+      <button
+        v-if="latestNotice"
+        type="button"
+        class="bg-surface border-border text-primary mb-4 flex w-full items-center gap-2.5 rounded-[14px] border px-4 py-[11px] text-left"
+        @click="noticeOpen = true"
+      >
+        <Megaphone class="size-4 shrink-0" />
+        <span
+          class="bg-accent text-accent-foreground shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+        >
+          {{ t('home.noticeBadge') }}
+        </span>
+        <span class="text-foreground min-w-0 flex-1 truncate text-[13px] font-bold">
+          {{ latestNotice.title }}
+        </span>
+        <span class="text-muted-foreground shrink-0 text-[11.5px] tabular-nums">
+          {{ formatAppDate(latestNotice.createdAt) }}
+        </span>
+        <span class="shrink-0 text-xs font-bold">{{ t('home.noticeMore') }}</span>
+      </button>
 
       <div
         v-if="counterBanner"
@@ -393,6 +439,13 @@ onUnmounted(() => {
         </div>
       </section>
     </div>
+
+    <NoticeDialog
+      v-if="noticeOpen && latestNotice"
+      :notice="latestNotice"
+      show-all-link
+      @close="noticeOpen = false"
+    />
 
     <QuestRegisterDialog
       :open="registerOpen"

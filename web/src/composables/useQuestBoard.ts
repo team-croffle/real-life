@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ApiError } from '@/composables/useApi';
+import { refreshCurrentRewardEvent } from '@/composables/useCurrentRewardEvent';
 import { refreshDueTodayAlerts } from '@/composables/useDueTodayAlerts';
 import { completeQuest, getQuests, markQuestToday, type QuestListItem } from '@/lib/quests';
 
@@ -99,6 +100,7 @@ export function useQuestBoard() {
       const result = await completeQuest(id, note);
       await load(true);
       void refreshDueTodayAlerts();
+      void refreshCurrentRewardEvent();
       completionResult.value = result;
       return true;
     } catch (cause) {

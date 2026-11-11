@@ -12,6 +12,7 @@ import { computed, ref } from 'vue';
 import { authClient } from '@/auth/authClient';
 import { clearAuthFlow, loadAuthFlow, saveAuthFlow } from '@/auth/authFlowStorage';
 import { ApiError, apiFetch } from '@/composables/useApi';
+import { resetCurrentRewardEvent } from '@/composables/useCurrentRewardEvent';
 import { resetDueTodayAlerts } from '@/composables/useDueTodayAlerts';
 import { startVerificationResendWait } from '@/composables/useVerificationResendWait';
 import { resetUnseenBosses } from '@/lib/unseenBosses';
@@ -113,6 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
     persistFlow();
     resetUnseenBosses();
     resetDueTodayAlerts();
+    resetCurrentRewardEvent();
   }
 
   function setPendingEmail(email: string): void {
