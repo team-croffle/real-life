@@ -98,7 +98,7 @@ The title is an English imperative.
 
 ## 6. Testing
 
-- There is no test framework yet. The minimum before every commit is `pnpm typecheck`, `pnpm lint` and `pnpm format:check`.
+- There is no test framework yet. Before each commit, run typecheck only for the packages that changed (for example `pnpm --filter server typecheck`). Do not run `pnpm lint` or `pnpm format:check` on every commit; husky already runs lint-staged at commit time. After the branch's last commit, run the full check once: `pnpm lint`, `pnpm format:check`, and `pnpm typecheck`. The same checks must not run twice. A failing package typecheck, a failing lint-staged hook, or a review finding marked 막음, blocks a commit. 고쳐야 함 is fixed before the branch closes. 알아둘 것 goes to known-issues.
 - Behaviour is checked on the running app (`pnpm dev`) and with API calls.
 - Say plainly what was not verified.
 
