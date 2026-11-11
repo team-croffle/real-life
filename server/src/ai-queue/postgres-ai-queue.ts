@@ -90,7 +90,11 @@ export class PostgresAiQueue implements AiQueue {
       .where(and(eq(aiTasks.kind, 'monster'), or(...filters)));
   }
 
-  async requeueFailed(owner: MonsterTaskOwner): Promise<boolean> {
+  async requeueFailed(owner: MonsterTaskOwner, payload: MonsterTaskPayload): Promise<boolean> {
+    const nextPayload = monsterPayload(payload);
+    if (!nextPayload) {
+      throw new Error('monster payload is invalid');
+    }
     return this.db.transaction(async (tx) => {
       const [task] = await tx
         .select({ id: aiTasks.id, status: aiTasks.status })
@@ -108,6 +112,7 @@ export class PostgresAiQueue implements AiQueue {
           runAt: sql`now()`,
           startedAt: null,
           lastError: null,
+          payload: nextPayload,
           updatedAt: sql`now()`,
         })
         .where(eq(aiTasks.id, task.id));
