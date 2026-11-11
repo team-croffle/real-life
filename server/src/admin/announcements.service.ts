@@ -1,6 +1,8 @@
 import type { Announcement } from '@nest-vue/shared';
+import { ANNOUNCEMENT_ALLOWED_TAGS, ANNOUNCEMENT_BODY_MAX } from '@nest-vue/shared';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
+import sanitizeHtml from 'sanitize-html';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
@@ -19,13 +21,10 @@ export class AnnouncementsService {
 
   async create(dto: CreateAnnouncementDto): Promise<Announcement> {
     const title = dto.title.trim();
-    const body = dto.body.trim();
     if (title.length < 1) {
       throw new BadRequestException('title must not be empty');
     }
-    if (body.length < 1) {
-      throw new BadRequestException('body must not be empty');
-    }
+    const body = sanitizeAnnouncementBody(dto.body);
     const [row] = await this.db.insert(announcements).values({ title, body }).returning();
     if (!row) {
       throw new BadRequestException('could not create announcement');
@@ -38,12 +37,9 @@ export class AnnouncementsService {
       throw new BadRequestException('empty body');
     }
     const title = dto.title === undefined ? undefined : dto.title.trim();
-    const body = dto.body === undefined ? undefined : dto.body.trim();
+    const body = dto.body === undefined ? undefined : sanitizeAnnouncementBody(dto.body);
     if (title !== undefined && title.length < 1) {
       throw new BadRequestException('title must not be empty');
-    }
-    if (body !== undefined && body.length < 1) {
-      throw new BadRequestException('body must not be empty');
     }
     const [row] = await this.db
       .update(announcements)
@@ -68,6 +64,21 @@ export class AnnouncementsService {
       throw new NotFoundException();
     }
   }
+}
+
+function sanitizeAnnouncementBody(raw: string): string {
+  const body = sanitizeHtml(raw, {
+    allowedTags: [...ANNOUNCEMENT_ALLOWED_TAGS],
+    allowedAttributes: {},
+  });
+  const text = sanitizeHtml(body, { allowedTags: [], allowedAttributes: {} }).trim();
+  if (text.length < 1) {
+    throw new BadRequestException('body must not be empty');
+  }
+  if (body.length > ANNOUNCEMENT_BODY_MAX) {
+    throw new BadRequestException('body is too long');
+  }
+  return body;
 }
 
 function toAnnouncement(row: typeof announcements.$inferSelect): Announcement {

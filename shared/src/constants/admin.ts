@@ -6,6 +6,8 @@ export const ANNOUNCEMENT_TITLE_MAX = 100;
 
 export const ANNOUNCEMENT_BODY_MAX = 2000;
 
+export const ANNOUNCEMENT_ALLOWED_TAGS = ['h3', 'p', 'strong', 'ul', 'li', 'br'] as const;
+
 export const EVENT_MULTIPLIER_MIN = 1;
 
 export const EVENT_MULTIPLIER_MAX = 3;
