@@ -213,6 +213,9 @@ async function confirmSuspend(): Promise<void> {
     suspendUser.value = null;
   } catch (cause) {
     showFailedToast(cause, true);
+    if (isAdminForbidden(cause)) {
+      suspendUser.value = null;
+    }
   }
 }
 
@@ -246,6 +249,10 @@ async function confirmDelete(): Promise<void> {
       await loadUsers();
     } catch (cause) {
       showFailedToast(cause, true);
+      if (isAdminForbidden(cause)) {
+        confirmKind.value = null;
+        confirmUser.value = null;
+      }
     }
     return;
   }
