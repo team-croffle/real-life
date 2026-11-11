@@ -37,7 +37,7 @@ auth/                           가입, 로그인 (Better Auth), 이메일 인�
   auth.ts                       Better Auth 설정. 정지면 세션 생성을 거절한다
   account-status.guard.ts       정지된 계정의 앱 API를 막는 전역 가드
   job-class.guard.ts            직업이 없는 계정의 앱 API를 막는 전역 가드
-  mail-send-limiter.ts          인증 메일을 보내기 전에 이메일·IP 자리를 잡고, 보내지 못하면 돌려준다
+  mail-send-limiter.ts          인증 메일을 보내기 전에 이메일·IP 자리를 잡고, 보내기에 실패하면 돌려준다
 admin/                          관리자 사용자, 공지, 보상 이벤트 하나
   admin.guard.ts                세션 role이 admin이어야 한다
   admin-users.controller.ts     GET /api/admin/users, POST 정지/해제, DELETE

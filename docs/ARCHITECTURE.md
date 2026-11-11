@@ -39,7 +39,7 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   auth.ts                       Better Auth configuration. Session create is refused when the account is suspended
   account-status.guard.ts       global guard that blocks app APIs for a suspended account
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
-  mail-send-limiter.ts          reserve an email and IP slot before sending a verification mail; release it when the send does not go out
+  mail-send-limiter.ts          reserve an email and IP slot before sending a verification mail; release it when sending fails
 admin/                          admin users, announcements, one reward event
   admin.guard.ts                session role must be admin
   admin-users.controller.ts     GET /api/admin/users, POST suspend/unsuspend, DELETE
