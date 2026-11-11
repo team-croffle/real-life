@@ -11,6 +11,7 @@ import { and, count, eq, gte, isNull, lte } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
 import { quests } from '../database/schema/quests';
+import { tryConsumeAiButtonCall } from '../limits/daily-usage';
 import { addCalendarDays, appCalendarDate } from '../quests/quest-calendar';
 import { AI, DIFFICULTY_HISTORY_DAYS, type Ai } from './ai';
 import { AiCallLimiter } from './ai-call-limiter';
@@ -40,7 +41,10 @@ export class DifficultyService {
       this.countMissed(userId, dto.category, from, yesterday),
     ]);
 
-    if (!this.aiCallLimiter.tryAcquire()) {
+    const reserved = await this.db.transaction(async (tx) =>
+      tryConsumeAiButtonCall(tx, userId, today, () => this.aiCallLimiter.tryAcquire()),
+    );
+    if (!reserved) {
       this.logger.warn('difficulty recommendation skipped: direct call limit');
       throw new ServiceUnavailableException();
     }

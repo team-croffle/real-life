@@ -8,6 +8,9 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 
+import { DRIZZLE } from '../database/database.constants';
+import type { DrizzleDb } from '../database/database.module';
+import { tryConsumeAiButtonCall } from '../limits/daily-usage';
 import {
   APP_TIME_ZONE,
   appCalendarDate,
@@ -24,11 +27,12 @@ export class QuestPlanService {
   private readonly logger = new Logger(QuestPlanService.name);
 
   constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDb,
     @Inject(AI) private readonly ai: Ai,
     private readonly aiCallLimiter: AiCallLimiter,
   ) {}
 
-  async suggest(dto: SuggestQuestPlanDto): Promise<QuestPlan> {
+  async suggest(userId: string, dto: SuggestQuestPlanDto): Promise<QuestPlan> {
     const goal = dto.goal.trim();
     if (goal.length < 1) {
       throw new BadRequestException('goal must not be empty');
@@ -41,7 +45,10 @@ export class QuestPlanService {
       throw new BadRequestException(`deadlineOn must be today or later in ${APP_TIME_ZONE}`);
     }
 
-    if (!this.aiCallLimiter.tryAcquire()) {
+    const reserved = await this.db.transaction(async (tx) =>
+      tryConsumeAiButtonCall(tx, userId, today, () => this.aiCallLimiter.tryAcquire()),
+    );
+    if (!reserved) {
       this.logger.warn('quest plan skipped: direct call limit');
       throw new ServiceUnavailableException();
     }
