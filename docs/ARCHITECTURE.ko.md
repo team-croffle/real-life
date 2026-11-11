@@ -12,6 +12,8 @@
 6. 구글 계정이 생긴 뒤, 또는 세션이 생긴 뒤에 확인한다. 사용자가 있고 이메일이 아직 인증되지 않았으며 구글 계정이 있을 때만, 이메일을 인증된 것으로 표시하고 이메일 계정(credential)의 비밀번호를 비운다. 비밀번호가 있는지는 보지 않는다. 이유: 미인증 이메일로 먼저 가입해 둔 사람이 나중에 그 계정에 들어오는 일을 막으려는 것이다.
 7. 지갑 내역에는 종류, 골드, 뽑기권이 남는다. 원인은 퀘스트 id 또는 보스 id다. 구매는 그 대신 보상 이름을 남기고, 퀘스트 id와 보스 id는 비운다. 퀘스트를 지우면 퀘스트 id는 비워진다. 경험치는 내역에 남기지 않는다. 종류에는 완료, 패널티, 사후 차감, `boss_clear`, `boss_fail`, `boss_abandon`, `purchase`가 있다.
 8. 로그인은 better-auth이고 세션은 DB의 session 테이블에 저장된다.
+9. 하루 생성·AI 버튼 횟수는 `user_daily_usage`(사용자마다 앱 시간대 하루 한 행)에 둔다. 진행도에 두지 않는다. 이유: 등록이 완료와 같은 진행 행을 잠그지 않게 하려는 것이다.
+10. `TRUST_PROXY`는 앞에 둔 프록시 개수다. 비우면 끈다. 이유: `true`면 `X-Forwarded-For` 맨 앞을 믿게 되어 클라이언트가 속일 수 있다.
 
 ## 시스템 구성 (개발 환경 기준)
 
@@ -24,6 +26,7 @@
 - 개발 중 `/api` 요청은 Vite 개발 서버가 서버로 프록시한다.
 - 배포용 Compose는 postgres와 server를 올리고 web은 Compose에 없다.
 - 몬스터 큐는 Postgres 테이블이고, 워커는 서버 안에서 돈다. 전투 기록과 추천은 큐를 거치지 않고 서버가 바로 부른다.
+- `TRUST_PROXY`는 Express `trust proxy`에 넣는 프록시 개수다. 비우면 끄므로 `req.ip`는 소켓 주소다.
 
 ## 코드 구조
 
@@ -34,6 +37,7 @@ auth/                           가입, 로그인 (Better Auth), 이메일 인�
   auth.ts                       Better Auth 설정. 정지면 세션 생성을 거절한다
   account-status.guard.ts       정지된 계정의 앱 API를 막는 전역 가드
   job-class.guard.ts            직업이 없는 계정의 앱 API를 막는 전역 가드
+  mail-send-limiter.ts          인증 메일을 보내기 전에 이메일·IP 자리를 잡고, 보내지 못하면 돌려준다
 admin/                          관리자 사용자, 공지, 보상 이벤트 하나
   admin.guard.ts                세션 role이 admin이어야 한다
   admin-users.controller.ts     GET /api/admin/users, POST 정지/해제, DELETE
@@ -57,10 +61,10 @@ quests/                         퀘스트 규칙 전부
   quest-completion.service.ts   완료: 정산 → 잠금 없이 확인 → 전투 기록 → 잠그고 다시 확인 → 지갑, 진행도(경험치와 카테고리 스탯), 퀘스트 행 갱신, 난이도 점수만큼 보스 체력을 깎은 뒤 무기력 해제. 골드와 경험치에 활성 이벤트 배율을 곱한다
   quest-penalty.service.ts      놓친 날 정산. 그날 마감인 퀘스트가 열려 있으면 무기력
   quest-settlement.scheduler.ts 서울 00:01에 정산(판정은 그 안) 뒤, 판정된 보스 하위 루틴을 지우고 오늘 퀘스트를 찍는다
-  quest-crit.roller.ts          크리티컬 판정 (CRIT_FORCE)
-  quest-calendar.ts             서울 날짜 계산. 달력 날짜 함수는 shared에서 다시 내보낸다
+  quest-crit.roller.ts          크리티컬 판정. CRIT_FORCE는 NODE_ENV가 development 또는 test일 때만 읽는다
+  quest-calendar.ts             앱 달력 날짜 (`appCalendarDate`). 달력 날짜 함수는 shared에서 다시 내보낸다. 시간대는 APP_TIME_ZONE (Asia/Seoul)
   monster-view.ts               몬스터 행과 작업 상태를 목록 필드로 바꾼다
-  monster-retry.service.ts      퀘스트, 루틴, 보스의 실패한 몬스터 작업을 다시 넣는다. 루틴이 찍은 퀘스트는 루틴 작업을 다시 넣는다
+  monster-retry.service.ts      퀘스트, 루틴, 보스의 실패한 몬스터 작업을 주인의 지금 제목(보스는 목표)으로 다시 넣는다. 루틴이 찍은 퀘스트는 루틴 작업을 다시 넣는다
 wallet/                         잔액, 내역, 사후 차감, 구매
 shop/                           기본 목록, 직접 등록, 구매
   shop.controller.ts            GET /api/shop, POST/PATCH/DELETE /api/shop/rewards, POST /api/shop/purchases
@@ -68,21 +72,24 @@ shop/                           기본 목록, 직접 등록, 구매
 progress/                       레벨, 경험치, 칭호, 연속, 뽑기권
 stats/                          완료 때 진행도에 쌓인 체력·지성·감성
 job-change/                     직업 변경
+limits/                         사람마다 하루 퀘스트 생성·보스 확정·AI 버튼 횟수
+  daily-usage.ts                그날 행을 잠근 뒤 429이거나 +1. AI 버튼은 하루를 분당 칸보다 먼저 본다
 ai/                             몬스터, 전투 기록, 난이도 추천, 계획 제안. 지금 구현은 Gemini
   ai.ts                         인터페이스. 골드와 경험치는 정하지 않는다
   ai-call-limiter.ts            바로 부르는 호출(전투 기록, 추천, 계획 제안)만 센다. 큐 워커는 세지 않는다. 서버 메모리에 있어서 서버가 여러 대면 대수만큼 늘어난다
   gemini-ai.ts                  Gemini 호출. 기본 모델 gemini-3.5-flash-lite. Gemini에는 마감을 최소 10초로 보내고, 3초는 우리 쪽에서 끊는다
   difficulty.controller.ts      POST /api/ai/difficulty-recommendations
-  difficulty.service.ts         제목과 카테고리를 받아 최근 14일(서울) 완료·놓침을 센 뒤, 바로 부르는 한도를 보고 난이도와 이유 한 줄을 준다
+  difficulty.service.ts         제목과 카테고리를 받아 최근 14일(서울) 완료·놓침을 센 뒤, 하루 AI 버튼 한도(429), 바로 부르는 한도(차면 503, 하루에서 안 셈), 난이도와 이유 한 줄
   dto/recommend-difficulty.dto.ts  제목과 카테고리. 카테고리는 필수
   quest-plan.controller.ts      POST /api/ai/quest-plans
-  quest-plan.service.ts         목표와 마감을 받아, 서버가 센 횟수와 체력이 붙은 하위 퀘스트를 준다
+  quest-plan.service.ts         목표와 마감을 받아, 서버가 센 횟수와 체력이 붙은 하위 퀘스트를 준다. 하루 AI 버튼 한도, 바로 부르는 한도, 그다음 AI
   dto/suggest-quest-plan.dto.ts
 ai-queue/                       뒤에서 만드는 몬스터 작업만
-  ai-queue.ts                   넣기, 실패한 작업 다시 넣기, 퀘스트·루틴·보스별 조회, 꺼내기, 완료, 실패
+  ai-queue.ts                   넣기, 실패한 작업을 새 payload로 다시 넣기, 퀘스트·루틴·보스별 조회, 꺼내기, 완료, 실패
   postgres-ai-queue.ts          Postgres 큐. 분당 12회, 재시도, FOR UPDATE SKIP LOCKED
   ai-queue.worker.ts            작업을 하나 집는다. 보스 작업은 보스 전용 프롬프트, 그 밖은 몬스터 프롬프트를 부른다
 database/schema/                Drizzle 테이블 (테이블마다 파일 하나)
+  user-daily-usage.ts           사용자마다 앱 시간대 하루 한 행: questCreates, bossConfirms, aiButtonCalls
 common/filters/                 예외를 HTTP 응답으로 바꾸는 필터
 ```
 
@@ -93,6 +100,7 @@ quest-completion.ts   보상표 금액, 직업·연속·이벤트 배율, 최종
 quest-penalty.ts      패널티 금액, 골드·경험치 하한
 account-status.ts     정지가 아직 유효한지, ACCOUNT_SUSPENDED 본문
 constants/            보상표, 패널티표, 크리티컬 확률, 직업과 그 밖의 상수
+  daily-limits.ts     생성 10, 보스 1, AI 버튼 20, 429 code
   admin.ts            정지 사유 상한, 공지 길이, 이벤트 배율 범위, 관리자 페이지 크기
   monsters.ts         몬스터 8종, 그림 키, 목록 상태
   bosses.ts           보스 8종, 그림 키, 진행 상한 3, 체력당 자리값 보상 10과 패널티 5
@@ -140,7 +148,7 @@ i18n/          한국어와 영어 문구
 - 골드, 경험치, 패널티 금액은 `shared`의 함수만 계산한다. 서버는 그 값으로 지급하고, 웹은 같은 함수로 예상만 보여 준다.
 - 컨트롤러는 요청만 받아 서비스를 호출한다. 규칙은 서비스에 있다.
 - 웹의 서버 호출은 모두 `useApi`를 거친다. 퀘스트·지갑 같은 기능 호출은 `lib/`에 모으고, 계정 API는 `stores/auth.ts`에서 호출한다.
-- 한 사용자의 행을 같이 바꿀 때는 이 순서로 잠근다. ai_tasks, 루틴, 퀘스트, 사용자, user_rewards, 지갑, 진행도, 보스.
+- 한 사용자의 행을 같이 바꿀 때는 이 순서로 잠근다. ai_tasks, 루틴, 퀘스트, 사용자, user_daily_usage, user_rewards, 지갑, 진행도, 보스.
 
 ## 서버 내부 구조
 
@@ -151,6 +159,7 @@ i18n/          한국어와 영어 문구
 - 정산은 놓친 퀘스트의 골드를 깎은 다음, 마감이 지난 보스를 판정한다.
 - 직업 변경은 지갑에 골드를 넣지 않는다. 레벨과 경험치만 1과 0으로 되돌리고, 마지막 변경 시각부터 7×24시간이 지나기 전에는 다시 바꾸지 못한다.
 - 상점 구매는 보유 골드가 가격 이상일 때만 깎는다. 외상으로 내려가지 않는다. 내역 종류는 `purchase`이고, 그때의 보상 이름을 남긴다. 보관·사용은 없다.
+- 기한 퀘스트·루틴 등록, 루틴 제목 변경, 보스 확정은 몬스터 큐 앞에서 `user_daily_usage`에 하루 생성을 센다. 10을 넘으면 429 `DAILY_QUEST_CREATE_LIMIT`. 같은 날 보스 두 번째는 429 `DAILY_BOSS_CONFIRM_LIMIT`. 난이도 추천과 계획 제안은 하루 AI 버튼(20)을 센다. 하루를 먼저 보고, 가득이면 429 `DAILY_AI_BUTTON_LIMIT`이며 분당 칸을 먹지 않는다. 분당이 가득이면 503이고 하루에서 안 센다.
 
 ## 루틴 찍기
 
@@ -162,7 +171,7 @@ i18n/          한국어와 영어 문구
 
 기한 퀘스트를 등록하면 그 퀘스트의 몬스터 작업을 하나 넣는다. 루틴을 등록하면 그 루틴의 작업을 하나 넣는다. 보스를 확정하면 보스 하나, 하위 기한 퀘스트마다 하나, 하위 루틴마다 하나를 넣는다. 작업은 그 id 중 하나만 저장하고, 그 id는 유일하다. 퀘스트 페이로드의 종류는 `shared/src/constants/monsters.ts`의 8종이다. 루틴도 같은 8종이다. 보스는 보스 8종이다. 응답은 작업을 기다리지 않는다. 넣기에 실패해도 퀘스트, 루틴, 보스는 남는다.
 
-워커가 작업을 하나 집어 AI 인터페이스를 부른다. 보스 작업은 보스 전용 프롬프트다. 퀘스트와 루틴 작업은 몬스터 프롬프트다. 모델이 종류를 고르고 이름과 설명을 쓴다. 골드와 경험치는 정하지 않는다. 성공하면 결과를 `monsters`에 넣고, 퀘스트·루틴·보스가 그 id를 저장한다. 루틴의 결과는 아직 몬스터가 없는, 그 루틴이 찍은 퀘스트에도 저장한다. 그다음 작업을 지운다. 실패하면 작업은 `failed`로 남고 몬스터 행은 없다. 제목은 등록한 그대로다. 실패한 작업만 사용자가 다시 넣는다. `POST /api/quests/:id/monster`, `POST /api/routines/:id/monster`, `POST /api/bosses/:id/monster`는 그 작업이 `failed`이면 204이고, 아니면 409이다. 없거나 남의 것이면 404다. 루틴이 찍은 퀘스트는 루틴 작업을 다시 넣는다.
+워커가 작업을 하나 집어 AI 인터페이스를 부른다. 보스 작업은 보스 전용 프롬프트다. 퀘스트와 루틴 작업은 몬스터 프롬프트다. 모델이 종류를 고르고 이름과 설명을 쓴다. 골드와 경험치는 정하지 않는다. 성공하면 결과를 `monsters`에 넣고, 퀘스트·루틴·보스가 그 id를 저장한다. 루틴의 결과는 아직 몬스터가 없는, 그 루틴이 찍은 퀘스트에도 저장한다. 그다음 작업을 지운다. 실패하면 작업은 `failed`로 남고 몬스터 행은 없다. 제목은 등록한 그대로다. 실패한 작업만 사용자가 다시 넣는다. 다시 넣을 때 payload 제목은 주인의 지금 제목(보스는 목표)이다. `POST /api/quests/:id/monster`, `POST /api/routines/:id/monster`, `POST /api/bosses/:id/monster`는 그 작업이 `failed`이면 204이고, 아니면 409이다. 없거나 남의 것이면 404다. 루틴이 찍은 퀘스트는 루틴 작업을 다시 넣는다.
 
 목록은 몬스터 행과, 큐에 아직 있는 작업을 읽는다. 이것을 `monsterStatus`와 `monster`로 바꾼다.
 
@@ -175,13 +184,13 @@ i18n/          한국어와 영어 문구
 
 ## 난이도 추천
 
-`POST /api/ai/difficulty-recommendations`는 제목과 카테고리를 받는다. 카테고리는 필수다. 빈 제목은 400이다. 서버는 그다음 그 사용자의 그 카테고리 퀘스트를 최근 14일(서울 오늘 포함)에서 센다. 완료는 그 구간의 `completedOn`이고, 놓침은 `completedOn`이 비어 있고 `endsOn`이 그 구간의 어제 이전인 행이다. 그다음 바로 부르는 한도를 본다. 한도가 차면 503이고 AI는 부르지 않는다. 그다음 제목, 카테고리, 그 두 수로 AI 인터페이스를 부른다. 모델은 난이도와 이유 한 줄만 돌려준다. 금액은 정하지 않는다. 그 뒤 실패도 503이다.
+`POST /api/ai/difficulty-recommendations`는 제목과 카테고리를 받는다. 카테고리는 필수다. 빈 제목은 400이다. 서버는 그다음 그 사용자의 그 카테고리 퀘스트를 최근 14일(서울 오늘 포함)에서 센다. 완료는 그 구간의 `completedOn`이고, 놓침은 `completedOn`이 비어 있고 `endsOn`이 그 구간의 어제 이전인 행이다. 그다음 하루 AI 버튼 한도(계획 제안과 합쳐 20)를 본다. 하루가 가득이면 429 `DAILY_AI_BUTTON_LIMIT`이고 분당 칸을 먹지 않는다. 그다음 바로 부르는 한도를 본다. 한도가 차면 503이고 하루에서 안 세며 AI는 부르지 않는다. 그다음 제목, 카테고리, 그 두 수로 AI 인터페이스를 부른다. 모델은 난이도와 이유 한 줄만 돌려준다. 금액은 정하지 않는다. 그 뒤 실패도 503이다.
 
 ## 보스 계획 흐름
 
-`POST /api/ai/quest-plans`는 AI 인터페이스를 직접 호출하고, 직접 호출 한도를 쓴다. 모델은 하위 퀘스트만 돌려주고 횟수와 체력은 정하지 않는다. 둘은 서버가 `shared`의 `bossQuestHp`로 센다. 기한이 서울 오늘보다 전이거나 보스 마감보다 뒤면 그 항목은 빠진다. 남는 항목이 없으면 503이고, 저장하지 않는다.
+`POST /api/ai/quest-plans`는 AI 인터페이스를 직접 호출한다. 하루 AI 버튼 한도를 먼저 보고, 그다음 바로 부르는 한도를 쓴다. 모델은 하위 퀘스트만 돌려주고 횟수와 체력은 정하지 않는다. 둘은 서버가 `shared`의 `bossQuestHp`로 센다. 기한이 서울 오늘보다 전이거나 보스 마감보다 뒤면 그 항목은 빠진다. 남는 항목이 없으면 503이고, 저장하지 않는다.
 
-`POST /api/bosses`는 사용자 행을 잠근 뒤, 보스, 하위 기한 퀘스트, 하위 루틴을 한 트랜잭션에 넣는다. 보스는 자기 행이다. 체력은 그 행에 저장하고 요청으로 다시 센다. 하위 기한 퀘스트는 보스 id를 저장한다. 하위 루틴은 루틴 행에 보스 id를 저장한다. 하위는 최대 10개다. 오늘 예정인 하위 루틴은 그 트랜잭션에서 퀘스트를 찍는다. 하위 마감이 보스 마감보다 뒤거나 체력이 1 미만이면 400이고 행은 없다. 판정 전 보스가 이미 3개면 409다. 트랜잭션이 실패하면 아무것도 생기지 않는다. 하위 루틴을 수정하거나 끄거나 켜거나 지우면 400이다.
+`POST /api/bosses`는 사용자 행을 잠근 뒤, 보스, 하위 기한 퀘스트, 하위 루틴을 한 트랜잭션에 넣는다. 보스는 자기 행이다. 체력은 그 행에 저장하고 요청으로 다시 센다. 하위 기한 퀘스트는 보스 id를 저장한다. 하위 루틴은 루틴 행에 보스 id를 저장한다. 하위는 최대 10개다. 오늘 예정인 하위 루틴은 그 트랜잭션에서 퀘스트를 찍는다. 하위 마감이 보스 마감보다 뒤거나 체력이 1 미만이면 400이고 행은 없다. 판정 전 보스가 이미 3개면 409다. 확정은 그날 생성 10에 1로 세고, 하루 보스 1개다. 같은 날 두 번째는 429 `DAILY_BOSS_CONFIRM_LIMIT`이다. 트랜잭션이 실패하면 아무것도 생기지 않는다. 하위 루틴을 수정하거나 끄거나 켜거나 지우면 400이다.
 
 커밋된 뒤에 보스의 작업을 하나 넣는다. 작업 종류는 `monster` 그대로다. 페이로드의 종류는 `shared/src/constants/bosses.ts`의 8종이다. minotaur, hydra, cerberus, kraken, chimera, vampire, giant, abyss_lord. 하위 기한 퀘스트와 하위 루틴은 각자 몬스터 8종으로 작업을 넣는다. 넣기에 실패해도 보스, 하위 퀘스트, 하위 루틴은 남는다. `GET /api/bosses`는 진행 중인 보스만 준다. 몬스터 행과 큐에 남은 작업을 읽고, 종류만 보스 8종으로 본다. 이름은 보스 전용 프롬프트에서 온다. 실패하면 제목은 목표 문구 그대로다. 보스마다 `subquests`가 있다. 한 줄은 확정 때 넣은 하위 항목 하나이고, 최대 10개다. 루틴 줄의 `done`은 찍힌 퀘스트 중 완료 수, `missed`는 완료하지 않았고 마감이 서울 오늘보다 앞인 수, `remaining`은 만든 날부터 보스 마감까지 예정 수에서 만든 날부터 어제까지 예정 수를 빼고, 오늘 찍힌 퀘스트를 완료했거나 지웠으면 1을 더 뺀 값이다. 기한 줄의 `status`는 `open`·`done`·`missed`다. 줄마다 `expectedGold`와 `expectedXp`가 있고, 계산은 `GET /api/quests`와 같다. 루틴은 찍힌 하루 퀘스트 1회다. 순서는 남은 것, 완료, 놓침이고, 같은 묶음은 확정 순서다. `latestLog`는 서울 어제 반격이 있으면 그 반격이다. 없으면 날짜가 늦은 쪽이고, 같은 날이면 반격이 깎음보다 앞이다. `counteredToday`는 `missedOn`이 서울 어제일 때다. `GET /api/bosses/unseen` 항목에는 `boss`(`ready`일 때만)와 `bossStatus`가 있다.
 

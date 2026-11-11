@@ -14,6 +14,8 @@ A web app where you register to-dos as quests and receive gold and XP when you c
 6. After a Google account is created, or after a session is created, the server checks: only when the user exists, the email is not verified yet, and a Google account is linked, it marks the email verified and clears the password of the email (credential) account. It does not check whether a password exists. Why: to stop someone who signed up first with an unverified email from later getting into that account.
 7. A wallet entry stores a kind, a gold amount and a ticket count. The cause is a quest id or a boss id. A purchase stores the reward name instead, with no quest or boss id. Deleting a quest clears the quest id. XP is not stored on the entry. Kinds include completion, penalty, post-hoc deduction, `boss_clear`, `boss_fail`, `boss_abandon` and `purchase`.
 8. Sign-in is Better Auth, and sessions are stored in the `session` table.
+9. Daily create and AI-button counts live on `user_daily_usage` (one row per user per app calendar day), not on progress. Why: registering would otherwise lock the same progress row as a completion.
+10. `TRUST_PROXY` is the number of proxies in front of the server. Empty leaves it off. Why: `true` would trust the leftmost `X-Forwarded-For` hop, which a client can set.
 
 ## System (development)
 
@@ -26,6 +28,7 @@ A web app where you register to-dos as quests and receive gold and XP when you c
 - In development, Vite's dev server proxies `/api` requests to the server.
 - The production Compose starts postgres and server; web is not in Compose.
 - The monster queue is a Postgres table, and the worker runs inside the server. The server calls the battle log and recommendations directly, without the queue.
+- `TRUST_PROXY` is a hop count for Express `trust proxy`. Empty leaves it off, so `req.ip` is the socket address.
 
 ## Code structure
 
@@ -36,6 +39,7 @@ auth/                           sign-up, sign-in (Better Auth), email verificati
   auth.ts                       Better Auth configuration. Session create is refused when the account is suspended
   account-status.guard.ts       global guard that blocks app APIs for a suspended account
   job-class.guard.ts            global guard that blocks app APIs for accounts without a job
+  mail-send-limiter.ts          reserve an email and IP slot before sending a verification mail; release it when the send does not go out
 admin/                          admin users, announcements, one reward event
   admin.guard.ts                session role must be admin
   admin-users.controller.ts     GET /api/admin/users, POST suspend/unsuspend, DELETE
@@ -59,10 +63,10 @@ quests/                         every quest rule
   quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress (XP and the category stat) and the quest row, cut boss HP by the difficulty score, then clear lethargy. Gold and XP use the active event multiplier
   quest-penalty.service.ts      settle missed days. Lethargy when any quest due that day is still open
   quest-settlement.scheduler.ts at 00:01 Seoul: settle (judgment is inside it), drop judged boss subroutines, then spawn
-  quest-crit.roller.ts          critical-hit roll (CRIT_FORCE)
-  quest-calendar.ts             Seoul date helpers. Calendar-day functions are re-exported from shared
+  quest-crit.roller.ts          critical-hit roll. CRIT_FORCE is read only when NODE_ENV is development or test
+  quest-calendar.ts             app calendar-day helpers (`appCalendarDate`). Calendar-day functions are re-exported from shared. The zone is APP_TIME_ZONE (Asia/Seoul)
   monster-view.ts               map a monster row and a task status to the list fields
-  monster-retry.service.ts      requeue a failed monster task for a quest, a routine or a boss. A quest a routine wrote retries the routine task
+  monster-retry.service.ts      requeue a failed monster task for a quest, a routine or a boss, with the owner's current title (the boss goal). A quest a routine wrote retries the routine task
 wallet/                         balance, history, post-hoc deduction, purchase
 shop/                           catalog list, custom rewards, purchase
   shop.controller.ts            GET /api/shop, POST/PATCH/DELETE /api/shop/rewards, POST /api/shop/purchases
@@ -70,21 +74,24 @@ shop/                           catalog list, custom rewards, purchase
 progress/                       level, XP, titles, streak, gacha tickets
 stats/                          stamina, intellect and sense stored on progress at completion
 job-change/                     job change
+limits/                         per-person daily quest-create, boss-confirm and AI-button counts
+  daily-usage.ts                lock the day's row, then 429 or +1. AI buttons check the day before the per-minute window
 ai/                             monster, battle log, difficulty recommendation, quest plan. The current implementation is Gemini
   ai.ts                         interface. It does not decide gold or XP
   ai-call-limiter.ts            counts direct calls only (battle log, recommendation, quest plan). The queue worker is not counted. It lives in this server's memory, so each extra server adds another full limit
   gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite. Gemini is given a deadline of at least 10 seconds. We cut a battle log at 3 seconds
   difficulty.controller.ts      POST /api/ai/difficulty-recommendations
-  difficulty.service.ts         title and category in; count completed and missed in the last 14 Seoul days; then the direct-call limit; then difficulty and one line of reason
+  difficulty.service.ts         title and category in; count completed and missed in the last 14 Seoul days; then the daily AI-button cap (429); then the direct-call limit (503 if full, day not counted); then difficulty and one line of reason
   dto/recommend-difficulty.dto.ts  title and category. Category is required
   quest-plan.controller.ts      POST /api/ai/quest-plans
-  quest-plan.service.ts         goal and deadline in, subquests with server-counted times and HP out
+  quest-plan.service.ts         goal and deadline in, subquests with server-counted times and HP out. Daily AI-button cap, then the direct-call limit, then AI
   dto/suggest-quest-plan.dto.ts
 ai-queue/                       background monster tasks only
-  ai-queue.ts                   enqueue, requeue a failed task, find by quest, routine or boss, dequeue, complete, fail
+  ai-queue.ts                   enqueue, requeue a failed task with a new payload, find by quest, routine or boss, dequeue, complete, fail
   postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
   ai-queue.worker.ts            claims one task. A boss task uses the boss prompt. Any other task uses the monster prompt
 database/schema/                Drizzle tables (one file per table)
+  user-daily-usage.ts           one row per user per app calendar day: questCreates, bossConfirms, aiButtonCalls
 common/filters/                 filter that turns exceptions into HTTP responses
 ```
 
@@ -95,6 +102,7 @@ quest-completion.ts   reward table amounts, job, streak and event multipliers, f
 quest-penalty.ts      penalty amounts, gold and XP floors
 account-status.ts     whether a suspend is still in force, and the ACCOUNT_SUSPENDED body
 constants/            reward table, penalty table, critical-hit odds, jobs and other constants
+  daily-limits.ts     10 creates, 1 boss, 20 AI buttons, and the 429 codes
   admin.ts            suspend reason max, announcement lengths, event multiplier range, admin page size
   monsters.ts         eight monster kinds, picture keys and list statuses
   bosses.ts           eight boss kinds, picture keys, active cap of 3, placeholder reward 10 and penalty 5 per HP
@@ -142,7 +150,7 @@ Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missin
 - Gold, XP and penalty amounts are computed only by functions in `shared`. The server pays with them; the web uses the same functions only to show estimates.
 - Controllers only take the request and call a service. Rules live in services.
 - Every server call from the web goes through `useApi`. Feature calls such as quests and wallet are collected in `lib/`; account APIs are called from `stores/auth.ts`.
-- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_rewards, wallet, progress, bosses.
+- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_daily_usage, user_rewards, wallet, progress, bosses.
 
 ## Inside the server
 
@@ -153,6 +161,7 @@ Main call relations:
 - Settlement deducts gold for missed quests, then judges bosses whose due date is already past.
 - A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
 - A shop purchase deducts gold when the balance is enough. It does not go into debt. The entry kind is `purchase`, with the reward name at that time. There is no inventory.
+- Registering a deadline quest or a routine, changing a routine title, or confirming a boss counts a daily create on `user_daily_usage` before the monster queue. Over 10 is 429 `DAILY_QUEST_CREATE_LIMIT`. A second boss confirm the same day is 429 `DAILY_BOSS_CONFIRM_LIMIT`. Difficulty and plan suggestions count a daily AI button (20). The day is checked first; a full day is 429 `DAILY_AI_BUTTON_LIMIT` and does not take a per-minute slot. A full per-minute window is 503 and does not count the day.
 
 ## Routine spawn
 
@@ -164,7 +173,7 @@ At 00:01 Seoul, for every user who has a job, and in `prepareForRead`, the order
 
 Registering a deadline quest enqueues one monster task for that quest. Registering a routine enqueues one for that routine. Confirming a boss enqueues one for the boss, one for each deadline subquest and one for each subroutine. The task stores exactly one of those ids, and that id is unique. A quest's payload kinds are the eight from `shared/src/constants/monsters.ts`. A routine uses the same eight. A boss uses the eight boss kinds. The response does not wait. If the enqueue fails, the quest, routine or boss stays.
 
-The worker claims one task and calls the AI interface. A boss task uses the boss prompt. A quest or routine task uses the monster prompt. The model picks a kind and writes a name and a description. It does not set gold or XP. On success the result is inserted into `monsters`, and the quest, routine or boss stores that id. A routine's result is also stored on the quests it wrote that do not have one yet. The task is then deleted. On failure the task stays `failed` and no monster row is written. The title stays as registered. Only a failed task can be queued again, and only by the user. `POST /api/quests/:id/monster`, `POST /api/routines/:id/monster` and `POST /api/bosses/:id/monster` answer 204 when that task is `failed`, 409 otherwise, and 404 when the id is missing or belongs to someone else. A quest a routine wrote retries the routine's task.
+The worker claims one task and calls the AI interface. A boss task uses the boss prompt. A quest or routine task uses the monster prompt. The model picks a kind and writes a name and a description. It does not set gold or XP. On success the result is inserted into `monsters`, and the quest, routine or boss stores that id. A routine's result is also stored on the quests it wrote that do not have one yet. The task is then deleted. On failure the task stays `failed` and no monster row is written. The title stays as registered. Only a failed task can be queued again, and only by the user. Requeue writes the owner's current title (the boss goal) into the payload. `POST /api/quests/:id/monster`, `POST /api/routines/:id/monster` and `POST /api/bosses/:id/monster` answer 204 when that task is `failed`, 409 otherwise, and 404 when the id is missing or belongs to someone else. A quest a routine wrote retries the routine's task.
 
 The list reads the monster row and any task still in the queue. It maps them to `monsterStatus` and `monster`:
 
@@ -177,13 +186,13 @@ A routine response is `generating` and `monster` is null while its task is `pend
 
 ## Difficulty recommendation
 
-`POST /api/ai/difficulty-recommendations` takes a title and a category. Category is required. An empty title is 400. The server then counts this user's quests in that category over the last 14 Seoul days, today included: `completedOn` in that window, and missed rows whose `completedOn` is empty and whose `endsOn` is in that window through yesterday. Next it checks the direct-call limit. If the limit is full it answers 503 and does not call AI. Then it calls the AI interface with the title, the category and those two counts. The model returns a difficulty and one line of reason. It does not set an amount. Any later failure is also 503.
+`POST /api/ai/difficulty-recommendations` takes a title and a category. Category is required. An empty title is 400. The server then counts this user's quests in that category over the last 14 Seoul days, today included: `completedOn` in that window, and missed rows whose `completedOn` is empty and whose `endsOn` is in that window through yesterday. Next it checks the daily AI-button cap (20 together with plan suggestions). If the day is full it answers 429 `DAILY_AI_BUTTON_LIMIT` and does not take a per-minute slot. Then it checks the direct-call limit. If that limit is full it answers 503, does not count the day, and does not call AI. Then it calls the AI interface with the title, the category and those two counts. The model returns a difficulty and one line of reason. It does not set an amount. Any later failure is also 503.
 
 ## Boss plan flow
 
-`POST /api/ai/quest-plans` calls the AI interface directly, on the direct-call limit. The model returns subquests and does not set times or HP. The server counts both with `bossQuestHp` in `shared`. A deadline before today in Seoul, or after the boss deadline, is dropped. If none remain, the call answers 503 and stores nothing.
+`POST /api/ai/quest-plans` calls the AI interface directly. It uses the daily AI-button cap first, then the direct-call limit. The model returns subquests and does not set times or HP. The server counts both with `bossQuestHp` in `shared`. A deadline before today in Seoul, or after the boss deadline, is dropped. If none remain, the call answers 503 and stores nothing.
 
-`POST /api/bosses` locks the user, then inserts the boss, the deadline subquests and the subroutines in one transaction. The boss is its own row. HP is stored on that row and counted again from the request. A deadline subquest stores the boss id. A subroutine stores it on the routine. There are at most 10 of them. Today's scheduled subroutines write their quest in that same transaction. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still in progress is 409. If the transaction fails, nothing is created. Updating, pausing, resuming or deleting a subroutine is 400.
+`POST /api/bosses` locks the user, then inserts the boss, the deadline subquests and the subroutines in one transaction. The boss is its own row. HP is stored on that row and counted again from the request. A deadline subquest stores the boss id. A subroutine stores it on the routine. There are at most 10 of them. Today's scheduled subroutines write their quest in that same transaction. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still in progress is 409. Confirming counts as 1 of the day's 10 creates and as that day's one boss. A second confirm the same day is 429 `DAILY_BOSS_CONFIRM_LIMIT`. If the transaction fails, nothing is created. Updating, pausing, resuming or deleting a subroutine is 400.
 
 After that commit, one task is enqueued for the boss. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each deadline subquest and each subroutine gets its own task with the monster kinds. If an enqueue fails, the boss, the subquests and the subroutines stay. `GET /api/bosses` returns only bosses still in progress. It reads the monster row and any task still in the queue, checking boss kinds. The name comes from the boss prompt. A failed result leaves the title as the goal. Each boss has `subquests`, one row per item put in at confirm (at most 10). A routine row has `done` (completed spawned quests), `missed` (spawned, not completed, due before today in Seoul) and `remaining` (scheduled days from the confirm day through the boss due date, minus scheduled days through yesterday, minus 1 when today's spawned quest was completed or deleted). A deadline row has `status` `open`, `done` or `missed`. Each row has `expectedGold` and `expectedXp`, the same calculation as `GET /api/quests`; a routine is one spawned day quest. Order is remaining, then done, then missed; within a group, confirm order. `latestLog` is a counter whose `missedOn` is yesterday in Seoul, when one exists. Otherwise it is the later date, and on the same day the counter wins over a cut. `counteredToday` is true when `missedOn` is yesterday in Seoul. `GET /api/bosses/unseen` items include `boss` (only when ready) and `bossStatus`.
 
