@@ -1,5 +1,15 @@
 import type { RewardEvent } from '@nest-vue/shared';
-import { Body, Controller, Get, HttpStatus, Post, Put, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Put,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@thallesp/nestjs-better-auth';
 import type { Response } from 'express';
 
@@ -30,6 +40,7 @@ export class AdminRewardEventsController {
   }
 
   @Post('end')
+  @HttpCode(HttpStatus.OK)
   async end(@Res({ passthrough: true }) res: Response): Promise<RewardEvent | void> {
     const ended = await this.rewardEvents.end();
     if (!ended) {
