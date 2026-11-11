@@ -304,7 +304,8 @@
       "eventSaved": "Event saved",
       "eventEnded": "Event ended",
       "eventCancelled": "Scheduled event cancelled",
-      "adminForbidden": "Admin accounts cannot be suspended or deleted"
+      "adminForbidden": "Admin accounts cannot be suspended or deleted",
+      "failed": "Could not complete that. Please try again."
     },
     "accounts": {
       "title": "Accounts",

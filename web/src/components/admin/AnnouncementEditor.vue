@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { List } from '@lucide/vue';
-import StarterKit from '@tiptap/starter-kit';
+import { StarterKit } from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';

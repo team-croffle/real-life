@@ -231,7 +231,7 @@ const difficultyClass = computed(() => {
       }}
     </span>
     <span
-      v-if="eventMultText"
+      v-if="quest && quest.expectedGold !== null && quest.expectedXp !== null && eventMultText"
       class="bg-gold-soft text-gold shrink-0 rounded-full px-[7px] py-0.5 text-[10px] font-extrabold whitespace-nowrap"
     >
       ×{{ eventMultText }}

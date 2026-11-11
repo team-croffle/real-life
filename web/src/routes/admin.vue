@@ -85,6 +85,14 @@ function isAdminForbidden(cause: unknown): boolean {
   return cause instanceof ApiError && cause.status === 403;
 }
 
+function showFailedToast(cause: unknown, adminAccount = false): void {
+  if (adminAccount && isAdminForbidden(cause)) {
+    showToast(t('admin.toast.adminForbidden'));
+    return;
+  }
+  showToast(t('admin.toast.failed'));
+}
+
 function htmlPreview(html: string): string {
   return html
     .replace(/<[^>]*>/g, ' ')
@@ -121,17 +129,25 @@ const users = ref<AdminUserListItem[]>([]);
 const userTotal = ref(0);
 const userTotalPages = ref(1);
 const usersView = ref<PanelView>('loading');
+let usersRequest = 0;
 
 async function loadUsers(): Promise<void> {
+  const request = ++usersRequest;
   usersView.value = users.value.length === 0 ? 'loading' : 'ready';
   try {
     const result = await listAdminUsers(page.value, query.value);
+    if (request !== usersRequest) {
+      return;
+    }
     users.value = result.items;
     userTotal.value = result.total;
     userTotalPages.value = Math.max(1, result.totalPages);
     page.value = result.page;
     usersView.value = 'ready';
   } catch {
+    if (request !== usersRequest) {
+      return;
+    }
     usersView.value = 'error';
   }
 }
@@ -196,10 +212,7 @@ async function confirmSuspend(): Promise<void> {
     showToast(t('admin.toast.suspended', { name: target.nickname }));
     suspendUser.value = null;
   } catch (cause) {
-    if (isAdminForbidden(cause)) {
-      showToast(t('admin.toast.adminForbidden'));
-      suspendUser.value = null;
-    }
+    showFailedToast(cause, true);
   }
 }
 
@@ -209,9 +222,7 @@ async function unsuspend(user: AdminUserListItem): Promise<void> {
     users.value = users.value.map((row) => (row.id === updated.id ? updated : row));
     showToast(t('admin.toast.unsuspended', { name: user.nickname }));
   } catch (cause) {
-    if (isAdminForbidden(cause)) {
-      showToast(t('admin.toast.adminForbidden'));
-    }
+    showFailedToast(cause, true);
   }
 }
 
@@ -229,24 +240,27 @@ async function confirmDelete(): Promise<void> {
     const target = confirmUser.value;
     try {
       await deleteAdminUser(target.id);
-      users.value = users.value.filter((row) => row.id !== target.id);
-      userTotal.value = Math.max(0, userTotal.value - 1);
       showToast(t('admin.toast.userDeleted', { name: target.nickname }));
+      confirmKind.value = null;
+      confirmUser.value = null;
+      await loadUsers();
     } catch (cause) {
-      if (isAdminForbidden(cause)) {
-        showToast(t('admin.toast.adminForbidden'));
-      }
+      showFailedToast(cause, true);
     }
+    return;
   }
   if (confirmKind.value === 'notice' && confirmNotice.value) {
     const target = confirmNotice.value;
-    await deleteAdminAnnouncement(target.id);
-    notices.value = notices.value.filter((row) => row.id !== target.id);
-    showToast(t('admin.toast.noticeDeleted'));
+    try {
+      await deleteAdminAnnouncement(target.id);
+      notices.value = notices.value.filter((row) => row.id !== target.id);
+      showToast(t('admin.toast.noticeDeleted'));
+      confirmKind.value = null;
+      confirmNotice.value = null;
+    } catch (cause) {
+      showFailedToast(cause);
+    }
   }
-  confirmKind.value = null;
-  confirmUser.value = null;
-  confirmNotice.value = null;
 }
 
 // notices
@@ -297,17 +311,21 @@ async function saveNotice(): Promise<void> {
   }
   const title = noticeTitle.value.trim();
   const body = noticeBody.value;
-  if (noticeEditId.value) {
-    const updated = await updateAdminAnnouncement(noticeEditId.value, { title, body });
-    notices.value = notices.value.map((row) => (row.id === updated.id ? updated : row));
-    showToast(t('admin.toast.noticeUpdated'));
-  } else {
-    const created = await createAdminAnnouncement({ title, body });
-    notices.value = [created, ...notices.value];
-    showToast(t('admin.toast.noticeCreated'));
+  try {
+    if (noticeEditId.value) {
+      const updated = await updateAdminAnnouncement(noticeEditId.value, { title, body });
+      notices.value = notices.value.map((row) => (row.id === updated.id ? updated : row));
+      showToast(t('admin.toast.noticeUpdated'));
+    } else {
+      const created = await createAdminAnnouncement({ title, body });
+      notices.value = [created, ...notices.value];
+      showToast(t('admin.toast.noticeCreated'));
+    }
+    noticeFormShow.value = false;
+    noticeEditId.value = null;
+  } catch (cause) {
+    showFailedToast(cause);
   }
-  noticeFormShow.value = false;
-  noticeEditId.value = null;
 }
 
 function askDeleteNotice(item: Announcement): void {
@@ -367,26 +385,36 @@ async function saveEvent(): Promise<void> {
   if (rangeError.value) {
     return;
   }
-  storedEvent.value = await upsertAdminRewardEvent({
-    multiplier: formMult.value,
-    startsAt: fromAppDateTimeLocal(formStart.value),
-    endsAt: fromAppDateTimeLocal(formEnd.value),
-  });
-  showToast(t('admin.toast.eventSaved'));
+  try {
+    storedEvent.value = await upsertAdminRewardEvent({
+      multiplier: formMult.value,
+      startsAt: fromAppDateTimeLocal(formStart.value),
+      endsAt: fromAppDateTimeLocal(formEnd.value),
+    });
+    showToast(t('admin.toast.eventSaved'));
+  } catch (cause) {
+    showFailedToast(cause);
+  }
 }
 
 async function endEvent(): Promise<void> {
   const status = currentEventStatus.value;
-  const ended = await endAdminRewardEvent();
-  storedEvent.value = ended;
-  if (ended) {
-    formEnd.value = toAppDateTimeLocal(ended.endsAt);
-  } else {
-    const range = defaultEventLocals();
-    formStart.value = range.start;
-    formEnd.value = range.end;
+  try {
+    const ended = await endAdminRewardEvent();
+    storedEvent.value = ended;
+    if (ended) {
+      formEnd.value = toAppDateTimeLocal(ended.endsAt);
+    } else {
+      const range = defaultEventLocals();
+      formStart.value = range.start;
+      formEnd.value = range.end;
+    }
+    showToast(
+      status === 'scheduled' ? t('admin.toast.eventCancelled') : t('admin.toast.eventEnded'),
+    );
+  } catch (cause) {
+    showFailedToast(cause);
   }
-  showToast(status === 'scheduled' ? t('admin.toast.eventCancelled') : t('admin.toast.eventEnded'));
 }
 
 watch(tab, (next) => {
@@ -428,7 +456,7 @@ onUnmounted(() => {
       </p>
 
       <div
-        class="bg-surface border-border mb-[18px] flex w-[320px] items-center gap-1.5 rounded-xl border px-3.5 py-2.5"
+        class="bg-surface border-border mb-[18px] flex w-full max-w-[320px] items-center gap-1.5 rounded-xl border px-3.5 py-2.5"
       >
         <Search class="text-muted-foreground size-3.5 shrink-0" />
         <input
@@ -449,82 +477,84 @@ onUnmounted(() => {
           {{ t('admin.retry') }}
         </Button>
       </div>
-      <div v-else class="bg-surface border-border overflow-hidden rounded-2xl border">
-        <div
-          class="bg-muted text-muted-foreground grid grid-cols-[2.2fr_0.7fr_1fr_1.6fr_150px] gap-2.5 px-[18px] py-3 text-[11px] font-bold"
-        >
-          <span>{{ t('admin.accounts.nickname') }}</span>
-          <span>{{ t('admin.accounts.level') }}</span>
-          <span>{{ t('admin.accounts.joined') }}</span>
-          <span>{{ t('admin.accounts.status') }}</span>
-          <span class="text-right">{{ t('admin.accounts.actions') }}</span>
+      <div v-else class="bg-surface border-border overflow-x-auto rounded-2xl border">
+        <div class="min-w-[720px]">
+          <div
+            class="bg-muted text-muted-foreground grid grid-cols-[2.2fr_0.7fr_1fr_1.6fr_150px] gap-2.5 px-[18px] py-3 text-[11px] font-bold"
+          >
+            <span>{{ t('admin.accounts.nickname') }}</span>
+            <span>{{ t('admin.accounts.level') }}</span>
+            <span>{{ t('admin.accounts.joined') }}</span>
+            <span>{{ t('admin.accounts.status') }}</span>
+            <span class="text-right">{{ t('admin.accounts.actions') }}</span>
+          </div>
+          <div
+            v-for="user in users"
+            :key="user.id"
+            class="border-border grid grid-cols-[2.2fr_0.7fr_1fr_1.6fr_150px] items-center gap-2.5 border-t px-[18px] py-3.5"
+          >
+            <div class="min-w-0">
+              <p class="text-[13px] font-semibold">
+                {{ user.nickname
+                }}<span class="text-muted-foreground font-medium">#{{ user.tag }}</span>
+              </p>
+              <p class="text-muted-foreground truncate text-[11px]">{{ user.email }}</p>
+            </div>
+            <span class="text-[12.5px] tabular-nums">Lv.{{ user.level }}</span>
+            <span class="text-muted-foreground text-[12.5px] tabular-nums">{{
+              formatAppDate(user.createdAt)
+            }}</span>
+            <div class="min-w-0">
+              <span
+                class="inline-block rounded-full px-2.5 py-1 text-[11px] font-bold"
+                :class="
+                  user.suspended
+                    ? 'bg-destructive/15 text-destructive'
+                    : 'bg-accent text-accent-foreground'
+                "
+              >
+                {{ userStatus(user) }}
+              </span>
+              <p
+                v-if="user.suspended && user.suspendReason"
+                class="text-muted-foreground mt-1 truncate text-[11px]"
+              >
+                {{ t('admin.accounts.reason', { reason: user.suspendReason }) }}
+              </p>
+            </div>
+            <div class="flex justify-end gap-1.5">
+              <button
+                v-if="user.suspended"
+                type="button"
+                class="border-primary text-primary rounded-full border px-3 py-1.5 text-[11.5px] font-bold"
+                @click="unsuspend(user)"
+              >
+                {{ t('admin.accounts.unsuspend') }}
+              </button>
+              <button
+                v-else
+                type="button"
+                class="border-border text-secondary-foreground rounded-full border px-3 py-1.5 text-[11.5px] font-bold"
+                @click="openSuspend(user)"
+              >
+                {{ t('admin.accounts.suspend') }}
+              </button>
+              <button
+                type="button"
+                class="border-destructive/30 text-destructive rounded-full border px-3 py-1.5 text-[11.5px] font-bold"
+                @click="askDeleteUser(user)"
+              >
+                {{ t('admin.delete') }}
+              </button>
+            </div>
+          </div>
+          <p
+            v-if="users.length === 0"
+            class="border-border text-muted-foreground border-t px-[18px] py-9 text-center text-[12.5px]"
+          >
+            {{ t('admin.accounts.empty') }}
+          </p>
         </div>
-        <div
-          v-for="user in users"
-          :key="user.id"
-          class="border-border grid grid-cols-[2.2fr_0.7fr_1fr_1.6fr_150px] items-center gap-2.5 border-t px-[18px] py-3.5"
-        >
-          <div class="min-w-0">
-            <p class="text-[13px] font-semibold">
-              {{ user.nickname
-              }}<span class="text-muted-foreground font-medium">#{{ user.tag }}</span>
-            </p>
-            <p class="text-muted-foreground truncate text-[11px]">{{ user.email }}</p>
-          </div>
-          <span class="text-[12.5px] tabular-nums">Lv.{{ user.level }}</span>
-          <span class="text-muted-foreground text-[12.5px] tabular-nums">{{
-            formatAppDate(user.createdAt)
-          }}</span>
-          <div class="min-w-0">
-            <span
-              class="inline-block rounded-full px-2.5 py-1 text-[11px] font-bold"
-              :class="
-                user.suspended
-                  ? 'bg-destructive/15 text-destructive'
-                  : 'bg-accent text-accent-foreground'
-              "
-            >
-              {{ userStatus(user) }}
-            </span>
-            <p
-              v-if="user.suspended && user.suspendReason"
-              class="text-muted-foreground mt-1 truncate text-[11px]"
-            >
-              {{ t('admin.accounts.reason', { reason: user.suspendReason }) }}
-            </p>
-          </div>
-          <div class="flex justify-end gap-1.5">
-            <button
-              v-if="user.suspended"
-              type="button"
-              class="border-primary text-primary rounded-full border px-3 py-1.5 text-[11.5px] font-bold"
-              @click="unsuspend(user)"
-            >
-              {{ t('admin.accounts.unsuspend') }}
-            </button>
-            <button
-              v-else
-              type="button"
-              class="border-border text-secondary-foreground rounded-full border px-3 py-1.5 text-[11.5px] font-bold"
-              @click="openSuspend(user)"
-            >
-              {{ t('admin.accounts.suspend') }}
-            </button>
-            <button
-              type="button"
-              class="border-destructive/30 text-destructive rounded-full border px-3 py-1.5 text-[11.5px] font-bold"
-              @click="askDeleteUser(user)"
-            >
-              {{ t('admin.delete') }}
-            </button>
-          </div>
-        </div>
-        <p
-          v-if="users.length === 0"
-          class="border-border text-muted-foreground border-t px-[18px] py-9 text-center text-[12.5px]"
-        >
-          {{ t('admin.accounts.empty') }}
-        </p>
       </div>
 
       <div class="mt-4 flex items-center justify-center gap-1.5">

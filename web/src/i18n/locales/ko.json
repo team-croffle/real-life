@@ -304,7 +304,8 @@
       "eventSaved": "이벤트를 저장했어요",
       "eventEnded": "이벤트를 끝냈어요",
       "eventCancelled": "예정된 이벤트를 취소했어요",
-      "adminForbidden": "관리자 계정은 정지하거나 삭제할 수 없어요"
+      "adminForbidden": "관리자 계정은 정지하거나 삭제할 수 없어요",
+      "failed": "처리하지 못했어요. 다시 시도해 주세요."
     },
     "accounts": {
       "title": "계정 관리",

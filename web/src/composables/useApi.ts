@@ -30,7 +30,7 @@ export class ApiError extends Error {
 export type ApiFetchInit = RequestInit;
 
 /** 스토어와 라우터가 이 파일을 다시 가져오므로 순환을 피하려고 호출 시점에 불러온다. */
-async function logoutOnUnauthorized(): Promise<void> {
+async function logoutToLogin(reason?: string): Promise<void> {
   const { useAuthStore } = await import('@/stores/auth');
   const auth = useAuthStore();
   if (!auth.isAuthenticated) {
@@ -39,23 +39,10 @@ async function logoutOnUnauthorized(): Promise<void> {
 
   await auth.logout();
   const { router } = await import('@/router');
-  if (router.currentRoute.value.path !== '/login') {
-    await router.push({ path: '/login', query: { reason: 'sessionExpired' } });
-  }
-}
-
-async function logoutOnSuspended(): Promise<void> {
-  const { useAuthStore } = await import('@/stores/auth');
-  const auth = useAuthStore();
-  if (!auth.isAuthenticated) {
+  if (router.currentRoute.value.path === '/login') {
     return;
   }
-
-  await auth.logout();
-  const { router } = await import('@/router');
-  if (router.currentRoute.value.path !== '/login') {
-    await router.push({ path: '/login' });
-  }
+  await router.push(reason ? { path: '/login', query: { reason } } : { path: '/login' });
 }
 
 /** JSON 본문을 T 로 돌려주는 fetch 래퍼. 204는 본문이 없다. */
@@ -80,9 +67,9 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       : (body?.message ?? response.statusText);
 
     if (response.status === 401) {
-      await logoutOnUnauthorized();
+      await logoutToLogin('sessionExpired');
     } else if (response.status === 403 && body?.code === ACCOUNT_SUSPENDED_CODE) {
-      await logoutOnSuspended();
+      await logoutToLogin();
     }
 
     throw new ApiError(response.status, message, body?.code, {
