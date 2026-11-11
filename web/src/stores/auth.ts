@@ -13,6 +13,7 @@ import { authClient } from '@/auth/authClient';
 import { clearAuthFlow, loadAuthFlow, saveAuthFlow } from '@/auth/authFlowStorage';
 import { ApiError, apiFetch } from '@/composables/useApi';
 import { resetDueTodayAlerts } from '@/composables/useDueTodayAlerts';
+import { startVerificationResendWait } from '@/composables/useVerificationResendWait';
 import { resetUnseenBosses } from '@/lib/unseenBosses';
 
 let hydratePromise: Promise<void> | null = null;
@@ -53,6 +54,7 @@ async function resendVerification(email: string): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ email }),
   });
+  startVerificationResendWait(email);
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -178,6 +180,7 @@ export const useAuthStore = defineStore('auth', () => {
         body: JSON.stringify(payload),
       });
       setPendingEmail(result.email);
+      startVerificationResendWait(result.email);
       clearDraft();
       return result;
     } finally {
