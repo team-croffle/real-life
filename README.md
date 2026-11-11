@@ -18,7 +18,7 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **AI monsters** — registering a deadline quest or a routine turns the to-do into one monster in the background. The kind is one of eight, the picture key matches the kind, and AI writes the name and the description. The title stays as entered while that runs, and if it fails. Gold and XP are set by the rules, not by AI
 - **AI bosses** — a big goal becomes a boss. Confirming a goal, a due date and a category creates the deadline subquests, the subroutines and the boss HP in one step. At most three bosses are in progress. Completing a subquest cuts HP by the difficulty score. The first settlement after the due date clears the boss at 80% of max HP and fails it otherwise. The name is written with a boss prompt. If that fails, the title stays the goal
 - **Shop** — buy real-life rewards with gold: a shared catalog and rewards you register yourself
-- **Character** — a cat picture per job. Lethargy greys it 70%, shortens it 4% from the feet, and stops motion until a sad-face picture exists. Accessories from the gacha come later
+- **Character** — one cat picture per job, shown on home and stats. When lethargic, the cat turns grey and sinks slightly. Accessories from the gacha come later
 - **Notifications (planned)** — due soon, a streak about to break, level-ups, friend and raid news, each one switchable
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
 - **Admin (planned)** — manage accounts, notices and reward multipliers
