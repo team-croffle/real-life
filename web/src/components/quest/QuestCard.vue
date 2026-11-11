@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Check, Ellipsis, Sword } from '@lucide/vue';
 import type { Routine } from '@nest-vue/shared';
-import { Check, Ellipsis, Sword } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 

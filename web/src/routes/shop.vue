@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Circle, Plus, TriangleAlert } from '@lucide/vue';
 import { USER_REWARDS_MAX, type ShopItem } from '@nest-vue/shared';
-import { Circle, Plus, TriangleAlert } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 

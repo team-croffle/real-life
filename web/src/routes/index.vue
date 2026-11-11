@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Plus, TriangleAlert } from '@lucide/vue';
 import type { BossSummary, Progress, Stats } from '@nest-vue/shared';
-import { Plus, TriangleAlert } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';

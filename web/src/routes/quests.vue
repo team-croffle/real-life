@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { ListChecks, Plus, Sword, TriangleAlert } from '@lucide/vue';
 import type { Routine } from '@nest-vue/shared';
-import { ListChecks, Plus, Sword, TriangleAlert } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 

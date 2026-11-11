@@ -171,7 +171,7 @@
 ## 기술 스택
 
 - **서버**: NestJS 12, Drizzle ORM(PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API(`@google/genai`, AI 도우미)
-- **웹**: Vue 3, Vite 8, Vue Router 5(파일 기반 라우팅), Pinia, vue-i18n, Tailwind CSS v4, canvas-confetti, Howler
+- **웹**: Vue 3, Vite 8, Vue Router 5(파일 기반 라우팅), Pinia, vue-i18n, Tailwind CSS v4, `@lucide/vue`, canvas-confetti, Howler
 - **공용**: TypeScript. `shared` 워크스페이스에 타입, 상수, 보상 계산, 서울 달력 계산을 두고 서버와 웹이 같이 쓴다
 - **툴링**: pnpm workspace, oxlint, oxfmt, husky + lint-staged, Docker Compose
 - **예정**: S3 호환 저장소(AWS SDK v3 + MinIO, 캐릭터 이미지)

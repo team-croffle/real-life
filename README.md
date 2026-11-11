@@ -171,7 +171,7 @@ Settings are saved in this browser, not in the account.
 ## Stack
 
 - **Server**: NestJS 12, Drizzle ORM (PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API (`@google/genai`, AI assistant)
-- **Web**: Vue 3, Vite 8, Vue Router 5 (file-based routing), Pinia, vue-i18n, Tailwind CSS v4, canvas-confetti, Howler
+- **Web**: Vue 3, Vite 8, Vue Router 5 (file-based routing), Pinia, vue-i18n, Tailwind CSS v4, `@lucide/vue`, canvas-confetti, Howler
 - **Shared**: TypeScript. The `shared` workspace holds types, constants, the reward calculation and Seoul calendar helpers used by both the server and the web
 - **Tooling**: pnpm workspace, oxlint, oxfmt, husky + lint-staged, Docker Compose
 - **Planned**: S3-compatible storage (AWS SDK v3 + MinIO, character images)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Moon, Sun, Volume2, X } from 'lucide-vue-next';
+import { Moon, Sun, Volume2, X } from '@lucide/vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 

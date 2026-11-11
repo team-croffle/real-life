@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Check, Ticket } from '@lucide/vue';
 import type { QuestCompletionResult } from '@nest-vue/shared';
-import { Check, Ticket } from 'lucide-vue-next';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 

@@ -12,6 +12,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@lucide/vue": "^1.71.0",
     "@nest-vue/shared": "workspace:*",
     "@vueuse/core": "^14.4.0",
     "better-auth": "^1.7.14",
@@ -19,7 +20,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "howler": "^2.2.4",
-    "lucide-vue-next": "^0.544.0",
     "pinia": "^4.0.3",
     "reka-ui": "^2.10.4",
     "tailwind-merge": "^3.7.0",

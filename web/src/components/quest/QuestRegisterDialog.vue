@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Star, X } from '@lucide/vue';
 import type {
   QuestCategory,
   QuestDifficulty,
@@ -20,7 +21,6 @@ import {
   QUEST_WEEKDAYS,
   weekdayOfCalendarDate,
 } from '@nest-vue/shared';
-import { Star, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 

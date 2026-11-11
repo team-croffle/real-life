@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Check } from '@lucide/vue';
 import type { JobClass } from '@nest-vue/shared';
-import { Check } from 'lucide-vue-next';
 
 import { cn } from '@/lib/utils';
 

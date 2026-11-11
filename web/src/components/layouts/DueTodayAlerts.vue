@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Bell } from '@lucide/vue';
 import type { QuestListItem } from '@nest-vue/shared';
-import { Bell } from 'lucide-vue-next';
 import { nextTick, onMounted, onUnmounted, ref, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';

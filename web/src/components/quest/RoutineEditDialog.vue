@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from '@lucide/vue';
 import type {
   CreateRoutinePayload,
   QuestCategory,
@@ -13,7 +14,6 @@ import {
   QUEST_TITLE_MAX,
   QUEST_WEEKDAYS,
 } from '@nest-vue/shared';
-import { X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 

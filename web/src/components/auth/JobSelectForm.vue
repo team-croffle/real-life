@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { Briefcase, GraduationCap, Loader2, Sparkles } from '@lucide/vue';
 import type { JobClass } from '@nest-vue/shared';
 import { JOB_CLASSES } from '@nest-vue/shared';
-import { Briefcase, GraduationCap, Loader2, Sparkles } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';

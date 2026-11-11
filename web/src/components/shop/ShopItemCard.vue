@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { Bed, Ellipsis, Gamepad2, Lock, ShoppingBag, Users, Utensils } from '@lucide/vue';
 import type { ShopItem, ShopKind } from '@nest-vue/shared';
-import { Bed, Ellipsis, Gamepad2, Lock, ShoppingBag, Users, Utensils } from 'lucide-vue-next';
 import type { Component } from 'vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
