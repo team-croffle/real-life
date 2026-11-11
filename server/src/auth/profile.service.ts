@@ -20,6 +20,7 @@ import type { DrizzleDb } from '../database/database.module';
 import { accounts, users } from '../database/schema';
 import { allocateTag } from './auth';
 import { deleteUserAccount } from './delete-user-account';
+import { MailSendLimiter } from './mail-send-limiter';
 import { toUser } from './to-user';
 
 @Injectable()
@@ -28,18 +29,23 @@ export class ProfileService {
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     private readonly auth: AuthService,
     private readonly config: ConfigService,
+    private readonly mailSendLimiter: MailSendLimiter,
   ) {}
 
-  async register(input: {
-    email: string;
-    password: string;
-    nickname: string;
-  }): Promise<RegisterResult> {
+  async register(
+    input: {
+      email: string;
+      password: string;
+      nickname: string;
+    },
+    ip: string | undefined,
+  ): Promise<RegisterResult> {
     if (!this.config.get<string>('SMTP_USER') || !this.config.get<string>('SMTP_PASS')) {
       throw new ServiceUnavailableException('Email sending is not configured');
     }
 
     const email = input.email.toLowerCase();
+    const reservation = this.mailSendLimiter.tryReserve(email, ip);
     try {
       await this.auth.api.signUpEmail({
         body: {
@@ -50,6 +56,7 @@ export class ProfileService {
         } as never,
       });
     } catch (error) {
+      this.mailSendLimiter.release(reservation);
       throw this.mapAuthError(error);
     }
 
@@ -59,12 +66,15 @@ export class ProfileService {
     };
   }
 
-  async resendVerification(email: string): Promise<void> {
+  async resendVerification(email: string, ip: string | undefined): Promise<void> {
+    const normalized = email.toLowerCase();
+    const reservation = this.mailSendLimiter.tryReserve(normalized, ip);
     try {
       await this.auth.api.sendVerificationEmail({
-        body: { email: email.toLowerCase() },
+        body: { email: normalized },
       });
     } catch (error) {
+      this.mailSendLimiter.release(reservation);
       if (error instanceof APIError && error.status === 'BAD_REQUEST') {
         return;
       }
