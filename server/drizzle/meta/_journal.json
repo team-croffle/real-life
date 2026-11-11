@@ -169,6 +169,13 @@
       "when": 1794310466578,
       "tag": "0023_shop_kinds",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794376691575,
+      "tag": "0024_admin",
+      "breakpoints": true
     }
   ]
 }
