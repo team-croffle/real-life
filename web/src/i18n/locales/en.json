@@ -352,7 +352,6 @@
       "invalidPassword": "Password must be at least 8 characters.",
       "invalidNickname": "Nickname must be 1–20 characters and cannot include #.",
       "unauthorized": "Email or password is incorrect.",
-      "emailTaken": "This email is already registered.",
       "socialTaken": "This social account is already registered.",
       "emailNotVerified": "Email verification is not finished yet.",
       "googleUnavailable": "Google login is not available right now.",

@@ -19,10 +19,6 @@ export function authErrorI18nKey(error: unknown): string {
 
   const message = error.message;
 
-  if (error.status === 409 && message.includes('Email already registered')) {
-    return 'auth.errors.emailTaken';
-  }
-
   if (error.status === 409 && message.includes('Social account already registered')) {
     return 'auth.errors.socialTaken';
   }
