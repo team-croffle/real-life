@@ -10,7 +10,45 @@ import { createTransport } from 'nodemailer';
 import type { DrizzleDb } from '../database/database.module';
 import { accounts, sessions, users, verifications } from '../database/schema';
 
-const TAG_ATTEMPTS = 8;
+export const TAG_ATTEMPTS = 8;
+export const NICKNAME_TAG_UNIQUE = 'users_nickname_tag_unique';
+
+export function isNicknameTagUniqueViolation(error: unknown): boolean {
+  return constraintNames(error).includes(NICKNAME_TAG_UNIQUE);
+}
+
+function constraintNames(error: unknown): string[] {
+  const names: string[] = [];
+  const visit = (value: unknown, depth: number): void => {
+    if (depth > 6 || value === null || value === undefined) {
+      return;
+    }
+    if (typeof value === 'string') {
+      if (value.includes(NICKNAME_TAG_UNIQUE)) {
+        names.push(NICKNAME_TAG_UNIQUE);
+      }
+      return;
+    }
+    if (typeof value !== 'object') {
+      return;
+    }
+    const record = value as {
+      code?: unknown;
+      constraint?: unknown;
+      cause?: unknown;
+      message?: unknown;
+    };
+    if (record.constraint === NICKNAME_TAG_UNIQUE) {
+      names.push(NICKNAME_TAG_UNIQUE);
+    }
+    if (typeof record.message === 'string') {
+      visit(record.message, depth + 1);
+    }
+    visit(record.cause, depth + 1);
+  };
+  visit(error, 0);
+  return names;
+}
 
 export type AuthConfig = {
   secret: string;
