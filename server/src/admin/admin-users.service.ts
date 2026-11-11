@@ -11,7 +11,7 @@ import { count, desc, eq, ilike, or } from 'drizzle-orm';
 
 import { deleteUserAccount } from '../auth/delete-user-account';
 import { DRIZZLE } from '../database/database.constants';
-import type { DrizzleDb } from '../database/database.module';
+import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { sessions } from '../database/schema/sessions';
 import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
@@ -120,7 +120,7 @@ export class AdminUsersService {
         throw new NotFoundException();
       }
       await tx.delete(sessions).where(eq(sessions.userId, userId));
-      return this.toListItem(updated);
+      return this.toListItem(updated, await this.readLevel(tx, userId));
     });
   }
 
@@ -151,7 +151,7 @@ export class AdminUsersService {
       if (!updated) {
         throw new NotFoundException();
       }
-      return this.toListItem(updated);
+      return this.toListItem(updated, await this.readLevel(tx, userId));
     });
   }
 
@@ -173,7 +173,16 @@ export class AdminUsersService {
     });
   }
 
-  private toListItem(userRow: typeof users.$inferSelect, level = 1): AdminUserListItem {
+  private async readLevel(tx: DrizzleTx, userId: string): Promise<number> {
+    const [progressRow] = await tx
+      .select({ level: userProgress.level })
+      .from(userProgress)
+      .where(eq(userProgress.userId, userId))
+      .limit(1);
+    return progressRow?.level ?? 1;
+  }
+
+  private toListItem(userRow: typeof users.$inferSelect, level: number): AdminUserListItem {
     const now = new Date();
     const active = isAccountSuspended(userRow, now);
     return {
