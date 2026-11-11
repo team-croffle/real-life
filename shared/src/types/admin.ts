@@ -5,6 +5,7 @@ export interface AdminUserListItem {
   tag: string;
   createdAt: string;
   level: number;
+  suspended: boolean;
   suspendedUntil: string | null;
   suspendReason: string | null;
 }

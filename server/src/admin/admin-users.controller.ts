@@ -32,6 +32,7 @@ export class AdminUsersController {
   }
 
   @Post(':id/suspend')
+  @HttpCode(200)
   suspend(
     @Param('id', ParseUUIDPipe) userId: string,
     @Body() dto: SuspendUserDto,
@@ -40,6 +41,7 @@ export class AdminUsersController {
   }
 
   @Post(':id/unsuspend')
+  @HttpCode(200)
   unsuspend(@Param('id', ParseUUIDPipe) userId: string): Promise<AdminUserListItem> {
     return this.adminUsers.unsuspend(userId);
   }
