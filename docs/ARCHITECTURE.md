@@ -109,7 +109,7 @@ constants/            reward table, penalty table, critical-hit odds, jobs and o
   shop.ts             five kinds (hobby, rest, food, outing, shopping), suggested prices per kind, catalog ids and placeholder prices, custom cap 20, price 1–99,999
 boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
 boss-reward.ts        80% clear line, clear reward and fail penalty, with no job, streak or event multiplier
-quest-calendar.ts     Seoul calendar-day helpers. The server re-exports them; the web uses them to preview boss HP
+quest-calendar.ts     Seoul calendar-day helpers. The server re-exports them. The web uses them for day gaps; today is `appCalendarDate`
 types/                response types exchanged by the server and the web
   quest.ts            quest list item: bossTitle is the goal, bossName is the boss monster name or null
   difficulty-recommendation.ts
@@ -136,8 +136,8 @@ components/    a folder per page (home, quest, boss, wallet, shop, stats, job, s
   shop/ShopConfirmDialog.vue     confirm a purchase or a delete
   shop/ShopItemCard.vue          one catalog or custom item
   stats/CharacterCard.vue        stats page character, job, title and XP
-lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), display calculation (questReward), appCalendarDate, confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
-composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state), useDueTodayAlerts.ts (app calendar today due and still open, from GET /api/quests). Completion opens the result first, then fills gold, XP and the battle log after the response
+lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), display calculation (questReward), appCalendarDate, formatAmount, confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
+composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state), useDueTodayAlerts.ts (app calendar today due and still open, from GET /api/quests), useVerificationResendWait.ts (60s after sign-up or a successful resend). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
 i18n/          Korean and English copy

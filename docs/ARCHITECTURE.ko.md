@@ -107,7 +107,7 @@ constants/            보상표, 패널티표, 크리티컬 확률, 직업과 �
   shop.ts             종류 5개(hobby, rest, food, outing, shopping), 종류별 추천 가격, 기본 아이템 id와 자리값 가격, 직접 등록 상한 20, 가격 1~99,999
 boss-hp.ts            횟수와 난이도 점수로 하위 퀘스트 체력
 boss-reward.ts        80% 처치선, 처치 보상과 실패 패널티. 직업·연속·이벤트 배율은 없다
-quest-calendar.ts     서울 달력 날짜 계산. 서버가 다시 내보내고, 웹은 보스 체력 예상에 쓴다
+quest-calendar.ts     서울 달력 날짜 계산. 서버가 다시 내보낸다. 웹은 날짜 간격에 쓰고, 오늘은 `appCalendarDate`다
 types/                서버와 웹이 주고받는 응답 타입
   quest.ts            퀘스트 목록 항목. bossTitle은 목표, bossName은 보스 몬스터 이름 또는 null
   difficulty-recommendation.ts
@@ -134,8 +134,8 @@ components/    페이지마다 폴더 (home, quest, boss, wallet, shop, stats, j
   shop/ShopConfirmDialog.vue     구매·삭제 확인
   shop/ShopItemCard.vue          기본 또는 직접 등록 한 줄
   stats/CharacterCard.vue        스탯 화면의 캐릭터, 직업, 칭호, 경험치
-lib/           서버 호출 (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), 화면용 계산 (questReward), appCalendarDate, 색종이, 효과음, 저장한 설정, characterAppearance (직업 → /character/*.webp)
-composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태), useDueTodayAlerts.ts (앱 달력 오늘 마감·미완료, GET /api/quests에서 고름). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
+lib/           서버 호출 (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), 화면용 계산 (questReward), appCalendarDate, formatAmount, 색종이, 효과음, 저장한 설정, characterAppearance (직업 → /character/*.webp)
+composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태), useDueTodayAlerts.ts (앱 달력 오늘 마감·미완료, GET /api/quests에서 고름), useVerificationResendWait.ts (가입 성공·재발송 성공 뒤 60초). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
 stores/        로그인 상태와 계정 API 호출 (Pinia)
 auth/          Better Auth 클라이언트
 i18n/          한국어와 영어 문구
