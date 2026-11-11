@@ -28,7 +28,7 @@ v0.4 (shop / character) is done. v0.5 (stabilization) is in progress. Progress b
 
 ## Account and jobs
 
-Sign up with an email and password, or sign in with Google. An email account can sign in only after the verification link in the email (valid for 24 hours) is opened. A Google account counts as verified. A four-digit tag is added to the nickname automatically, as in `nickname#1234`. Verification mail is one per email per 60 seconds, and ten per IP per 10 minutes. A send that did not go out does not keep the slot.
+Sign up with an email and password, or sign in with Google. An email account can sign in only after the verification link in the email (valid for 24 hours) is opened. A Google account counts as verified. A four-digit tag is added to the nickname automatically, as in `nickname#1234`. Verification mail is one per email per 60 seconds, and ten per IP per 10 minutes. The slot is released when sending fails.
 
 After signing up you pick a job before you can use the app. Each job earns more in some categories.
 
