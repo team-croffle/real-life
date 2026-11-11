@@ -29,9 +29,10 @@ async function bootstrap(): Promise<void> {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const trustProxy = config.get<string>('TRUST_PROXY', '');
-  if (trustProxy === 'true' || trustProxy === '1') {
-    app.getHttpAdapter().getInstance().set('trust proxy', true);
+  const trustProxy = config.get<string>('TRUST_PROXY', '').trim();
+  const proxyHops = Number.parseInt(trustProxy, 10);
+  if (/^\d+$/.test(trustProxy) && proxyHops > 0) {
+    app.getHttpAdapter().getInstance().set('trust proxy', proxyHops);
   }
 
   const port = config.get<number>('PORT', 3000);
