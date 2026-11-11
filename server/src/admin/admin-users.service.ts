@@ -71,6 +71,7 @@ export class AdminUsersService {
           tag: row.tag,
           createdAt: row.createdAt.toISOString(),
           level: row.level ?? 1,
+          suspended: active,
           suspendedUntil: active ? (row.suspendedUntil?.toISOString() ?? null) : null,
           suspendReason: active ? row.suspendReason : null,
         };
@@ -192,6 +193,7 @@ export class AdminUsersService {
       tag: userRow.tag,
       createdAt: userRow.createdAt.toISOString(),
       level,
+      suspended: active,
       suspendedUntil: active ? (userRow.suspendedUntil?.toISOString() ?? null) : null,
       suspendReason: active ? userRow.suspendReason : null,
     };
