@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Loader2 } from '@lucide/vue';
+import { Ban, Loader2 } from '@lucide/vue';
 import { storeToRefs } from 'pinia';
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 
@@ -10,7 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useGoogleAuth } from '@/composables/useGoogleAuth';
-import { authErrorI18nKey, isEmailNotVerified, isUnauthorized } from '@/lib/authErrors';
+import { formatAppDateTime } from '@/lib/appDateTime';
+import {
+  authErrorI18nKey,
+  isAccountSuspended,
+  isEmailNotVerified,
+  isUnauthorized,
+} from '@/lib/authErrors';
 import { isValidEmail, isValidPassword } from '@/lib/authValidation';
 import { useAuthStore } from '@/stores/auth';
 
@@ -28,10 +34,40 @@ const password = ref('');
 const emailError = ref('');
 const passwordError = ref('');
 const formError = ref('');
+const suspended = ref(false);
+const suspendedUntil = ref<string | null>(null);
+const suspendReason = ref<string | null>(null);
 const unverified = ref(false);
 const googlePending = ref(false);
 const resendPending = ref(false);
 const resendDone = ref(false);
+
+const suspendedUntilText = computed(() => {
+  if (suspendedUntil.value) {
+    return formatAppDateTime(suspendedUntil.value);
+  }
+  return t('auth.login.suspendedUntilOpen');
+});
+
+function clearAlerts(): void {
+  formError.value = '';
+  unverified.value = false;
+  resendDone.value = false;
+  suspended.value = false;
+  suspendedUntil.value = null;
+  suspendReason.value = null;
+}
+
+function applySuspended(error: unknown): boolean {
+  if (!isAccountSuspended(error)) {
+    return false;
+  }
+  suspended.value = true;
+  suspendedUntil.value = error.suspendedUntil ?? null;
+  suspendReason.value = error.suspendReason ?? null;
+  formError.value = '';
+  return true;
+}
 
 function validate(): boolean {
   emailError.value = isValidEmail(email.value) ? '' : t('auth.errors.invalidEmail');
@@ -40,9 +76,7 @@ function validate(): boolean {
 }
 
 async function onSubmit(): Promise<void> {
-  formError.value = '';
-  unverified.value = false;
-  resendDone.value = false;
+  clearAlerts();
   if (!validate()) {
     return;
   }
@@ -51,6 +85,9 @@ async function onSubmit(): Promise<void> {
     await auth.login({ email: email.value.trim(), password: password.value });
     await router.push(auth.needsJobOnboarding ? '/onboarding/job' : '/');
   } catch (error) {
+    if (applySuspended(error)) {
+      return;
+    }
     unverified.value = isEmailNotVerified(error);
     formError.value = isUnauthorized(error)
       ? t('auth.errors.unauthorized')
@@ -72,13 +109,15 @@ async function onResend(): Promise<void> {
 }
 
 async function onGoogleCredential(idToken: string): Promise<void> {
-  formError.value = '';
-  unverified.value = false;
+  clearAlerts();
   googlePending.value = true;
   try {
     const result = await auth.loginWithGoogle(idToken);
     await router.push(result.needsOnboarding ? '/onboarding/job' : '/');
   } catch (error) {
+    if (applySuspended(error)) {
+      return;
+    }
     formError.value = isUnauthorized(error)
       ? t('auth.errors.googleFailed')
       : t(authErrorI18nKey(error));
@@ -127,6 +166,27 @@ watch(locale, () => {
   <div>
     <h1 class="mb-1.5 text-xl font-bold">{{ t('auth.login.title') }}</h1>
     <p class="text-muted-foreground mb-7 text-[12.5px]">{{ t('auth.login.subtitle') }}</p>
+
+    <div
+      v-if="suspended"
+      role="alert"
+      class="border-destructive/30 bg-destructive/10 mb-5 flex gap-2.5 rounded-[14px] border px-4 py-3.5"
+    >
+      <Ban class="text-destructive mt-0.5 size-[18px] shrink-0" />
+      <div class="min-w-0">
+        <p class="text-destructive mb-1.5 text-[13.5px] font-bold">
+          {{ t('auth.login.suspendedTitle') }}
+        </p>
+        <p class="text-secondary-foreground text-xs leading-relaxed">
+          <span class="text-muted-foreground">{{ t('auth.login.periodLabel') }}</span>
+          {{ suspendedUntilText }}
+        </p>
+        <p v-if="suspendReason" class="text-secondary-foreground text-xs leading-relaxed break-all">
+          <span class="text-muted-foreground">{{ t('auth.login.reasonLabel') }}</span>
+          {{ suspendReason }}
+        </p>
+      </div>
+    </div>
 
     <form class="flex flex-col" @submit.prevent="onSubmit">
       <div class="mb-3.5 flex flex-col gap-0.5">

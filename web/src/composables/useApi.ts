@@ -1,4 +1,5 @@
 import type { ApiErrorResponse } from '@nest-vue/shared';
+import { ACCOUNT_SUSPENDED_CODE } from '@nest-vue/shared';
 import { ref, type Ref } from 'vue';
 
 import { apiBaseUrl } from '@/lib/apiBase';
@@ -8,12 +9,21 @@ const BASE_URL = apiBaseUrl();
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
+  readonly suspendedUntil?: string | null;
+  readonly suspendReason?: string | null;
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(
+    status: number,
+    message: string,
+    code?: string,
+    extra?: { suspendedUntil?: string | null; suspendReason?: string | null },
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.suspendedUntil = extra?.suspendedUntil;
+    this.suspendReason = extra?.suspendReason;
   }
 }
 
@@ -31,6 +41,20 @@ async function logoutOnUnauthorized(): Promise<void> {
   const { router } = await import('@/router');
   if (router.currentRoute.value.path !== '/login') {
     await router.push({ path: '/login', query: { reason: 'sessionExpired' } });
+  }
+}
+
+async function logoutOnSuspended(): Promise<void> {
+  const { useAuthStore } = await import('@/stores/auth');
+  const auth = useAuthStore();
+  if (!auth.isAuthenticated) {
+    return;
+  }
+
+  await auth.logout();
+  const { router } = await import('@/router');
+  if (router.currentRoute.value.path !== '/login') {
+    await router.push({ path: '/login' });
   }
 }
 
@@ -57,9 +81,14 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
 
     if (response.status === 401) {
       await logoutOnUnauthorized();
+    } else if (response.status === 403 && body?.code === ACCOUNT_SUSPENDED_CODE) {
+      await logoutOnSuspended();
     }
 
-    throw new ApiError(response.status, message, body?.code);
+    throw new ApiError(response.status, message, body?.code, {
+      suspendedUntil: body?.suspendedUntil,
+      suspendReason: body?.suspendReason,
+    });
   }
 
   if (response.status === 204) {

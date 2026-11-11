@@ -305,7 +305,11 @@
       "submit": "로그인",
       "google": "구글 계정으로 계속하기",
       "switch": "아직 계정이 없나요?",
-      "switchAction": "회원가입"
+      "switchAction": "회원가입",
+      "suspendedTitle": "정지된 계정이에요",
+      "periodLabel": "기간",
+      "suspendedUntilOpen": "관리자가 풀 때까지",
+      "reasonLabel": "사유"
     },
     "register": {
       "title": "회원가입",
