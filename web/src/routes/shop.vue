@@ -10,6 +10,7 @@ import ShopConfirmDialog from '@/components/shop/ShopConfirmDialog.vue';
 import ShopItemCard from '@/components/shop/ShopItemCard.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
+import { formatAmount } from '@/lib/formatAmount';
 import { createShopPurchase, deleteUserReward, getShop } from '@/lib/shop';
 import { getWallet } from '@/lib/wallet';
 
@@ -269,7 +270,7 @@ onUnmounted(() => {
         <div>
           <p class="text-secondary-foreground mb-1.5 text-[13px]">{{ t('shop.goldLabel') }}</p>
           <p class="text-gold text-[28px] font-bold">
-            {{ t('shop.goldAmount', { amount: gold }) }}
+            {{ t('shop.goldAmount', { amount: formatAmount(gold) }) }}
           </p>
         </div>
         <Circle class="text-gold size-[42px]" :stroke-width="1.5" />

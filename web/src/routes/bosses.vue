@@ -20,6 +20,7 @@ import { ApiError } from '@/composables/useApi';
 import { useQuestBoard } from '@/composables/useQuestBoard';
 import { appCalendarDate } from '@/lib/appCalendar';
 import { abandonBoss, getBosses, getBossHistory, retryBossMonster } from '@/lib/bosses';
+import { formatAmount } from '@/lib/formatAmount';
 import { abandonQuest, retryQuestMonster } from '@/lib/quests';
 
 const { t } = useI18n();
@@ -398,7 +399,10 @@ function subquestChip(item: BossSubquest): string {
 }
 
 function subquestReward(item: BossSubquest): string {
-  return t('quest.rewardCard', { xp: item.expectedXp, gold: item.expectedGold });
+  return t('quest.rewardCard', {
+    xp: formatAmount(item.expectedXp),
+    gold: formatAmount(item.expectedGold),
+  });
 }
 
 function isRoutineSubquest(item: BossSubquest): item is BossRoutineSubquest {
@@ -795,8 +799,8 @@ onUnmounted(() => {
             {{
               t('boss.logCounter', {
                 questTitle: selected.latestLog.questTitle,
-                gold: selected.latestLog.gold,
-                xp: selected.latestLog.xp,
+                gold: formatAmount(selected.latestLog.gold),
+                xp: formatAmount(selected.latestLog.xp),
               })
             }}
           </p>
@@ -825,7 +829,12 @@ onUnmounted(() => {
         </h2>
         <div class="bg-destructive/10 mb-[18px] rounded-xl px-3.5 py-3">
           <p class="text-destructive text-[15px] font-bold">
-            {{ t('boss.abandonCost', { gold: abandonCost.gold, xp: abandonCost.xp }) }}
+            {{
+              t('boss.abandonCost', {
+                gold: formatAmount(abandonCost.gold),
+                xp: formatAmount(abandonCost.xp),
+              })
+            }}
           </p>
           <p class="text-muted-foreground mt-1.5 text-[11px]">{{ t('boss.abandonNote') }}</p>
         </div>

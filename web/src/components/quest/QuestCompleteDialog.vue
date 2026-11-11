@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { appCalendarDate } from '@/lib/appCalendar';
+import { formatAmount } from '@/lib/formatAmount';
 import type { QuestListItem } from '@/lib/quests';
 import { preloadSounds } from '@/lib/sound';
 
@@ -81,8 +82,8 @@ function confirm(): void {
         >
           {{
             t('quest.expectedReward', {
-              xp: item.expectedXp,
-              gold: item.expectedGold,
+              xp: formatAmount(item.expectedXp),
+              gold: formatAmount(item.expectedGold),
             })
           }}
         </p>

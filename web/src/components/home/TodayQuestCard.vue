@@ -7,6 +7,7 @@ import MonsterImage from '@/components/quest/MonsterImage.vue';
 import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
 import { Button } from '@/components/ui/button';
 import { isQuestDone } from '@/composables/useQuestBoard';
+import { formatAmount } from '@/lib/formatAmount';
 import type { QuestListItem } from '@/lib/quests';
 
 const props = defineProps<{
@@ -55,8 +56,8 @@ const reward = computed(() => {
     return '';
   }
   return t('home.reward', {
-    xp: props.item.expectedXp,
-    gold: props.item.expectedGold,
+    xp: formatAmount(props.item.expectedXp),
+    gold: formatAmount(props.item.expectedGold),
   });
 });
 </script>

@@ -3,6 +3,8 @@ import type { Progress, Stats } from '@nest-vue/shared';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { formatAmount } from '@/lib/formatAmount';
+
 const props = defineProps<{
   stats: Stats | null;
   balance: number | null;
@@ -75,7 +77,9 @@ function shown(value: number | null): string {
     <div class="grid grid-cols-2 gap-3">
       <div>
         <p class="text-muted-foreground text-[11px] font-bold">{{ t('home.gold') }}</p>
-        <p class="mt-0.5 text-lg font-bold">{{ shown(balance) }}</p>
+        <p class="mt-0.5 text-lg font-bold">
+          {{ balance === null ? t('home.emptyValue') : formatAmount(balance) }}
+        </p>
       </div>
       <div>
         <p class="text-muted-foreground text-[11px] font-bold">{{ t('home.tickets') }}</p>

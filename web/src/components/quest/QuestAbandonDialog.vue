@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
+import { formatAmount } from '@/lib/formatAmount';
 
 const props = defineProps<{
   title: string;
@@ -59,8 +60,12 @@ function requestCancel(): void {
           {{ t('quest.deleteCostTitle') }}
         </p>
         <p class="text-destructive flex gap-3.5 text-[15px] font-bold">
-          <span v-if="chargeGold > 0">{{ t('quest.deleteCostGold', { gold: chargeGold }) }}</span>
-          <span v-if="chargeXp > 0">{{ t('quest.deleteCostXp', { xp: chargeXp }) }}</span>
+          <span v-if="chargeGold > 0">{{
+            t('quest.deleteCostGold', { gold: formatAmount(chargeGold) })
+          }}</span>
+          <span v-if="chargeXp > 0">{{
+            t('quest.deleteCostXp', { xp: formatAmount(chargeXp) })
+          }}</span>
         </p>
         <p class="text-muted-foreground mt-1.5 text-[11px]">{{ t('quest.deleteCostNote') }}</p>
       </div>

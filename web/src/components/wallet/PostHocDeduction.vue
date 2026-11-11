@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
+import { formatAmount } from '@/lib/formatAmount';
 import { createPostHocDeduction } from '@/lib/wallet';
 
 const props = defineProps<{
@@ -126,10 +127,10 @@ async function confirm(): Promise<void> {
         class="bg-surface relative z-10 w-full max-w-[340px] rounded-[18px] p-[22px] shadow-xl"
       >
         <h3 class="mb-2 text-[15px] font-bold">
-          {{ t('wallet.postHoc.confirmTitle', { amount }) }}
+          {{ t('wallet.postHoc.confirmTitle', { amount: formatAmount(amount) }) }}
         </h3>
         <p class="text-secondary-foreground mb-[18px] text-[12.5px] leading-normal">
-          {{ t('wallet.postHoc.confirmBody', { after: balanceAfter }) }}
+          {{ t('wallet.postHoc.confirmBody', { after: formatAmount(balanceAfter) }) }}
         </p>
         <div class="flex gap-2">
           <Button

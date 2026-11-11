@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
 import { appCalendarDate, sortWeekdays } from '@/lib/appCalendar';
+import { formatAmount } from '@/lib/formatAmount';
 import { estimatedRegisterReward } from '@/lib/questReward';
 import { createQuest, createRoutine, recommendDifficulty } from '@/lib/quests';
 import { useAuthStore } from '@/stores/auth';
@@ -480,16 +481,16 @@ async function onSubmit(): Promise<void> {
       <p v-if="routineReward" class="text-muted-foreground mb-4 text-[12px]">
         {{
           t('quest.rewardCard', {
-            xp: routineReward.xp,
-            gold: routineReward.gold,
+            xp: formatAmount(routineReward.xp),
+            gold: formatAmount(routineReward.gold),
           })
         }}
       </p>
       <p v-else-if="deadlineOnceReward" class="text-muted-foreground mb-4 text-[12px]">
         {{
           t('quest.rewardCard', {
-            xp: deadlineOnceReward.xp,
-            gold: deadlineOnceReward.gold,
+            xp: formatAmount(deadlineOnceReward.xp),
+            gold: formatAmount(deadlineOnceReward.gold),
           })
         }}
       </p>
@@ -498,8 +499,8 @@ async function onSubmit(): Promise<void> {
           {{
             t('quest.deadlineRewardMax', {
               days: deadlineMaxReward.days,
-              xp: deadlineMaxReward.xp,
-              gold: deadlineMaxReward.gold,
+              xp: formatAmount(deadlineMaxReward.xp),
+              gold: formatAmount(deadlineMaxReward.gold),
             })
           }}
         </p>
