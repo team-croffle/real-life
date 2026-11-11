@@ -39,6 +39,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
+    if (typeof payload === 'object' && payload !== null) {
+      const extra = payload as {
+        code?: unknown;
+        suspendedUntil?: unknown;
+        suspendReason?: unknown;
+      };
+      if (typeof extra.code === 'string') {
+        body.code = extra.code;
+      }
+      if (extra.suspendedUntil === null || typeof extra.suspendedUntil === 'string') {
+        body.suspendedUntil = extra.suspendedUntil;
+      }
+      if (extra.suspendReason === null || typeof extra.suspendReason === 'string') {
+        body.suspendReason = extra.suspendReason;
+      }
+    }
+
     response.status(status).json(body);
   }
 }
