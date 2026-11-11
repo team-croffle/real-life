@@ -5,8 +5,8 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
+import { appCalendarDate } from '@/lib/appCalendar';
 import type { QuestListItem } from '@/lib/quests';
-import { seoulToday } from '@/lib/seoulDate';
 
 import MonsterImage from './MonsterImage.vue';
 import type { MonsterViewTarget } from './MonsterViewDialog.vue';
@@ -71,7 +71,7 @@ const bossChip = computed(() => {
 
 const missed = computed(() => {
   const current = quest.value;
-  return current !== null && !current.completed && current.endsOn < seoulToday();
+  return current !== null && !current.completed && current.endsOn < appCalendarDate();
 });
 
 const scheduleText = computed(() => {

@@ -10,6 +10,8 @@ import type {
 import {
   BOSS_SUBQUEST_MAX,
   bossQuestHp,
+  calendarDaysBetween,
+  isCalendarDate,
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
   QUEST_DIFFICULTY_SCORES,
@@ -17,6 +19,7 @@ import {
   QUEST_TITLE_MAX,
   QUEST_WEEKDAYS,
   routineOccurrenceCount,
+  weekdayOfCalendarDate,
 } from '@nest-vue/shared';
 import { Sword, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -27,14 +30,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
+import { appCalendarDate, sortWeekdays } from '@/lib/appCalendar';
 import { confirmBoss, suggestQuestPlan } from '@/lib/bosses';
-import {
-  calendarDaysBetween,
-  isCalendarDate,
-  seoulToday,
-  seoulWeekday,
-  sortWeekdays,
-} from '@/lib/seoulDate';
 
 type DraftRoutine = {
   key: string;
@@ -73,7 +70,7 @@ const router = useRouter();
 
 const category = ref<QuestCategory>('exercise');
 const goal = ref('');
-const deadlineOn = ref(seoulToday());
+const deadlineOn = ref(appCalendarDate());
 const stage = ref<'input' | 'preview'>('input');
 const planning = ref(false);
 const planFailed = ref(false);
@@ -98,7 +95,7 @@ const canAskPlan = computed(() => {
   if (!isCalendarDate(deadlineOn.value)) {
     return false;
   }
-  return calendarDaysBetween(seoulToday(), deadlineOn.value) >= 0;
+  return calendarDaysBetween(appCalendarDate(), deadlineOn.value) >= 0;
 });
 
 const atLimit = computed(() => items.value.length >= BOSS_SUBQUEST_MAX);
@@ -129,7 +126,7 @@ function resetForm(): void {
   bumpPlan();
   category.value = 'exercise';
   goal.value = '';
-  deadlineOn.value = seoulToday();
+  deadlineOn.value = appCalendarDate();
   stage.value = 'input';
   planFailed.value = false;
   items.value = [];
@@ -162,7 +159,7 @@ function itemTimes(item: DraftItem): number {
   if (item.schedule === 'deadline') {
     return 1;
   }
-  return routineOccurrenceCount(item, seoulToday(), deadlineOn.value);
+  return routineOccurrenceCount(item, appCalendarDate(), deadlineOn.value);
 }
 
 function itemHp(item: DraftItem): number {
@@ -179,7 +176,7 @@ function fromPlanQuest(quest: QuestPlanQuest): DraftItem {
       title: quest.title,
       category: quest.category,
       difficulty: quest.difficulty,
-      weekdays: quest.weekdays ?? [seoulWeekday()],
+      weekdays: quest.weekdays ?? [weekdayOfCalendarDate(appCalendarDate())],
       biweekly: quest.biweekly ?? false,
     };
   }
@@ -235,7 +232,7 @@ function emptyRoutine(): DraftRoutine {
     title: '',
     category: category.value,
     difficulty: 'normal',
-    weekdays: [seoulWeekday()],
+    weekdays: [weekdayOfCalendarDate(appCalendarDate())],
     biweekly: false,
   };
 }
@@ -315,7 +312,7 @@ function saveEditor(): void {
       editorError.value = t('quest.errors.endsOn');
       return;
     }
-    const fromToday = calendarDaysBetween(seoulToday(), current.endsOn);
+    const fromToday = calendarDaysBetween(appCalendarDate(), current.endsOn);
     const untilBoss = calendarDaysBetween(current.endsOn, deadlineOn.value);
     if (fromToday < 0 || untilBoss < 0) {
       editorError.value = t('quest.errors.endsOn');

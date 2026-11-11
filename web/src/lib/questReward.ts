@@ -6,9 +6,15 @@ import type {
   QuestRewardApplied,
   QuestSchedule,
 } from '@nest-vue/shared';
-import { completionTableAmount, grantAmount, jobRewardMultiplier } from '@nest-vue/shared';
+import {
+  calendarDaysBetween,
+  completionTableAmount,
+  grantAmount,
+  isCalendarDate,
+  jobRewardMultiplier,
+} from '@nest-vue/shared';
 
-import { calendarDaysBetween, isCalendarDate, seoulToday } from '@/lib/seoulDate';
+import { appCalendarDate } from '@/lib/appCalendar';
 
 /** 메모를 적으면 붙는 배율. 서버 grantAmount의 10분의 11과 같다. */
 const NOTE_MULTIPLIER = 1.1;
@@ -58,7 +64,7 @@ export function estimatedRegisterReward(input: {
   if (!input.endsOn || !isCalendarDate(input.endsOn) || !input.pace) {
     return null;
   }
-  const daySpan = calendarDaysBetween(seoulToday(), input.endsOn);
+  const daySpan = calendarDaysBetween(appCalendarDate(), input.endsOn);
   if (daySpan < 0) {
     return null;
   }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BossRoutineSubquest, BossSubquest, BossSummary, PastBoss } from '@nest-vue/shared';
-import { bossFailPenalty, bossShortfall } from '@nest-vue/shared';
+import { bossFailPenalty, bossShortfall, calendarDaysBetween } from '@nest-vue/shared';
 import { Ellipsis, TriangleAlert } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -18,9 +18,9 @@ import QuestHistoryPager from '@/components/quest/QuestHistoryPager.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
 import { useQuestBoard } from '@/composables/useQuestBoard';
+import { appCalendarDate } from '@/lib/appCalendar';
 import { abandonBoss, getBosses, getBossHistory, retryBossMonster } from '@/lib/bosses';
 import { abandonQuest, retryQuestMonster } from '@/lib/quests';
-import { calendarDaysBetween, seoulToday } from '@/lib/seoulDate';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -91,7 +91,7 @@ const dDayLabel = computed(() => {
   if (!boss) {
     return '';
   }
-  const days = calendarDaysBetween(seoulToday(), boss.endsOn);
+  const days = calendarDaysBetween(appCalendarDate(), boss.endsOn);
   return days <= 0 ? t('boss.dDay') : t('boss.dDayCount', { n: days });
 });
 

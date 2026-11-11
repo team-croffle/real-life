@@ -7,6 +7,8 @@ import type {
   QuestWeekday,
 } from '@nest-vue/shared';
 import {
+  calendarDaysBetween,
+  isCalendarDate,
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
   QUEST_PACES,
@@ -14,6 +16,7 @@ import {
   QUEST_TITLE_MAX,
   QUEST_TITLE_TEMPLATES,
   QUEST_WEEKDAYS,
+  weekdayOfCalendarDate,
 } from '@nest-vue/shared';
 import { Star, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -23,15 +26,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
+import { appCalendarDate, sortWeekdays } from '@/lib/appCalendar';
 import { estimatedRegisterReward } from '@/lib/questReward';
 import { createQuest, createRoutine, recommendDifficulty } from '@/lib/quests';
-import {
-  calendarDaysBetween,
-  isCalendarDate,
-  seoulToday,
-  seoulWeekday,
-  sortWeekdays,
-} from '@/lib/seoulDate';
 import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps<{
@@ -52,9 +49,9 @@ const title = ref('');
 const difficulty = ref<QuestDifficulty>('normal');
 const schedule = ref<QuestSchedule>('routine');
 const pace = ref<QuestPace>('steady');
-const weekdays = ref<QuestWeekday[]>([seoulWeekday()]);
+const weekdays = ref<QuestWeekday[]>([weekdayOfCalendarDate(appCalendarDate())]);
 const biweekly = ref(false);
-const endsOn = ref(seoulToday());
+const endsOn = ref(appCalendarDate());
 const pending = ref(false);
 const error = ref('');
 const recommendState = ref<'idle' | 'pending' | 'ready' | 'failed'>('idle');
@@ -114,7 +111,7 @@ const canSubmit = computed(() => {
   if (!isCalendarDate(endsOn.value)) {
     return false;
   }
-  return calendarDaysBetween(seoulToday(), endsOn.value) >= 0;
+  return calendarDaysBetween(appCalendarDate(), endsOn.value) >= 0;
 });
 const canRecommend = computed(
   () => title.value.trim().length > 0 && recommendState.value !== 'pending' && !pending.value,
@@ -152,9 +149,9 @@ watch(
     difficulty.value = 'normal';
     schedule.value = 'routine';
     pace.value = 'steady';
-    weekdays.value = [seoulWeekday()];
+    weekdays.value = [weekdayOfCalendarDate(appCalendarDate())];
     biweekly.value = false;
-    endsOn.value = seoulToday();
+    endsOn.value = appCalendarDate();
     pending.value = false;
     error.value = '';
     clearRecommendation();
@@ -229,7 +226,7 @@ async function onSubmit(): Promise<void> {
 
   if (schedule.value === 'deadline') {
     const remaining = isCalendarDate(endsOn.value)
-      ? calendarDaysBetween(seoulToday(), endsOn.value)
+      ? calendarDaysBetween(appCalendarDate(), endsOn.value)
       : -1;
     if (remaining < 0) {
       error.value = t('quest.errors.endsOn');
@@ -462,7 +459,7 @@ async function onSubmit(): Promise<void> {
         </div>
         <div class="mb-4 flex flex-col gap-1">
           <Label for="quest-ends-on">{{ t('quest.endsOn') }}</Label>
-          <Input id="quest-ends-on" v-model="endsOn" type="date" :min="seoulToday()" />
+          <Input id="quest-ends-on" v-model="endsOn" type="date" :min="appCalendarDate()" />
         </div>
       </template>
 

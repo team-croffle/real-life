@@ -123,7 +123,7 @@ types/                서버와 웹이 주고받는 응답 타입
 ```
 routes/        페이지 (파일 이름이 URL): home, quests, bosses, stats, wallet, shop, job, sign-up/sign-in/onboarding
 components/    페이지마다 폴더 (home, quest, boss, wallet, shop, stats, job, settings, auth, character)와 공통 ui/
-  layouts/DueTodayAlerts.vue     서울 오늘 마감·미완료. GET /api/quests에서 골라 종 숫자와 목록
+  layouts/DueTodayAlerts.vue     앱 달력 오늘 마감·미완료. GET /api/quests에서 골라 종 숫자와 목록
   boss/BossRegisterDialog.vue    메인 퀘스트 계획과 확정
   boss/BossResultDialog.vue      안 본 처치·실패
   character/CharacterFigure.vue  직업마다 고양이 WebP 한 장. 무기력은 회색 70%, 발 기준 키 4% 줄이기
@@ -134,8 +134,8 @@ components/    페이지마다 폴더 (home, quest, boss, wallet, shop, stats, j
   shop/ShopConfirmDialog.vue     구매·삭제 확인
   shop/ShopItemCard.vue          기본 또는 직접 등록 한 줄
   stats/CharacterCard.vue        스탯 화면의 캐릭터, 직업, 칭호, 경험치
-lib/           서버 호출 (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), 화면용 계산 (questReward), 색종이, 효과음, 저장한 설정, characterAppearance (직업 → /character/*.webp)
-composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태), useDueTodayAlerts.ts (서울 오늘 마감·미완료, GET /api/quests에서 고름). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
+lib/           서버 호출 (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), 화면용 계산 (questReward), appCalendarDate, 색종이, 효과음, 저장한 설정, characterAppearance (직업 → /character/*.webp)
+composables/   useApi (서버 호출의 입구), useQuestBoard (퀘스트 목록, 완료와 체크 상태), useDueTodayAlerts.ts (앱 달력 오늘 마감·미완료, GET /api/quests에서 고름). 완료는 결과 창을 먼저 열고, 응답 뒤에 골드·경험치·전투 기록을 채운다
 stores/        로그인 상태와 계정 API 호출 (Pinia)
 auth/          Better Auth 클라이언트
 i18n/          한국어와 영어 문구
