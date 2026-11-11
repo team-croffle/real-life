@@ -5,7 +5,7 @@ import type {
   RegisterResult,
   User,
 } from '@nest-vue/shared';
-import { isJobClass, isUserRole } from '@nest-vue/shared';
+import { ACCOUNT_SUSPENDED_CODE, isJobClass, isUserRole } from '@nest-vue/shared';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -35,10 +35,22 @@ function mapSessionUser(value: Record<string, unknown>): User {
   };
 }
 
-function throwClientError(error: { status?: number; message?: string; code?: string }): never {
+function throwClientError(error: {
+  status?: number;
+  message?: string;
+  code?: string;
+  suspendedUntil?: string | null;
+  suspendReason?: string | null;
+}): never {
   const code = error.code ?? '';
   if (code === 'EMAIL_NOT_VERIFIED') {
     throw new ApiError(403, 'Email not verified');
+  }
+  if (code === ACCOUNT_SUSPENDED_CODE) {
+    throw new ApiError(error.status ?? 403, error.message ?? 'Account suspended', code, {
+      suspendedUntil: error.suspendedUntil ?? null,
+      suspendReason: error.suspendReason ?? null,
+    });
   }
   if (code === 'USER_ALREADY_EXISTS') {
     throw new ApiError(409, 'Email already registered');

@@ -305,7 +305,11 @@
       "submit": "Log in",
       "google": "Continue with Google",
       "switch": "Don't have an account?",
-      "switchAction": "Sign up"
+      "switchAction": "Sign up",
+      "suspendedTitle": "This account is suspended",
+      "periodLabel": "Until",
+      "suspendedUntilOpen": "an admin unsuspends it",
+      "reasonLabel": "Reason"
     },
     "register": {
       "title": "Sign up",

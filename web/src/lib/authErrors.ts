@@ -1,3 +1,5 @@
+import { ACCOUNT_SUSPENDED_CODE } from '@nest-vue/shared';
+
 import { ApiError } from '@/composables/useApi';
 
 export function authErrorI18nKey(error: unknown): string {
@@ -56,4 +58,8 @@ export function isEmailNotVerified(error: unknown): boolean {
 
 export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
+}
+
+export function isAccountSuspended(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === ACCOUNT_SUSPENDED_CODE;
 }
