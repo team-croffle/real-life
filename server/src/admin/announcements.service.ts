@@ -18,10 +18,15 @@ export class AnnouncementsService {
   }
 
   async create(dto: CreateAnnouncementDto): Promise<Announcement> {
-    const [row] = await this.db
-      .insert(announcements)
-      .values({ title: dto.title, body: dto.body })
-      .returning();
+    const title = dto.title.trim();
+    const body = dto.body.trim();
+    if (title.length < 1) {
+      throw new BadRequestException('title must not be empty');
+    }
+    if (body.length < 1) {
+      throw new BadRequestException('body must not be empty');
+    }
+    const [row] = await this.db.insert(announcements).values({ title, body }).returning();
     if (!row) {
       throw new BadRequestException('could not create announcement');
     }
@@ -32,11 +37,19 @@ export class AnnouncementsService {
     if (dto.title === undefined && dto.body === undefined) {
       throw new BadRequestException('empty body');
     }
+    const title = dto.title === undefined ? undefined : dto.title.trim();
+    const body = dto.body === undefined ? undefined : dto.body.trim();
+    if (title !== undefined && title.length < 1) {
+      throw new BadRequestException('title must not be empty');
+    }
+    if (body !== undefined && body.length < 1) {
+      throw new BadRequestException('body must not be empty');
+    }
     const [row] = await this.db
       .update(announcements)
       .set({
-        ...(dto.title === undefined ? {} : { title: dto.title }),
-        ...(dto.body === undefined ? {} : { body: dto.body }),
+        ...(title === undefined ? {} : { title }),
+        ...(body === undefined ? {} : { body }),
       })
       .where(eq(announcements.id, announcementId))
       .returning();
