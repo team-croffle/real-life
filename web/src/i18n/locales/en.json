@@ -254,6 +254,12 @@
     "heading": "About this project",
     "body": "Types live in the shared package and are consumed as source by both server and web."
   },
+  "alerts": {
+    "title": "Alerts",
+    "open": "Open alerts",
+    "close": "Close alerts",
+    "empty": "No quests you might miss today"
+  },
   "settings": {
     "title": "Settings",
     "open": "Settings",
