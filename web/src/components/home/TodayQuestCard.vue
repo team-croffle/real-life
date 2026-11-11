@@ -104,7 +104,7 @@ const reward = computed(() => {
       {{ reward }}
     </span>
     <span
-      v-if="eventMultText"
+      v-if="reward && eventMultText"
       class="bg-gold-soft text-gold shrink-0 rounded-full px-[7px] py-0.5 text-[10px] font-extrabold whitespace-nowrap"
     >
       ×{{ eventMultText }}

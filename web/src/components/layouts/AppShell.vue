@@ -235,14 +235,13 @@ async function onLogout(): Promise<void> {
       <header class="border-border flex items-center justify-between border-b px-4 py-3 md:hidden">
         <RouterLink to="/" class="text-primary text-lg font-bold">{{ t('app.title') }}</RouterLink>
         <div class="flex items-center gap-2">
-          <button
+          <span
             v-if="rewardEvent"
-            type="button"
             class="bg-gold rounded-full px-2.5 py-1 text-[11px] font-extrabold text-white"
             :title="t('event.until', { time: formatAppDateTime(rewardEvent.endsAt) })"
           >
             ×{{ eventMultText }}
-          </button>
+          </span>
           <DueTodayAlerts class="md:hidden" />
           <Button
             type="button"

@@ -300,6 +300,27 @@ onUnmounted(() => {
 <template>
   <AppShell>
     <div>
+      <button
+        v-if="latestNotice"
+        type="button"
+        class="bg-surface border-border text-primary mb-4 flex w-full items-center gap-2.5 rounded-[14px] border px-4 py-[11px] text-left"
+        @click="noticeOpen = true"
+      >
+        <Megaphone class="size-4 shrink-0" />
+        <span
+          class="bg-accent text-accent-foreground shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
+        >
+          {{ t('home.noticeBadge') }}
+        </span>
+        <span class="text-foreground min-w-0 flex-1 truncate text-[13px] font-bold">
+          {{ latestNotice.title }}
+        </span>
+        <span class="text-muted-foreground shrink-0 text-[11.5px] tabular-nums">
+          {{ formatAppDate(latestNotice.createdAt) }}
+        </span>
+        <span class="shrink-0 text-xs font-bold">{{ t('home.noticeMore') }}</span>
+      </button>
+
       <div class="mb-5 flex items-start justify-between gap-3 md:pr-12">
         <div>
           <h1 class="text-2xl font-bold">
@@ -337,27 +358,6 @@ onUnmounted(() => {
           {{ t('home.load.refresh') }}
         </Button>
       </div>
-
-      <button
-        v-if="latestNotice"
-        type="button"
-        class="bg-surface border-border text-primary mb-4 flex w-full items-center gap-2.5 rounded-[14px] border px-4 py-[11px] text-left"
-        @click="noticeOpen = true"
-      >
-        <Megaphone class="size-4 shrink-0" />
-        <span
-          class="bg-accent text-accent-foreground shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold"
-        >
-          {{ t('home.noticeBadge') }}
-        </span>
-        <span class="text-foreground min-w-0 flex-1 truncate text-[13px] font-bold">
-          {{ latestNotice.title }}
-        </span>
-        <span class="text-muted-foreground shrink-0 text-[11.5px] tabular-nums">
-          {{ formatAppDate(latestNotice.createdAt) }}
-        </span>
-        <span class="shrink-0 text-xs font-bold">{{ t('home.noticeMore') }}</span>
-      </button>
 
       <div
         v-if="counterBanner"
