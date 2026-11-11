@@ -34,6 +34,7 @@ import {
 } from '@nestjs/common';
 import { and, count, desc, eq, gte, inArray } from 'drizzle-orm';
 
+import { RewardEventsService } from '../admin/reward-events.service';
 import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
@@ -76,6 +77,7 @@ export class QuestsService {
     private readonly questPenaltyService: QuestPenaltyService,
     private readonly bossJudgmentService: BossJudgmentService,
     private readonly routineSpawnService: RoutineSpawnService,
+    private readonly rewardEvents: RewardEventsService,
   ) {}
 
   async create(userId: string, dto: CreateQuestDto): Promise<Quest> {
@@ -262,6 +264,7 @@ export class QuestsService {
     const countedToday = (progressRow?.comboCountedOn ?? '') >= today;
     const streak = (progressRow?.comboDayCount ?? 0) + (countedToday ? 0 : 1);
     const comboMultiplier = comboRewardMultiplier(streak);
+    const eventMultiplier = await this.rewardEvents.activeMultiplier();
     const levelXp = progressRow?.xp ?? 0;
     const balance = walletRows[0]?.balance ?? 0;
 
@@ -271,6 +274,7 @@ export class QuestsService {
         today,
         jobClass,
         comboMultiplier,
+        eventMultiplier,
         markByQuest.get(questRow.id),
         questRow.monsterId ? monsterById.get(questRow.monsterId) : undefined,
         taskByQuest.get(questRow.id),
@@ -343,6 +347,7 @@ function toQuestListItem(
   today: string,
   jobClass: JobClass,
   comboMultiplier: number,
+  eventMultiplier: number,
   mark: { doneOn: string[] | null; markedDayCount: number } | undefined,
   monster: { kind: string; name: string; description: string } | undefined,
   monsterTask: MonsterTaskState | undefined,
@@ -375,6 +380,7 @@ function toQuestListItem(
         multiplier,
         comboMultiplier,
         pace,
+        eventMultiplier,
       )
     : null;
   const ownAppearance = monsterView(
@@ -430,6 +436,7 @@ export function rewardPayout(
   multiplier: number,
   comboMultiplier: number,
   pace: QuestPace,
+  eventMultiplier = 1,
 ): { gold: number; xp: number } {
   const table = completionTableAmount(difficulty, daySpan, markedDayCount, pace);
   return {
@@ -440,6 +447,8 @@ export function rewardPayout(
       multiplier,
       false,
       comboMultiplier,
+      1,
+      eventMultiplier,
     ),
     xp: grantAmount(
       table.xp,
@@ -448,6 +457,8 @@ export function rewardPayout(
       multiplier,
       false,
       comboMultiplier,
+      1,
+      eventMultiplier,
     ),
   };
 }

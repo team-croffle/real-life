@@ -40,6 +40,7 @@ import {
 } from '@nestjs/common';
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
+import { RewardEventsService } from '../admin/reward-events.service';
 import { AI_QUEUE, type AiQueue, type MonsterTaskState } from '../ai-queue/ai-queue';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb, DrizzleTx } from '../database/database.module';
@@ -100,6 +101,7 @@ export class BossPlanService {
     @Inject(AI_QUEUE) private readonly queue: AiQueue,
     private readonly routineSpawnService: RoutineSpawnService,
     private readonly questsService: QuestsService,
+    private readonly rewardEvents: RewardEventsService,
   ) {}
 
   async confirm(userId: string, dto: ConfirmBossDto): Promise<ConfirmedBoss> {
@@ -423,6 +425,7 @@ export class BossPlanService {
     const reward = {
       jobClass,
       comboMultiplier: comboRewardMultiplier(streak),
+      eventMultiplier: await this.rewardEvents.activeMultiplier(),
       markedDayCountByQuest: new Map(markRows.map((row) => [row.questId, row.markedDayCount])),
     };
     return bossRows.flatMap((bossRow) => {
@@ -701,6 +704,7 @@ type SubquestQuestRow = {
 type SubquestReward = {
   jobClass: JobClass;
   comboMultiplier: number;
+  eventMultiplier: number;
   markedDayCountByQuest: Map<string, number>;
 };
 
@@ -841,6 +845,7 @@ function listedQuestPayout(
     jobRewardMultiplier(reward.jobClass, category),
     reward.comboMultiplier,
     pace,
+    reward.eventMultiplier,
   );
 }
 
