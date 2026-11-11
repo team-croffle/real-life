@@ -9,10 +9,11 @@ import {
 } from '@nestjs/common';
 
 import {
+  APP_TIME_ZONE,
+  appCalendarDate,
   calendarDaysBetween,
   isCalendarDate,
   routineOccurrenceCount,
-  seoulCalendarDate,
 } from '../quests/quest-calendar';
 import { AI, type Ai, type SuggestedQuest } from './ai';
 import { AiCallLimiter } from './ai-call-limiter';
@@ -35,9 +36,9 @@ export class QuestPlanService {
     if (!isCalendarDate(dto.deadlineOn)) {
       throw new BadRequestException('deadlineOn must be a calendar date YYYY-MM-DD');
     }
-    const today = seoulCalendarDate();
+    const today = appCalendarDate();
     if (calendarDaysBetween(today, dto.deadlineOn) < 0) {
-      throw new BadRequestException('deadlineOn must be today or later in Asia/Seoul');
+      throw new BadRequestException(`deadlineOn must be today or later in ${APP_TIME_ZONE}`);
     }
 
     if (!this.aiCallLimiter.tryAcquire()) {

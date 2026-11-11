@@ -1,4 +1,4 @@
-import { STATUS_EFFECTS } from '@nest-vue/shared';
+import { APP_TIME_ZONE, STATUS_EFFECTS } from '@nest-vue/shared';
 import { sql } from 'drizzle-orm';
 import { date, integer, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 
@@ -14,17 +14,17 @@ export const userProgress = pgTable('user_progress', {
   xp: integer().notNull().default(0),
   gachaTicketCount: integer().notNull().default(0),
   comboDayCount: integer().notNull().default(0),
-  // 오늘 연속을 이미 올렸는지 보는 서울 날짜. 완료 트랜잭션만 오늘로 바꾼다.
+  // 오늘 연속을 이미 올렸는지 보는 앱 시간대 날짜. 완료 트랜잭션만 오늘로 바꾼다.
   comboCountedOn: date({ mode: 'string' })
     .notNull()
-    .default(sql`((timezone('Asia/Seoul', now()))::date - 1)`),
+    .default(sql.raw(`((timezone('${APP_TIME_ZONE}', now()))::date - 1)`)),
   statusEffect: statusEffectEnum(),
   stamina: integer().notNull().default(0),
   intellect: integer().notNull().default(0),
   sense: integer().notNull().default(0),
   penaltiesSettledOn: date({ mode: 'string' })
     .notNull()
-    .default(sql`(timezone('Asia/Seoul', now()))::date`),
+    .default(sql.raw(`(timezone('${APP_TIME_ZONE}', now()))::date`)),
   updatedAt: timestamp({ withTimezone: true, mode: 'date' })
     .notNull()
     .defaultNow()

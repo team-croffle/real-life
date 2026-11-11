@@ -7,7 +7,7 @@ import { bosses } from '../database/schema/bosses';
 import { quests } from '../database/schema/quests';
 import type { RoutineRow } from '../database/schema/routines';
 import { routines } from '../database/schema/routines';
-import { isRoutineScheduledOn, seoulCalendarDate } from './quest-calendar';
+import { appCalendarDate, isRoutineScheduledOn } from './quest-calendar';
 
 @Injectable()
 export class RoutineSpawnService {
@@ -16,7 +16,7 @@ export class RoutineSpawnService {
   /** 오늘 예정이고 오늘 아직 안 찍은 켜진 루틴마다 퀘스트를 하나 찍고, 찍은 날을 남긴다. 루틴을 id 순으로 잠근 뒤에 넣는다. */
   async spawnToday(
     userId: string,
-    today = seoulCalendarDate(),
+    today = appCalendarDate(),
     tx?: DrizzleTx,
     onlyRoutineIds?: readonly string[],
   ): Promise<void> {
@@ -28,7 +28,7 @@ export class RoutineSpawnService {
       const due = routineRows.filter(
         (routineRow) =>
           routineRow.spawnedOn !== today &&
-          isRoutineScheduledOn(routineRow, seoulCalendarDate(routineRow.createdAt), today),
+          isRoutineScheduledOn(routineRow, appCalendarDate(routineRow.createdAt), today),
       );
       if (due.length === 0) {
         return;

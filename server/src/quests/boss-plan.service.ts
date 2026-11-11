@@ -61,11 +61,11 @@ import { HISTORY_DEFAULT_PAGE_SIZE, type ListHistoryQueryDto } from './dto/list-
 import { monsterView } from './monster-view';
 import {
   APP_TIME_ZONE,
+  appCalendarDate,
   calendarDaysBetween,
   isCalendarDate,
   rewardPeriodForRemainingDays,
   routineOccurrenceCount,
-  seoulCalendarDate,
 } from './quest-calendar';
 import { QuestsService, rewardPayout, toQuest } from './quests.service';
 import { RoutineSpawnService } from './routine-spawn.service';
@@ -115,7 +115,7 @@ export class BossPlanService {
 
     const created = await this.db.transaction(async (tx) => {
       await lockUser(tx, userId);
-      const today = seoulCalendarDate();
+      const today = appCalendarDate();
       if (calendarDaysBetween(today, dto.deadlineOn) < 0) {
         throw new BadRequestException(`deadlineOn must be today or later in ${APP_TIME_ZONE}`);
       }
@@ -283,7 +283,7 @@ export class BossPlanService {
           endsOn: bossRow.deadlineOn,
           maxHp: bossRow.maxHp,
           hp: bossRow.hp,
-          judgedOn: bossRow.judgedAt ? seoulCalendarDate(bossRow.judgedAt) : '',
+          judgedOn: bossRow.judgedAt ? appCalendarDate(bossRow.judgedAt) : '',
           gold: pay?.amount ?? 0,
           xp: bossRow.xpChange,
           tickets: pay?.tickets ?? 0,
@@ -324,7 +324,7 @@ export class BossPlanService {
           return [];
         }
         return [
-          { ...summary, result: bossRow.result, judgedOn: seoulCalendarDate(bossRow.judgedAt) },
+          { ...summary, result: bossRow.result, judgedOn: appCalendarDate(bossRow.judgedAt) },
         ];
       }),
       page,
@@ -336,7 +336,7 @@ export class BossPlanService {
 
   async list(userId: string): Promise<BossSummary[]> {
     await this.questsService.prepareForRead(userId);
-    const today = seoulCalendarDate();
+    const today = appCalendarDate();
     const yesterday = previousCalendarDate(today);
     const bossRows = await this.db
       .select()
@@ -721,7 +721,7 @@ function bossSubquests(
       const spawned = questRows.filter((row) => row.routineId === routineRow.id);
       const done = spawned.filter((row) => row.completedOn !== null).length;
       const missed = spawned.filter((row) => row.completedOn === null && row.endsOn < today).length;
-      const createdOn = seoulCalendarDate(routineRow.createdAt);
+      const createdOn = appCalendarDate(routineRow.createdAt);
       const todayQuest = spawned.find((row) => row.endsOn === today);
       const todayConsumed =
         routineRow.spawnedOn === today &&
@@ -763,7 +763,7 @@ function bossSubquests(
       .map((row) => {
         const status: 'open' | 'done' | 'missed' =
           row.completedOn !== null ? 'done' : row.endsOn < today ? 'missed' : 'open';
-        const createdOn = seoulCalendarDate(row.createdAt);
+        const createdOn = appCalendarDate(row.createdAt);
         const daySpan = calendarDaysBetween(createdOn, today);
         const payout = listedQuestPayout(
           row.difficulty,
@@ -874,7 +874,7 @@ function toBossSummary(
     endsOn: bossRow.deadlineOn,
     maxHp: bossRow.maxHp,
     hp: bossRow.hp,
-    createdOn: seoulCalendarDate(bossRow.createdAt),
+    createdOn: appCalendarDate(bossRow.createdAt),
     bossStatus: appearance.monsterStatus,
     boss: appearance.monster,
   };

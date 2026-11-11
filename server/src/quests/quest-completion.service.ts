@@ -39,7 +39,7 @@ import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
 import type { CompleteQuestDto } from './dto/complete-quest.dto';
-import { calendarDaysBetween, isDeadlineInPeriod, seoulCalendarDate } from './quest-calendar';
+import { appCalendarDate, calendarDaysBetween, isDeadlineInPeriod } from './quest-calendar';
 import { QuestCritRoller } from './quest-crit.roller';
 import { QuestPenaltyService } from './quest-penalty.service';
 
@@ -76,8 +76,8 @@ export class QuestCompletionService {
 
     return this.db.transaction(async (tx) => {
       const questRow = await lockQuest(tx, userId, questId);
-      const today = seoulCalendarDate();
-      const createdOn = seoulCalendarDate(questRow.createdAt);
+      const today = appCalendarDate();
+      const createdOn = appCalendarDate(questRow.createdAt);
       assertCompletable(questRow, createdOn, today);
 
       const pace = questRow.pace;
@@ -170,12 +170,12 @@ export class QuestCompletionService {
 
     return this.db.transaction(async (tx) => {
       const questRow = await lockQuest(tx, userId, questId);
-      const today = seoulCalendarDate();
+      const today = appCalendarDate();
       if (questRow.pace === 'once') {
         throw new BadRequestException('only weekly and long quests can mark a day');
       }
 
-      const createdOn = seoulCalendarDate(questRow.createdAt);
+      const createdOn = appCalendarDate(questRow.createdAt);
       if (questRow.endsOn === createdOn) {
         throw new BadRequestException('only weekly and long quests can mark a day');
       }
@@ -225,8 +225,8 @@ export class QuestCompletionService {
   private async assertCompletableNow(userId: string, questId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
       const questRow = await readQuest(tx, userId, questId);
-      const today = seoulCalendarDate();
-      const createdOn = seoulCalendarDate(questRow.createdAt);
+      const today = appCalendarDate();
+      const createdOn = appCalendarDate(questRow.createdAt);
       assertCompletable(questRow, createdOn, today);
     });
   }

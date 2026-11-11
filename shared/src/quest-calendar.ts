@@ -1,5 +1,7 @@
 import type { QuestWeekday } from './constants/quests';
 
+export const APP_TIME_ZONE = 'Asia/Seoul';
+
 const WEEKDAYS_FROM_UTC_DAY: QuestWeekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 export function isCalendarDate(value: string): boolean {

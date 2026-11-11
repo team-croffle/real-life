@@ -19,7 +19,7 @@ import { users } from '../database/schema/users';
 import { wallets } from '../database/schema/wallets';
 import { WalletService } from '../wallet/wallet.service';
 import { BossJudgmentService } from './boss-judgment.service';
-import { addCalendarDays, calendarDaysBetween, seoulCalendarDate } from './quest-calendar';
+import { addCalendarDays, appCalendarDate, calendarDaysBetween } from './quest-calendar';
 
 @Injectable()
 export class QuestPenaltyService {
@@ -35,7 +35,7 @@ export class QuestPenaltyService {
       await lockUser(tx, userId);
       const balance = await lockWalletBalance(tx, userId);
       const progress = await lockProgress(tx, userId);
-      const yesterday = addCalendarDays(seoulCalendarDate(), -1);
+      const yesterday = addCalendarDays(appCalendarDate(), -1);
 
       if (progress.penaltiesSettledOn >= yesterday) {
         return settlement(progress, balance, []);
@@ -75,7 +75,7 @@ export class QuestPenaltyService {
               ? QUEST_PENALTIES[questRow.difficulty]
               : deadlinePenaltyAmount(
                   questRow.difficulty,
-                  calendarDaysBetween(seoulCalendarDate(questRow.createdAt), day),
+                  calendarDaysBetween(appCalendarDate(questRow.createdAt), day),
                   questRow.pace,
                 ),
         }));
