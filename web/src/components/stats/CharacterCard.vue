@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import CharacterFigure from '@/components/character/CharacterFigure.vue';
+import { formatAmount } from '@/lib/formatAmount';
 
 const props = defineProps<{
   jobClass: JobClass | null;
@@ -74,7 +75,12 @@ const lethargy = computed(() => props.progress.statusEffect === 'lethargy');
         v-if="progress.xpToNext !== null"
         class="text-muted-foreground mt-1.5 text-[11px] font-medium"
       >
-        {{ t('stats.xpProgress', { levelXp: progress.levelXp, xpToNext: progress.xpToNext }) }}
+        {{
+          t('stats.xpProgress', {
+            levelXp: formatAmount(progress.levelXp),
+            xpToNext: formatAmount(progress.xpToNext),
+          })
+        }}
       </p>
     </div>
   </section>

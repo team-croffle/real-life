@@ -8,6 +8,7 @@ import AppShell from '@/components/layouts/AppShell.vue';
 import { Button } from '@/components/ui/button';
 import PostHocDeduction from '@/components/wallet/PostHocDeduction.vue';
 import { ApiError } from '@/composables/useApi';
+import { formatAmount } from '@/lib/formatAmount';
 import { getProgress } from '@/lib/home';
 import { getWallet, getWalletEntries } from '@/lib/wallet';
 
@@ -41,7 +42,7 @@ function formatCreatedAt(iso: string): string {
 }
 
 function entryAmount(amount: number): string {
-  const shown = amount > 0 ? `+${amount}` : String(amount);
+  const shown = amount > 0 ? `+${formatAmount(amount)}` : formatAmount(amount);
   return t('wallet.entryAmount', { amount: shown });
 }
 
@@ -170,7 +171,7 @@ onUnmounted(() => {
             {{ t('wallet.goldLabel') }}
           </p>
           <p class="mt-1 text-[26px] font-bold tracking-tight">
-            {{ t('wallet.goldAmount', { amount: balance }) }}
+            {{ t('wallet.goldAmount', { amount: formatAmount(balance ?? 0) }) }}
           </p>
         </div>
         <div class="bg-surface border-border rounded-[18px] border px-5 py-5">
@@ -294,7 +295,7 @@ onUnmounted(() => {
               {{ t('wallet.debtLabel') }}
             </p>
             <p class="text-destructive text-[17px] font-bold">
-              {{ t('wallet.goldAmount', { amount: balance }) }}
+              {{ t('wallet.goldAmount', { amount: formatAmount(balance) }) }}
             </p>
           </div>
           <p v-else class="text-secondary-foreground text-sm font-semibold">

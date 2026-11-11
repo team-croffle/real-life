@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n';
 import MonsterImage from '@/components/quest/MonsterImage.vue';
 import { Button } from '@/components/ui/button';
 import { clearConfetti, fireConfetti } from '@/lib/confetti';
+import { formatAmount } from '@/lib/formatAmount';
 import { type RewardTag, rewardBreakdown } from '@/lib/questReward';
 import { type SoundKind, playSound } from '@/lib/sound';
 
@@ -165,13 +166,13 @@ function tagClass(tag: RewardTag): string {
           class="text-4xl leading-tight font-bold tabular-nums"
           :class="isCrit ? 'text-gold' : 'text-foreground'"
         >
-          {{ t('quest.resultGold', { gold: displayGold }) }}
+          {{ t('quest.resultGold', { gold: formatAmount(displayGold) }) }}
         </p>
         <p v-if="breakdown.showBaseGold" class="text-muted-foreground mt-0.5 text-[11.5px]">
-          {{ t('quest.resultBaseGold', { gold: breakdown.baseGold }) }}
+          {{ t('quest.resultBaseGold', { gold: formatAmount(breakdown.baseGold) }) }}
         </p>
         <p class="text-secondary-foreground mt-0.5 text-[13px]">
-          {{ t('quest.resultXp', { xp: result.xp }) }}
+          {{ t('quest.resultXp', { xp: formatAmount(result.xp) }) }}
         </p>
       </div>
 
@@ -183,7 +184,7 @@ function tagClass(tag: RewardTag): string {
         <div class="text-secondary-foreground mb-1.5 flex justify-between">
           <span>{{ t('quest.resultReceiptBase') }}</span>
           <span class="tabular-nums">
-            {{ t('quest.resultGold', { gold: breakdown.receipt.baseGold }) }}
+            {{ t('quest.resultGold', { gold: formatAmount(breakdown.receipt.baseGold) }) }}
           </span>
         </div>
         <div class="text-foreground flex justify-between font-bold">

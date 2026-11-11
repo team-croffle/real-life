@@ -7,6 +7,7 @@ import MonsterImage from '@/components/quest/MonsterImage.vue';
 import { Button } from '@/components/ui/button';
 import { markBossSeen } from '@/lib/bosses';
 import { clearConfetti, fireConfetti } from '@/lib/confetti';
+import { formatAmount } from '@/lib/formatAmount';
 import { advanceUnseenBoss, currentUnseenBoss, ensureUnseenBossesLoaded } from '@/lib/unseenBosses';
 
 const LOOT_GAP_MS = 300;
@@ -163,14 +164,14 @@ onUnmounted(() => {
             class="text-gold text-[22px] font-bold"
             :class="reduceMotion ? '' : 'result-pop'"
           >
-            {{ t('boss.lootGold', { gold: current.gold }) }}
+            {{ t('boss.lootGold', { gold: formatAmount(current.gold) }) }}
           </p>
           <p
             v-if="current.xp !== null && shownLoot >= 2"
             class="text-[22px] font-bold"
             :class="reduceMotion ? '' : 'result-pop'"
           >
-            {{ t('boss.lootXp', { xp: current.xp }) }}
+            {{ t('boss.lootXp', { xp: formatAmount(current.xp) }) }}
           </p>
           <p
             v-if="shownLoot >= (current.xp === null ? 2 : 3)"
@@ -190,10 +191,10 @@ onUnmounted(() => {
 
       <template v-else>
         <p class="text-destructive mb-1 text-[18px] font-bold">
-          {{ t('boss.lostGold', { gold: lostGold }) }}
+          {{ t('boss.lostGold', { gold: formatAmount(lostGold) }) }}
         </p>
         <p v-if="current.xp !== null" class="text-destructive mb-4 text-[18px] font-bold">
-          {{ t('boss.lostXp', { xp: lostXp }) }}
+          {{ t('boss.lostXp', { xp: formatAmount(lostXp) }) }}
         </p>
         <Button type="button" class="w-full" @click="closeCurrent">{{ t('boss.close') }}</Button>
       </template>

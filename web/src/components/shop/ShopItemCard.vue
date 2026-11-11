@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
+import { formatAmount } from '@/lib/formatAmount';
 
 const props = withDefaults(
   defineProps<{
@@ -89,7 +90,9 @@ const shortGold = computed(() => props.gold !== null && props.gold < props.item.
     </div>
     <div>
       <p class="mb-0.5 truncate text-[13.5px] font-semibold">{{ item.name }}</p>
-      <p class="text-gold text-[13px]">{{ t('shop.price', { amount: item.price }) }}</p>
+      <p class="text-gold text-[13px]">
+        {{ t('shop.price', { amount: formatAmount(item.price) }) }}
+      </p>
     </div>
     <Button v-if="canBuy" type="button" size="sm" class="w-full rounded-full" @click="emit('buy')">
       {{ t('shop.buy') }}

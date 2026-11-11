@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
 import { appCalendarDate } from '@/lib/appCalendar';
+import { formatAmount } from '@/lib/formatAmount';
 import type { QuestListItem } from '@/lib/quests';
 
 import MonsterImage from './MonsterImage.vue';
@@ -216,7 +217,12 @@ const difficultyClass = computed(() => {
       v-if="quest && quest.expectedGold !== null && quest.expectedXp !== null"
       class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap"
     >
-      {{ t('quest.rewardCard', { xp: quest.expectedXp, gold: quest.expectedGold }) }}
+      {{
+        t('quest.rewardCard', {
+          xp: formatAmount(quest.expectedXp),
+          gold: formatAmount(quest.expectedGold),
+        })
+      }}
     </span>
     <Button
       v-if="quest?.canMarkToday"

@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n';
 
 import { Button } from '@/components/ui/button';
+import { formatAmount } from '@/lib/formatAmount';
 
 const props = defineProps<{
   title: string;
@@ -52,10 +53,15 @@ function requestCancel(): void {
       </p>
       <div v-if="price !== undefined" class="bg-gold-soft mb-[18px] rounded-xl px-3.5 py-3">
         <p class="text-gold mb-1 text-[15px] font-bold">
-          {{ t('shop.buyDelta', { amount: price }) }}
+          {{ t('shop.buyDelta', { amount: formatAmount(price) }) }}
         </p>
         <p class="text-secondary-foreground text-[11.5px]">
-          {{ t('shop.buyBalance', { before: beforeGold, after: afterGold }) }}
+          {{
+            t('shop.buyBalance', {
+              before: formatAmount(beforeGold ?? 0),
+              after: formatAmount(afterGold ?? 0),
+            })
+          }}
         </p>
       </div>
       <p v-if="error" class="text-destructive mb-3 text-[12px]">{{ error }}</p>
