@@ -352,7 +352,6 @@
       "invalidPassword": "비밀번호는 8자 이상이어야 해요.",
       "invalidNickname": "닉네임은 1–20자이고 #은 쓸 수 없어요.",
       "unauthorized": "이메일 또는 비밀번호가 올바르지 않아요.",
-      "emailTaken": "이미 가입된 이메일이에요.",
       "socialTaken": "이미 연결된 소셜 계정이에요.",
       "emailNotVerified": "이메일 인증이 아직 끝나지 않았어요.",
       "googleUnavailable": "구글 로그인을 지금은 쓸 수 없어요.",
