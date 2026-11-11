@@ -13,10 +13,8 @@ allowBuilds:
 
 audit:
   ignore:
+    # drizzle-kit이 @esbuild-kit/esm-loader로 낡은 esbuild를 끌어온다. override는 로더를 깨뜨릴 수 있다.
     - GHSA-67mh-4wv8-2f99
-    # braces <=3.0.3 스택 고갈. 패치 버전이 없고 tsc-alias 개발 트리만 해당한다.
-    # 패치가 나오면 이 줄을 지우고 그 버전으로 올린다.
-    - GHSA-vfj7-8cjw-p6xm
 
 # Nest platform-express가 끌어오는 multer DoS 권고. 2.5.0이 패치다.
 # brace-expansion 2.1.4·5.0.9 권고. 메이저별로 패치 버전만 올린다.
