@@ -20,4 +20,7 @@ export interface ApiErrorResponse {
   error?: string;
   path?: string;
   timestamp?: string;
+  code?: string;
+  suspendedUntil?: string | null;
+  suspendReason?: string | null;
 }

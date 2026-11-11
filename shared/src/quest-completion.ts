@@ -82,7 +82,7 @@ export function completionTableAmount(
   return { gold: table.gold, xp: table.xp, markedDays, elapsedDays };
 }
 
-/** 표 금액, 비율, 직업 배율, 연속 배율, 수행 내용 10%, 크리티컬 배수를 한 번에 반올림한다. */
+/** 표 금액, 비율, 직업 배율, 연속 배율, 수행 내용 10%, 이벤트 배율, 크리티컬 배수를 한 번에 반올림한다. */
 export function grantAmount(
   tableAmount: number,
   markedDays: number,
@@ -91,13 +91,21 @@ export function grantAmount(
   noteBonus: boolean,
   comboMultiplier = 1,
   critMultiplier = 1,
+  eventMultiplier = 1,
 ): number {
   const multiplierTenths = Math.round(multiplier * 10);
   const comboTenths = Math.round(comboMultiplier * 10);
+  const eventTenths = Math.round(eventMultiplier * 10);
   const noteTenths = noteBonus ? 11 : 10;
   return Math.round(
-    (tableAmount * markedDays * multiplierTenths * comboTenths * noteTenths * critMultiplier) /
-      (elapsedDays * 1000),
+    (tableAmount *
+      markedDays *
+      multiplierTenths *
+      comboTenths *
+      noteTenths *
+      eventTenths *
+      critMultiplier) /
+      (elapsedDays * 10_000),
   );
 }
 
