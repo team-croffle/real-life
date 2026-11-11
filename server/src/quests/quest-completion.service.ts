@@ -153,6 +153,7 @@ export class QuestCompletionService {
           comboMultiplier,
           noteBonus,
           critMultiplier,
+          eventMultiplier: 1,
         },
       };
     });

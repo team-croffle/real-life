@@ -16,6 +16,8 @@ export interface QuestRewardApplied {
   noteBonus: boolean;
   /** 크리티컬 배수. 1이면 안 터짐, 2나 3이면 터짐. 골드에만 적용 */
   critMultiplier: number;
+  /** 이벤트 배율. 1이면 적용 없음 */
+  eventMultiplier: number;
 }
 
 export interface QuestCompletionResult {
