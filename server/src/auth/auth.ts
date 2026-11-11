@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 
+import { accountSuspendedBody, isAccountSuspended } from '@nest-vue/shared';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
@@ -148,6 +149,22 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
           defaultValue: 'member',
           input: false,
         },
+        suspended: {
+          type: 'boolean',
+          required: false,
+          defaultValue: false,
+          input: false,
+        },
+        suspendedUntil: {
+          type: 'date',
+          required: false,
+          input: false,
+        },
+        suspendReason: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
       },
       deleteUser: {
         // 탈퇴는 Nest `DELETE /account/me`가 확인과 삭제를 모두 한다.
@@ -226,6 +243,21 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
       },
       session: {
         create: {
+          before: async (session) => {
+            const [userRow] = await db
+              .select({
+                suspended: users.suspended,
+                suspendedUntil: users.suspendedUntil,
+                suspendReason: users.suspendReason,
+              })
+              .from(users)
+              .where(eq(users.id, session.userId))
+              .limit(1);
+            if (!userRow || !isAccountSuspended(userRow)) {
+              return;
+            }
+            throw new APIError('FORBIDDEN', accountSuspendedBody(userRow));
+          },
           after: async (session) => {
             await verifyGoogleLinkedEmail(db, session.userId);
           },

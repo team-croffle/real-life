@@ -13,12 +13,13 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 import { APIError } from 'better-auth/api';
-import { and, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
-import { accounts, bosses, monsters, quests, routines, users } from '../database/schema';
+import { accounts, users } from '../database/schema';
 import { allocateTag } from './auth';
+import { deleteUserAccount } from './delete-user-account';
 import { toUser } from './to-user';
 
 @Injectable()
@@ -113,33 +114,8 @@ export class ProfileService {
     input: { password?: string; idToken?: string },
   ): Promise<void> {
     await this.confirmWithdraw(session, input);
-    const userId = session.user.id;
     await this.db.transaction(async (tx) => {
-      const [questMonsters, routineMonsters, bossMonsters] = await Promise.all([
-        tx
-          .select({ id: quests.monsterId })
-          .from(quests)
-          .where(and(eq(quests.userId, userId), isNotNull(quests.monsterId))),
-        tx
-          .select({ id: routines.monsterId })
-          .from(routines)
-          .where(and(eq(routines.userId, userId), isNotNull(routines.monsterId))),
-        tx
-          .select({ id: bosses.monsterId })
-          .from(bosses)
-          .where(and(eq(bosses.userId, userId), isNotNull(bosses.monsterId))),
-      ]);
-      const monsterIds = [
-        ...new Set(
-          [...questMonsters, ...routineMonsters, ...bossMonsters].flatMap((row) =>
-            row.id ? [row.id] : [],
-          ),
-        ),
-      ];
-      await tx.delete(users).where(eq(users.id, userId));
-      if (monsterIds.length > 0) {
-        await tx.delete(monsters).where(inArray(monsters.id, monsterIds));
-      }
+      await deleteUserAccount(tx, session.user.id);
     });
   }
 

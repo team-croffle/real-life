@@ -5,6 +5,7 @@ import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
+import { AccountStatusGuard } from './account-status.guard';
 import { createAuth } from './auth';
 import { AuthController } from './auth.controller';
 import { JobClassGuard } from './job-class.guard';
@@ -40,6 +41,12 @@ import { ProfileService } from './profile.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [ProfileService, MailSendLimitGuard, { provide: APP_GUARD, useClass: JobClassGuard }],
+  providers: [
+    ProfileService,
+    MailSendLimitGuard,
+    { provide: APP_GUARD, useClass: AccountStatusGuard },
+    { provide: APP_GUARD, useClass: JobClassGuard },
+  ],
+  exports: [ProfileService],
 })
 export class AuthModule {}
