@@ -16,10 +16,12 @@ import type { DrizzleDb, DrizzleTx } from '../database/database.module';
 import { monsters } from '../database/schema/monsters';
 import type { RoutineRow } from '../database/schema/routines';
 import { routines } from '../database/schema/routines';
+import { consumeQuestCreate } from '../limits/daily-usage';
 import { toRoutine } from './boss-plan.service';
 import type { CreateRoutineDto } from './dto/create-routine.dto';
 import type { UpdateRoutineDto } from './dto/update-routine.dto';
 import { monsterView } from './monster-view';
+import { appCalendarDate } from './quest-calendar';
 import { RoutineSpawnService } from './routine-spawn.service';
 
 const ROUTINE_ID_PATTERN =
@@ -54,20 +56,24 @@ export class RoutinesService {
       throw new BadRequestException('weekdays must contain at least one weekday');
     }
 
-    const [routineRow] = await this.db
-      .insert(routines)
-      .values({
-        userId,
-        title,
-        category: dto.category,
-        difficulty: dto.difficulty,
-        weekdays,
-        biweekly: dto.biweekly,
-      })
-      .returning();
-    if (!routineRow) {
-      throw new InternalServerErrorException('routine insert returned no row');
-    }
+    const routineRow = await this.db.transaction(async (tx) => {
+      await consumeQuestCreate(tx, userId, appCalendarDate());
+      const [inserted] = await tx
+        .insert(routines)
+        .values({
+          userId,
+          title,
+          category: dto.category,
+          difficulty: dto.difficulty,
+          weekdays,
+          biweekly: dto.biweekly,
+        })
+        .returning();
+      if (!inserted) {
+        throw new InternalServerErrorException('routine insert returned no row');
+      }
+      return inserted;
+    });
 
     await this.routineSpawnService.spawnToday(userId);
     await this.enqueueMonster(userId, routineRow.id, title);
@@ -102,6 +108,9 @@ export class RoutinesService {
         throw new BadRequestException('a boss routine cannot be updated');
       }
       const enqueueTitle = title !== undefined && title !== routineRow.title ? title : null;
+      if (enqueueTitle) {
+        await consumeQuestCreate(tx, userId, appCalendarDate());
+      }
       const [updated] = await tx
         .update(routines)
         .set({

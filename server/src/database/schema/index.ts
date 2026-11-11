@@ -10,6 +10,7 @@ export * from './quest-day-marks';
 export * from './quests';
 export * from './routines';
 export * from './sessions';
+export * from './user-daily-usage';
 export * from './user-progress';
 export * from './user-rewards';
 export * from './user-titles';

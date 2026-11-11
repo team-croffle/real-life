@@ -56,6 +56,7 @@ import { routines } from '../database/schema/routines';
 import { userProgress } from '../database/schema/user-progress';
 import { users } from '../database/schema/users';
 import { walletEntries } from '../database/schema/wallets';
+import { consumeBossConfirm } from '../limits/daily-usage';
 import type { ConfirmBossDto, ConfirmBossQuestDto } from './dto/confirm-boss.dto';
 import { HISTORY_DEFAULT_PAGE_SIZE, type ListHistoryQueryDto } from './dto/list-history-query.dto';
 import { monsterView } from './monster-view';
@@ -119,6 +120,7 @@ export class BossPlanService {
       if (calendarDaysBetween(today, dto.deadlineOn) < 0) {
         throw new BadRequestException(`deadlineOn must be today or later in ${APP_TIME_ZONE}`);
       }
+      await consumeBossConfirm(tx, userId, today);
       const active = await countActiveBosses(tx, userId);
       if (active >= BOSS_ACTIVE_MAX) {
         throw new ConflictException('three bosses are already in progress');
