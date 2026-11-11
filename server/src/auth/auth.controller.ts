@@ -7,17 +7,18 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
+import type { Request } from 'express';
 
 import { AllowWithoutJob } from './allow-without-job';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
-import { MailSendLimitGuard } from './mail-send-limit.guard';
 import { ProfileService } from './profile.service';
 
 @Controller('account')
@@ -25,16 +26,14 @@ export class AuthController {
   constructor(private readonly profiles: ProfileService) {}
 
   @Post('register')
-  @UseGuards(MailSendLimitGuard)
-  register(@Body() dto: RegisterDto): Promise<RegisterResult> {
-    return this.profiles.register(dto);
+  register(@Body() dto: RegisterDto, @Req() req: Request): Promise<RegisterResult> {
+    return this.profiles.register(dto, req.ip);
   }
 
   @Post('resend-verification')
-  @UseGuards(MailSendLimitGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async resendVerification(@Body() dto: ResendVerificationDto): Promise<void> {
-    await this.profiles.resendVerification(dto.email);
+  async resendVerification(@Body() dto: ResendVerificationDto, @Req() req: Request): Promise<void> {
+    await this.profiles.resendVerification(dto.email, req.ip);
   }
 
   @Get('me')

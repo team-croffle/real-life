@@ -9,7 +9,7 @@ import { AccountStatusGuard } from './account-status.guard';
 import { createAuth } from './auth';
 import { AuthController } from './auth.controller';
 import { JobClassGuard } from './job-class.guard';
-import { MailSendLimitGuard } from './mail-send-limit.guard';
+import { MailSendLimiter } from './mail-send-limiter';
 import { ProfileService } from './profile.service';
 
 @Module({
@@ -43,7 +43,7 @@ import { ProfileService } from './profile.service';
   controllers: [AuthController],
   providers: [
     ProfileService,
-    MailSendLimitGuard,
+    MailSendLimiter,
     { provide: APP_GUARD, useClass: AccountStatusGuard },
     { provide: APP_GUARD, useClass: JobClassGuard },
   ],
