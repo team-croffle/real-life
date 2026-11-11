@@ -6,9 +6,11 @@ import { useI18n } from 'vue-i18n';
 import MonsterImage from '@/components/quest/MonsterImage.vue';
 import type { MonsterViewTarget } from '@/components/quest/MonsterViewDialog.vue';
 import { Button } from '@/components/ui/button';
+import { useCurrentRewardEvent } from '@/composables/useCurrentRewardEvent';
 import { isQuestDone } from '@/composables/useQuestBoard';
 import { formatAmount } from '@/lib/formatAmount';
 import type { QuestListItem } from '@/lib/quests';
+import { formatEventMultiplier } from '@/lib/rewardEvents';
 
 const props = defineProps<{
   item: QuestListItem;
@@ -22,6 +24,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { current: rewardEvent } = useCurrentRewardEvent();
+const eventMultText = computed(() =>
+  rewardEvent.value ? formatEventMultiplier(rewardEvent.value.multiplier) : '',
+);
 
 const done = computed(() => isQuestDone(props.item));
 const readyMonster = computed(() =>
@@ -96,6 +102,12 @@ const reward = computed(() => {
     </div>
     <span v-if="reward" class="text-muted-foreground shrink-0 text-[11.5px] whitespace-nowrap">
       {{ reward }}
+    </span>
+    <span
+      v-if="eventMultText"
+      class="bg-gold-soft text-gold shrink-0 rounded-full px-[7px] py-0.5 text-[10px] font-extrabold whitespace-nowrap"
+    >
+      ×{{ eventMultText }}
     </span>
     <Button
       v-if="item.canMarkToday"

@@ -17,13 +17,19 @@ import QuestCompleteResultDialog from '@/components/quest/QuestCompleteResultDia
 import QuestHistoryPager from '@/components/quest/QuestHistoryPager.vue';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/composables/useApi';
+import { useCurrentRewardEvent } from '@/composables/useCurrentRewardEvent';
 import { useQuestBoard } from '@/composables/useQuestBoard';
 import { appCalendarDate } from '@/lib/appCalendar';
 import { abandonBoss, getBosses, getBossHistory, retryBossMonster } from '@/lib/bosses';
 import { formatAmount } from '@/lib/formatAmount';
 import { abandonQuest, retryQuestMonster } from '@/lib/quests';
+import { formatEventMultiplier } from '@/lib/rewardEvents';
 
 const { t } = useI18n();
+const { current: rewardEvent } = useCurrentRewardEvent();
+const eventMultText = computed(() =>
+  rewardEvent.value ? formatEventMultiplier(rewardEvent.value.multiplier) : '',
+);
 const route = useRoute();
 const router = useRouter();
 const {
@@ -767,6 +773,12 @@ onUnmounted(() => {
             </span>
             <span class="text-muted-foreground text-[11.5px] whitespace-nowrap">
               {{ subquestReward(item) }}
+            </span>
+            <span
+              v-if="eventMultText"
+              class="bg-gold-soft text-gold shrink-0 rounded-full px-[7px] py-0.5 text-[10px] font-extrabold whitespace-nowrap"
+            >
+              ×{{ eventMultText }}
             </span>
           </li>
         </ul>

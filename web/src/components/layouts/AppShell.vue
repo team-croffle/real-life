@@ -3,16 +3,20 @@ import {
   Backpack,
   BarChart3,
   Briefcase,
+  ChevronDown,
   Home,
   ListChecks,
+  Megaphone,
   Settings,
+  Shield,
   Sparkles,
+  Star,
   Store,
   Swords,
   Wallet,
 } from '@lucide/vue';
 import { storeToRefs } from 'pinia';
-import { type Component, onMounted, ref } from 'vue';
+import { type Component, computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute } from 'vue-router';
 
@@ -21,7 +25,14 @@ import DueTodayAlerts from '@/components/layouts/DueTodayAlerts.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import SettingsDialog from '@/components/settings/SettingsDialog.vue';
 import { Button } from '@/components/ui/button';
+import {
+  refreshCurrentRewardEvent,
+  resetCurrentRewardEvent,
+  useCurrentRewardEvent,
+} from '@/composables/useCurrentRewardEvent';
 import { refreshDueTodayAlerts, resetDueTodayAlerts } from '@/composables/useDueTodayAlerts';
+import { formatAppDateTime } from '@/lib/appDateTime';
+import { formatEventMultiplier } from '@/lib/rewardEvents';
 import { resetUnseenBosses } from '@/lib/unseenBosses';
 import { router } from '@/router';
 import { useAuthStore } from '@/stores/auth';
@@ -63,6 +74,12 @@ const route = useRoute();
 const auth = useAuthStore();
 const { user, pending } = storeToRefs(auth);
 const settingsOpen = ref(false);
+const eventTipOpen = ref(false);
+const { current: rewardEvent } = useCurrentRewardEvent();
+const isAdmin = computed(() => user.value?.role === 'admin');
+const eventMultText = computed(() =>
+  rewardEvent.value ? formatEventMultiplier(rewardEvent.value.multiplier) : '',
+);
 
 function isCurrent(item: NavItem): boolean {
   if (item.exact) {
@@ -73,11 +90,13 @@ function isCurrent(item: NavItem): boolean {
 
 onMounted(() => {
   void refreshDueTodayAlerts();
+  void refreshCurrentRewardEvent();
 });
 
 async function onLogout(): Promise<void> {
   resetUnseenBosses();
   resetDueTodayAlerts();
+  resetCurrentRewardEvent();
   await auth.logout();
   await router.push('/login');
 }
@@ -86,9 +105,36 @@ async function onLogout(): Promise<void> {
 <template>
   <div class="bg-background text-foreground flex min-h-screen">
     <aside class="border-border hidden w-[260px] shrink-0 flex-col border-r px-[18px] py-6 md:flex">
-      <RouterLink to="/" class="text-primary mb-7 px-2 text-[22px] font-bold">
+      <RouterLink
+        to="/"
+        class="text-primary px-2 text-[22px] font-bold"
+        :class="rewardEvent ? 'mb-3.5' : 'mb-7'"
+      >
         {{ t('app.title') }}
       </RouterLink>
+
+      <div v-if="rewardEvent" class="mx-0.5 mb-5">
+        <button
+          type="button"
+          class="bg-gold flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-white"
+          @click="eventTipOpen = !eventTipOpen"
+        >
+          <Star class="size-4 shrink-0" />
+          <span class="min-w-0 flex-1">{{ t('event.chip', { n: eventMultText }) }}</span>
+          <ChevronDown
+            class="size-3 shrink-0 transition-transform"
+            :class="eventTipOpen ? 'rotate-180' : ''"
+          />
+        </button>
+        <div v-if="eventTipOpen" class="bg-gold-soft mt-1.5 rounded-[10px] px-3 py-2.5">
+          <p class="text-gold text-xs font-bold tabular-nums">
+            {{ t('event.until', { time: formatAppDateTime(rewardEvent.endsAt) }) }}
+          </p>
+          <p class="text-secondary-foreground mt-0.5 text-[11px] leading-normal">
+            {{ t('event.hint', { n: eventMultText }) }}
+          </p>
+        </div>
+      </div>
 
       <nav class="flex flex-col gap-1">
         <RouterLink
@@ -137,6 +183,26 @@ async function onLogout(): Promise<void> {
           <component :is="item.icon" class="size-[18px]" />
           {{ t(item.label) }}
         </RouterLink>
+        <RouterLink
+          to="/notices"
+          class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-bold"
+          :class="
+            route.path === '/notices'
+              ? 'bg-accent text-accent-foreground'
+              : 'text-secondary-foreground hover:bg-muted'
+          "
+        >
+          <Megaphone class="size-[18px]" />
+          {{ t('nav.notices') }}
+        </RouterLink>
+        <RouterLink
+          v-if="isAdmin"
+          to="/admin"
+          class="border-border text-secondary-foreground mt-1 flex items-center gap-3 rounded-xl border border-dashed px-3.5 py-2.5 text-sm font-bold"
+        >
+          <Shield class="size-[18px]" />
+          {{ t('nav.admin') }}
+        </RouterLink>
       </nav>
 
       <div class="flex-1" />
@@ -169,6 +235,14 @@ async function onLogout(): Promise<void> {
       <header class="border-border flex items-center justify-between border-b px-4 py-3 md:hidden">
         <RouterLink to="/" class="text-primary text-lg font-bold">{{ t('app.title') }}</RouterLink>
         <div class="flex items-center gap-2">
+          <button
+            v-if="rewardEvent"
+            type="button"
+            class="bg-gold rounded-full px-2.5 py-1 text-[11px] font-extrabold text-white"
+            :title="t('event.until', { time: formatAppDateTime(rewardEvent.endsAt) })"
+          >
+            ×{{ eventMultText }}
+          </button>
           <DueTodayAlerts class="md:hidden" />
           <Button
             type="button"

@@ -95,12 +95,17 @@ function tagLabel(tag: RewardTag): string {
       return t('quest.resultTagCombo', { value });
     case 'note':
       return t('quest.resultTagNote', { value });
+    case 'event':
+      return t('quest.resultTagEvent', { value });
     case 'crit':
       return value === 3 ? t('quest.resultTagJackpot') : t('quest.resultTagCrit', { value });
   }
 }
 
 function tagClass(tag: RewardTag): string {
+  if (tag.type === 'event') {
+    return 'bg-gold-soft text-gold';
+  }
   if (tag.type !== 'crit') {
     return 'bg-muted text-secondary-foreground';
   }

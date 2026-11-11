@@ -28,10 +28,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/composables/useApi';
+import { useCurrentRewardEvent } from '@/composables/useCurrentRewardEvent';
 import { appCalendarDate, sortWeekdays } from '@/lib/appCalendar';
+import { formatAppDateTime } from '@/lib/appDateTime';
 import { formatAmount } from '@/lib/formatAmount';
 import { estimatedRegisterReward } from '@/lib/questReward';
 import { createQuest, createRoutine, recommendDifficulty } from '@/lib/quests';
+import { formatEventMultiplier } from '@/lib/rewardEvents';
 import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps<{
@@ -46,6 +49,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const auth = useAuthStore();
+const { current: rewardEvent } = useCurrentRewardEvent();
+const eventMultText = computed(() =>
+  rewardEvent.value ? formatEventMultiplier(rewardEvent.value.multiplier) : '',
+);
 
 const category = ref<QuestCategory>('exercise');
 const title = ref('');
@@ -505,6 +512,21 @@ async function onSubmit(): Promise<void> {
           }}
         </p>
         <p class="mt-0.5 text-[11px]">{{ t('quest.deadlineRewardNote') }}</p>
+      </div>
+
+      <div
+        v-if="rewardEvent"
+        class="bg-gold-soft text-gold -mt-2 mb-4 flex items-center gap-1.5 rounded-[10px] px-2.5 py-2 text-[11.5px] font-bold"
+      >
+        <Star class="size-[13px] shrink-0" />
+        <span>
+          {{
+            t('event.register', {
+              n: eventMultText,
+              time: formatAppDateTime(rewardEvent.endsAt),
+            })
+          }}
+        </span>
       </div>
 
       <p v-if="error" class="text-destructive mb-3 text-[12px]">{{ error }}</p>

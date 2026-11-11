@@ -14,6 +14,8 @@
     "comingSoon": "준비 중",
     "wallet": "지갑",
     "job": "직업",
+    "notices": "공지",
+    "admin": "관리자",
     "account": "계정",
     "about": "소개",
     "users": "사용자"
@@ -43,6 +45,8 @@
       "failed": "불러오지 못했어요",
       "refresh": "새로고침"
     },
+    "noticeBadge": "공지",
+    "noticeMore": "자세히 ›",
     "counterBanner": "보스의 반격! \"{name}\"에게 놓친 하위 퀘스트가 있어요",
     "counterBannerAction": "보스 화면 보기"
   },
@@ -261,6 +265,21 @@
     "open": "알림 열기",
     "close": "알림 닫기",
     "empty": "오늘 놓칠 퀘스트가 없어요"
+  },
+  "event": {
+    "chip": "보상 ×{n} 이벤트",
+    "until": "{time}까지",
+    "hint": "퀘스트를 끝내면 골드와 경험치를 {n}배로 받아요",
+    "register": "×{n} 이벤트 중 · {time} 전에 끝내면 {n}배"
+  },
+  "notice": {
+    "title": "공지",
+    "badge": "공지",
+    "empty": "아직 공지가 없어요",
+    "seeAll": "전체 공지 보기 ›",
+    "close": "닫기",
+    "loadError": "공지를 불러오지 못했어요",
+    "retry": "다시 시도"
   },
   "admin": {
     "brand": "RealLife Admin",
@@ -522,6 +541,7 @@
     "resultTagJob": "직업 x{value}",
     "resultTagCombo": "연속 x{value}",
     "resultTagNote": "메모 x{value}",
+    "resultTagEvent": "이벤트 ×{value}",
     "resultTagCrit": "크리티컬 x{value}",
     "resultTagJackpot": "크리티컬 x3 · 대박!",
     "resultJackpot": "대박!",
