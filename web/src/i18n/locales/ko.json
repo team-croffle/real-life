@@ -254,6 +254,12 @@
     "heading": "이 프로젝트에 대해",
     "body": "타입은 shared 패키지에서 정의하고 server 와 web 이 소스 그대로 참조합니다."
   },
+  "alerts": {
+    "title": "알림",
+    "open": "알림 열기",
+    "close": "알림 닫기",
+    "empty": "오늘 놓칠 퀘스트가 없어요"
+  },
   "settings": {
     "title": "설정",
     "open": "설정",
