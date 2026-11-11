@@ -7,7 +7,7 @@
 The aim is to keep you doing the things that are easy to put off alone, through game rules that show the reward and the cost right away.
 
 - **Quests** — a deadline quest is registered on its own. A routine repeats on chosen weekdays and, on each of those days, writes one all-at-once quest due that day. You pick a category, a difficulty and a title template. A deadline is steady or all at once. Steady records the days you worked on it with "check today". All at once has no check today, and its reward and penalty stay on the daily column however long the gap is
-- **Rewards** — a base amount set by difficulty and duration, multiplied by the share of checked days, the job multiplier, the streak multiplier and a bonus for a completion note. The register form shows the expected amount; the result shows what was applied
+- **Rewards** — a base amount set by difficulty and duration, multiplied by the share of checked days, the job multiplier, the streak multiplier and a bonus for a completion note. While an admin event is running, completion gold and XP are also multiplied by the event multiplier. The register form shows the expected amount; the result shows what was applied
 - **Critical hits** — each completion has a 10% chance to double the gold, and a tenth of those triple it. Bigger critical hits get bigger effects and sounds
 - **Streak** — completing at least one quest a day keeps it going, and a longer streak raises the reward multiplier
 - **Penalties and lethargy** — missing a quest whose due date has passed costs gold and XP and turns on lethargy, whether a routine wrote it or not. Lethargy ends when any quest is completed. Settlement runs just after midnight in Seoul and when you open the app
@@ -19,12 +19,12 @@ The aim is to keep you doing the things that are easy to put off alone, through 
 - **AI bosses** — a big goal becomes a boss. Confirming a goal, a due date and a category creates the deadline subquests, the subroutines and the boss HP in one step. At most three bosses are in progress. Completing a subquest cuts HP by the difficulty score. The first settlement after the due date clears the boss at 80% of max HP and fails it otherwise. The name is written with a boss prompt. If that fails, the title stays the goal
 - **Shop** — buy real-life rewards with gold: a shared catalog and rewards you register yourself
 - **Character** — one cat picture per job, shown on home and stats. When lethargic, the cat turns grey and sinks slightly. Accessories from the gacha come later
-- **Notifications** — quests due today in Seoul that are still open show as a bell count and a list. Out-of-app alerts (due soon, a streak about to break, level-ups, friend and raid news) and turning each kind off come later
+- **Notifications** — quests due today in Seoul that are still open show as a bell count and a list. Out-of-app alerts (due soon, a streak about to break, level-ups, friend and raid news) and turning each kind off come after the web is finished, with the mobile work
 - **Friends and raids (planned)** — take on a shared goal with friends and wear down a boss's HP with the quests each of you completes. Later, public raids anyone can join
 - **Admin (planned)** — manage accounts, notices and reward multipliers
-- **Mobile (planned)** — looking first at using it like an app on a phone (PWA)
+- **Mobile (planned)** — after the web is finished: use it like an app on a phone (PWA), and out-of-app web push. iPhone needs the PWA install first
 
-v0.2 (game feel) is done. Progress by version is in [ROADMAP.md](./ROADMAP.md).
+v0.4 (shop / character) is done. v0.5 (stabilization) is in progress. Progress by version is in [ROADMAP.md](./ROADMAP.md).
 
 ## Account and jobs
 
@@ -76,11 +76,12 @@ Then, in order:
 1. the job multiplier (table above)
 2. the streak multiplier (see Streak)
 3. ×1.1 when a completion note is written
-4. the critical hit (gold only)
+4. the event multiplier, while an admin event is running (1.0–3.0 in steps of 0.1; only one event at a time)
+5. the critical hit (gold only)
 
-Gold and XP are each rounded once, at the end.
+Gold and XP are each rounded once, at the end. Penalties and boss clear, fail and abandon amounts are not multiplied by the event.
 
-The register form shows the expected amount: the job multiplier is included, the note and critical hits are not. For a steady deadline quest it is the amount for checking in every day until the due date. For one done all at once it is the daily amount, the same shape as a routine: expected gold and XP.
+The register form shows the expected amount: the job multiplier is included; the note, the event and critical hits are not. The quest list estimate includes the event when one is running. For a steady deadline quest the register form is the amount for checking in every day until the due date. For one done all at once it is the daily amount, the same shape as a routine: expected gold and XP.
 
 On completion the result opens first. After the response it shows the amount received, what raised it (job, streak, note, critical hit) and how much it was reduced by missed check-ins, together with the battle log.
 
@@ -181,6 +182,7 @@ real-life/
 ├── server/                # NestJS API server
 │   ├── src/
 │   │   ├── auth/          # sign-up, sign-in, email verification, onboarding, account deletion (Better Auth)
+│   │   ├── admin/         # admin users, announcements, reward events
 │   │   ├── quests/        # deadline quests, routines, completion, check today, penalty settlement
 │   │   ├── wallet/        # balance, history, debt, post-hoc deduction
 │   │   ├── shop/          # catalog, custom rewards, purchase
