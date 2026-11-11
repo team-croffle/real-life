@@ -102,23 +102,25 @@ types/                response types exchanged by the server and the web
 
 ```
 routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, shop, job, sign-up/sign-in/onboarding
-components/    a folder per page (home, quest, boss, wallet, shop, stats, job, settings, auth) and shared ui/
+components/    a folder per page (home, quest, boss, wallet, shop, stats, job, settings, auth, character) and shared ui/
   boss/BossRegisterDialog.vue    main-quest plan and confirm
   boss/BossResultDialog.vue      unseen clear or fail
+  character/CharacterFigure.vue  one cat WebP per job; lethargy greys 70% and shortens 4% from the feet
   quest/MonsterImage.vue         /monsters/{imageKey}.svg or /bosses/{imageKey}.svg, then /fallback/unknown.svg
   quest/MonsterViewDialog.vue    monster name, picture and description
   quest/QuestHistoryPager.vue    numbered pages; size 5, 10, 15 or 20, default 20
   shop/RewardFormDialog.vue      create or edit a custom reward
   shop/ShopConfirmDialog.vue     confirm a purchase or a delete
   shop/ShopItemCard.vue          one catalog or custom item
-lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings
+  stats/CharacterCard.vue        stats page character, job, title and XP
+lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
 composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
 i18n/          Korean and English copy
 ```
 
-Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missing file uses `web/public/fallback/unknown.svg`.
+Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missing file uses `web/public/fallback/unknown.svg`. Character pictures live in `web/public/character` as transparent WebP.
 
 ### Rules the code keeps
 
