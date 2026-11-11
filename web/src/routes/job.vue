@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { Briefcase, GraduationCap, Sparkles, TriangleAlert } from '@lucide/vue';
 import type { JobChangeStatus, JobClass } from '@nest-vue/shared';
 import { JOB_CLASSES, JOB_CLASS_REWARD_MULTIPLIERS } from '@nest-vue/shared';
-import { Briefcase, GraduationCap, Sparkles, TriangleAlert } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 

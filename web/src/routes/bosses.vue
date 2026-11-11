@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { Ellipsis, TriangleAlert } from '@lucide/vue';
 import type { BossRoutineSubquest, BossSubquest, BossSummary, PastBoss } from '@nest-vue/shared';
 import { bossFailPenalty, bossShortfall, calendarDaysBetween } from '@nest-vue/shared';
-import { Ellipsis, TriangleAlert } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';

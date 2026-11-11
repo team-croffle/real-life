@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { BookOpen, Heart, Sparkles } from '@lucide/vue';
 import type { Stats } from '@nest-vue/shared';
-import { BookOpen, Heart, Sparkles } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 

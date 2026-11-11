@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { TriangleAlert, Wallet } from '@lucide/vue';
 import { WALLET_DEBT_LIMIT, type WalletEntry, type WalletEntryKind } from '@nest-vue/shared';
-import { TriangleAlert, Wallet } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from '@lucide/vue';
 import type { ShopItem, ShopKind } from '@nest-vue/shared';
 import {
   QUEST_TITLE_MAX,
@@ -7,7 +8,6 @@ import {
   USER_REWARD_PRICE_MAX,
   USER_REWARD_PRICE_MIN,
 } from '@nest-vue/shared';
-import { X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
