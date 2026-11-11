@@ -12,12 +12,17 @@ export const router = createRouter({
 type RouteAccess =
   | 'guest'
   | 'auth'
+  | 'admin'
   | 'onboardingJob'
   | 'checkEmail'
   | 'onboardingComplete'
   | 'public';
 
 function accessFor(path: string): RouteAccess {
+  if (path === '/admin' || path.startsWith('/admin/')) {
+    return 'admin';
+  }
+
   if (path === '/login' || path === '/register') {
     return 'guest';
   }
@@ -74,6 +79,11 @@ router.beforeEach(async (to) => {
       return auth.justOnboarded ? true : { path: '/' };
     case 'public':
       return true;
+    case 'admin':
+      if (!auth.isAuthenticated) {
+        return { path: '/login' };
+      }
+      return auth.user?.role === 'admin' ? true : { path: '/' };
     case 'auth':
       if (auth.needsJobOnboarding) {
         return { path: '/onboarding/job' };
