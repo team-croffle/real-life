@@ -1,4 +1,6 @@
 import {
+  DAILY_AI_BUTTON_LIMIT_CODE,
+  DAILY_AI_BUTTON_MAX,
   DAILY_BOSS_CONFIRM_LIMIT_CODE,
   DAILY_BOSS_CONFIRM_MAX,
   DAILY_QUEST_CREATE_LIMIT_CODE,
@@ -65,4 +67,25 @@ export async function consumeBossConfirm(
       bossConfirms: usageRow.bossConfirms + 1,
     })
     .where(and(eq(userDailyUsage.userId, userId), eq(userDailyUsage.onDate, onDate)));
+}
+
+/** 하루가 가득이면 429. tryAcquire가 false면 횟수를 안 올리고 false. 자리를 잡으면 true. */
+export async function tryConsumeAiButtonCall(
+  tx: DrizzleTx,
+  userId: string,
+  onDate: string,
+  tryAcquire: () => boolean,
+): Promise<boolean> {
+  const usageRow = await lockDailyUsage(tx, userId, onDate);
+  if (usageRow.aiButtonCalls >= DAILY_AI_BUTTON_MAX) {
+    throw dailyLimitException(DAILY_AI_BUTTON_LIMIT_CODE);
+  }
+  if (!tryAcquire()) {
+    return false;
+  }
+  await tx
+    .update(userDailyUsage)
+    .set({ aiButtonCalls: usageRow.aiButtonCalls + 1 })
+    .where(and(eq(userDailyUsage.userId, userId), eq(userDailyUsage.onDate, onDate)));
+  return true;
 }
