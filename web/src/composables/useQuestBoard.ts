@@ -98,7 +98,7 @@ export function useQuestBoard() {
     try {
       const result = await completeQuest(id, note);
       await load(true);
-      await refreshDueTodayAlerts();
+      void refreshDueTodayAlerts();
       completionResult.value = result;
       return true;
     } catch (cause) {
