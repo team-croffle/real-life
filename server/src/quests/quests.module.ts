@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AdminModule } from '../admin/admin.module';
 import { AiQueueModule } from '../ai-queue/ai-queue.module';
 import { AiModule } from '../ai/ai.module';
 import { WalletModule } from '../wallet/wallet.module';
@@ -19,7 +20,7 @@ import { RoutinesController } from './routines.controller';
 import { RoutinesService } from './routines.service';
 
 @Module({
-  imports: [AiModule, AiQueueModule, WalletModule],
+  imports: [AiModule, AiQueueModule, WalletModule, AdminModule],
   controllers: [QuestsController, QuestPenaltiesController, BossesController, RoutinesController],
   providers: [
     QuestsService,

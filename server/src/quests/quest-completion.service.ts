@@ -23,6 +23,7 @@ import {
 } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 
+import { RewardEventsService } from '../admin/reward-events.service';
 import { AI, type Ai } from '../ai/ai';
 import { AiCallLimiter } from '../ai/ai-call-limiter';
 import { DRIZZLE } from '../database/database.constants';
@@ -59,6 +60,7 @@ export class QuestCompletionService {
     private readonly questCritRoller: QuestCritRoller,
     @Inject(AI) private readonly ai: Ai,
     private readonly aiCallLimiter: AiCallLimiter,
+    private readonly rewardEvents: RewardEventsService,
   ) {}
 
   async complete(
@@ -92,6 +94,7 @@ export class QuestCompletionService {
       const noteBonus = note !== null;
       // 외상(잔액이 음수)일 때는 크리티컬을 굴리지 않는다.
       const critMultiplier = balanceBefore < 0 ? 1 : this.questCritRoller.roll();
+      const eventMultiplier = await this.rewardEvents.activeMultiplier(new Date(), tx);
       const gold = grantAmount(
         table.gold,
         table.markedDays,
@@ -100,6 +103,7 @@ export class QuestCompletionService {
         noteBonus,
         comboMultiplier,
         critMultiplier,
+        eventMultiplier,
       );
       const xp = grantAmount(
         table.xp,
@@ -108,6 +112,8 @@ export class QuestCompletionService {
         multiplier,
         noteBonus,
         comboMultiplier,
+        1,
+        eventMultiplier,
       );
 
       const progress = await grantProgress(tx, userId, xp, QUEST_CATEGORY_STATS[questRow.category]);
@@ -153,7 +159,7 @@ export class QuestCompletionService {
           comboMultiplier,
           noteBonus,
           critMultiplier,
-          eventMultiplier: 1,
+          eventMultiplier,
         },
       };
     });
