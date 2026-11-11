@@ -454,7 +454,7 @@ onUnmounted(() => {
 <template>
   <AppShell>
     <div>
-      <div class="mb-5 flex items-center justify-between gap-3">
+      <div class="mb-5 flex items-center justify-between gap-3 md:pr-12">
         <h1 class="text-2xl font-bold">{{ t('nav.quests') }}</h1>
         <div class="flex flex-wrap items-center justify-end gap-2">
           <Button

@@ -275,7 +275,7 @@ onUnmounted(() => {
 <template>
   <AppShell>
     <div>
-      <div class="mb-5 flex items-start justify-between gap-3">
+      <div class="mb-5 flex items-start justify-between gap-3 md:pr-12">
         <div>
           <h1 class="text-2xl font-bold">
             {{ t('home.greeting', { name: user?.nickname ?? '' }) }}
