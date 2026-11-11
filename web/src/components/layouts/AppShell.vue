@@ -12,14 +12,16 @@ import {
   Wallet,
 } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { type Component, ref } from 'vue';
+import { type Component, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute } from 'vue-router';
 
 import BossResultDialog from '@/components/boss/BossResultDialog.vue';
+import DueTodayAlerts from '@/components/layouts/DueTodayAlerts.vue';
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import SettingsDialog from '@/components/settings/SettingsDialog.vue';
 import { Button } from '@/components/ui/button';
+import { refreshDueTodayAlerts, resetDueTodayAlerts } from '@/composables/useDueTodayAlerts';
 import { resetUnseenBosses } from '@/lib/unseenBosses';
 import { router } from '@/router';
 import { useAuthStore } from '@/stores/auth';
@@ -69,8 +71,13 @@ function isCurrent(item: NavItem): boolean {
   return route.path === item.to || route.path.startsWith(`${item.to}/`);
 }
 
+onMounted(() => {
+  void refreshDueTodayAlerts();
+});
+
 async function onLogout(): Promise<void> {
   resetUnseenBosses();
+  resetDueTodayAlerts();
   await auth.logout();
   await router.push('/login');
 }
@@ -162,6 +169,7 @@ async function onLogout(): Promise<void> {
       <header class="border-border flex items-center justify-between border-b px-4 py-3 md:hidden">
         <RouterLink to="/" class="text-primary text-lg font-bold">{{ t('app.title') }}</RouterLink>
         <div class="flex items-center gap-2">
+          <DueTodayAlerts class="md:hidden" />
           <Button
             type="button"
             variant="ghost"
@@ -185,7 +193,10 @@ async function onLogout(): Promise<void> {
         </div>
       </header>
 
-      <main class="mx-auto w-full max-w-[880px] flex-1 px-4 py-8 pb-24 md:px-11 md:pb-12">
+      <main class="relative mx-auto w-full max-w-[880px] flex-1 px-4 py-8 pb-24 md:px-11 md:pb-12">
+        <div class="absolute top-8 right-4 z-30 hidden md:right-11 md:block">
+          <DueTodayAlerts />
+        </div>
         <slot />
       </main>
     </div>
