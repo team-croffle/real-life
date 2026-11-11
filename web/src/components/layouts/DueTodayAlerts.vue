@@ -27,6 +27,17 @@ function questLabel(item: QuestListItem): string {
 
 function close(): void {
   open.value = false;
+  detachPanelFollow();
+}
+
+function attachPanelFollow(): void {
+  window.addEventListener('scroll', syncPanelPosition, true);
+  window.addEventListener('resize', syncPanelPosition);
+}
+
+function detachPanelFollow(): void {
+  window.removeEventListener('scroll', syncPanelPosition, true);
+  window.removeEventListener('resize', syncPanelPosition);
 }
 
 function syncPanelPosition(): void {
@@ -48,12 +59,17 @@ function syncPanelPosition(): void {
 }
 
 async function toggle(): Promise<void> {
-  open.value = !open.value;
+  if (open.value) {
+    close();
+    return;
+  }
+  open.value = true;
+  await nextTick();
   if (!open.value) {
     return;
   }
-  await nextTick();
   syncPanelPosition();
+  attachPanelFollow();
 }
 
 async function onSelect(): Promise<void> {
@@ -90,6 +106,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('pointerdown', onPointerDown);
   document.removeEventListener('keydown', onKeyDown, true);
+  detachPanelFollow();
 });
 </script>
 
