@@ -54,11 +54,11 @@ import { HISTORY_DEFAULT_PAGE_SIZE, type ListHistoryQueryDto } from './dto/list-
 import { monsterView } from './monster-view';
 import {
   APP_TIME_ZONE,
+  appCalendarDate,
   calendarDaysBetween,
   isCalendarDate,
   isDeadlineInPeriod,
   rewardPeriodForRemainingDays,
-  seoulCalendarDate,
 } from './quest-calendar';
 import { QuestPenaltyService } from './quest-penalty.service';
 import { RoutineSpawnService } from './routine-spawn.service';
@@ -91,7 +91,7 @@ export class QuestsService {
       throw new BadRequestException('endsOn must be a calendar date YYYY-MM-DD');
     }
 
-    const remainingDays = calendarDaysBetween(seoulCalendarDate(), endsOn);
+    const remainingDays = calendarDaysBetween(appCalendarDate(), endsOn);
     if (remainingDays < QUEST_DEADLINE_DAILY_REMAINING_DAYS) {
       throw new BadRequestException(`endsOn must be today or later in ${APP_TIME_ZONE}`);
     }
@@ -143,7 +143,7 @@ export class QuestsService {
   async list(userId: string): Promise<QuestListItem[]> {
     await this.prepareForRead(userId);
 
-    const today = seoulCalendarDate();
+    const today = appCalendarDate();
     const questRows = await this.db
       .select()
       .from(quests)
@@ -173,7 +173,7 @@ export class QuestsService {
       .orderBy(desc(quests.createdAt), desc(quests.id))
       .limit(size)
       .offset((page - 1) * size);
-    const today = seoulCalendarDate();
+    const today = appCalendarDate();
     return {
       items: await this.toListItems(userId, questRows, today),
       page,
@@ -299,7 +299,7 @@ export class QuestsService {
       await lockUser(tx, userId);
       await lockWallet(tx, userId);
       const levelXp = await lockProgressXp(tx, userId);
-      const today = seoulCalendarDate();
+      const today = appCalendarDate();
       if (questRow.completedOn !== null || questRow.endsOn < today) {
         throw new ConflictException('completed or past-due quests cannot be abandoned');
       }
@@ -358,7 +358,7 @@ function toQuestListItem(
   balance: number,
   levelXp: number,
 ): QuestListItem {
-  const createdOn = seoulCalendarDate(questRow.createdAt);
+  const createdOn = appCalendarDate(questRow.createdAt);
   const multiplier = jobRewardMultiplier(jobClass, questRow.category);
   const completed = questRow.completedOn !== null;
   const completedToday = questRow.completedOn === today;
@@ -483,7 +483,7 @@ export function toQuest(questRow: QuestRow, reward: { gold: number; xp: number }
 
 function isFreeAbandon(questRow: QuestRow, today: string, markedToday: boolean): boolean {
   return (
-    seoulCalendarDate(questRow.createdAt) === today &&
+    appCalendarDate(questRow.createdAt) === today &&
     !markedToday &&
     questRow.routineId === null &&
     questRow.bossId === null
@@ -497,7 +497,7 @@ function penaltySameAsMiss(questRow: QuestRow): { gold: number; xp: number } {
   }
   return deadlinePenaltyAmount(
     questRow.difficulty,
-    calendarDaysBetween(seoulCalendarDate(questRow.createdAt), questRow.endsOn),
+    calendarDaysBetween(appCalendarDate(questRow.createdAt), questRow.endsOn),
     questRow.pace,
   );
 }

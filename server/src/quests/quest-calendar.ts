@@ -1,8 +1,11 @@
 import type { QuestRewardPeriod } from '@nest-vue/shared';
 import {
+  APP_TIME_ZONE,
   QUEST_DEADLINE_DAILY_REMAINING_DAYS,
   QUEST_DEADLINE_WEEKLY_MAX_REMAINING_DAYS,
 } from '@nest-vue/shared';
+
+export { APP_TIME_ZONE };
 
 export {
   addCalendarDays,
@@ -15,9 +18,7 @@ export {
   weekdayOfCalendarDate,
 } from '@nest-vue/shared';
 
-export const APP_TIME_ZONE = 'Asia/Seoul';
-
-export function seoulCalendarDate(now = new Date()): string {
+export function appCalendarDate(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: APP_TIME_ZONE,
     year: 'numeric',

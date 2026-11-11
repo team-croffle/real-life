@@ -11,7 +11,7 @@ import { and, count, eq, gte, isNull, lte } from 'drizzle-orm';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
 import { quests } from '../database/schema/quests';
-import { addCalendarDays, seoulCalendarDate } from '../quests/quest-calendar';
+import { addCalendarDays, appCalendarDate } from '../quests/quest-calendar';
 import { AI, DIFFICULTY_HISTORY_DAYS, type Ai } from './ai';
 import { AiCallLimiter } from './ai-call-limiter';
 import type { RecommendDifficultyDto } from './dto/recommend-difficulty.dto';
@@ -32,7 +32,7 @@ export class DifficultyService {
       throw new BadRequestException('title must not be empty');
     }
 
-    const today = seoulCalendarDate();
+    const today = appCalendarDate();
     const from = addCalendarDays(today, -(DIFFICULTY_HISTORY_DAYS - 1));
     const yesterday = addCalendarDays(today, -1);
     const [completedCount, missedCount] = await Promise.all([
