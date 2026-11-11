@@ -90,6 +90,7 @@
     "askPlan": "Ask AI for a plan",
     "planning": "Making a plan",
     "planFailed": "AI couldn't make a plan. Build it yourself.",
+    "planFailedLimit": "You've used all AI recommendations for today. Please add the subquests yourself.",
     "previewTitle": "Subquest plan",
     "routineHp": "{times}× {difficulty} {score} = {hp}",
     "deadlineHp": "1× {difficulty} {score} = {hp}",
@@ -103,6 +104,7 @@
     "confirm": "Confirm",
     "confirming": "Confirming",
     "activeMax": "You can have at most 3 bosses in progress.",
+    "dailyConfirmLimit": "You can create only one boss per day.",
     "toastCreated": "Main quest created",
     "loot": "See loot",
     "clearedTitle": "Boss cleared",
@@ -432,6 +434,7 @@
     "recommend": "AI suggestion",
     "recommending": "Getting a suggestion",
     "recommendFailed": "Couldn't get a suggestion",
+    "recommendLimit": "You've used all AI recommendations for today. Please pick the difficulty yourself.",
     "kindLabel": "Kind",
     "deadlineQuest": "Deadline quest",
     "pace": "Pace",
@@ -535,6 +538,7 @@
       "title": "Enter a title.",
       "weekdays": "Pick at least one weekday.",
       "endsOn": "The due date has to be today or later.",
+      "dailyCreateLimit": "You've used all 10 quests you can create today. You can create more tomorrow.",
       "restBadRequest": "This routine can't be turned off.",
       "resumeBadRequest": "This routine can't be turned on."
     }
