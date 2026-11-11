@@ -11,6 +11,9 @@ import {
   BOSS_SUBQUEST_MAX,
   bossQuestHp,
   calendarDaysBetween,
+  DAILY_AI_BUTTON_LIMIT_CODE,
+  DAILY_BOSS_CONFIRM_LIMIT_CODE,
+  DAILY_QUEST_CREATE_LIMIT_CODE,
   isCalendarDate,
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
@@ -74,6 +77,7 @@ const deadlineOn = ref(appCalendarDate());
 const stage = ref<'input' | 'preview'>('input');
 const planning = ref(false);
 const planFailed = ref(false);
+const planLimit = ref(false);
 const items = ref<DraftItem[]>([]);
 const pending = ref(false);
 const error = ref('');
@@ -129,6 +133,7 @@ function resetForm(): void {
   deadlineOn.value = appCalendarDate();
   stage.value = 'input';
   planFailed.value = false;
+  planLimit.value = false;
   items.value = [];
   pending.value = false;
   error.value = '';
@@ -150,6 +155,7 @@ function rebuild(): void {
   bumpPlan();
   stage.value = 'input';
   planFailed.value = false;
+  planLimit.value = false;
   items.value = [];
   error.value = '';
   editor.value = null;
@@ -198,6 +204,7 @@ async function onAskPlan(): Promise<void> {
   const generation = ++planGeneration;
   planning.value = true;
   planFailed.value = false;
+  planLimit.value = false;
   error.value = '';
   try {
     const plan = await suggestQuestPlan({
@@ -209,11 +216,12 @@ async function onAskPlan(): Promise<void> {
     }
     items.value = plan.quests.map(fromPlanQuest);
     stage.value = 'preview';
-  } catch {
+  } catch (cause) {
     if (generation !== planGeneration) {
       return;
     }
     planFailed.value = true;
+    planLimit.value = cause instanceof ApiError && cause.code === DAILY_AI_BUTTON_LIMIT_CODE;
     items.value = [];
     stage.value = 'preview';
   } finally {
@@ -339,6 +347,12 @@ function confirmErrorMessage(cause: unknown): string {
   if (!(cause instanceof ApiError) || cause.status === 401) {
     return '';
   }
+  if (cause.code === DAILY_BOSS_CONFIRM_LIMIT_CODE) {
+    return t('boss.dailyConfirmLimit');
+  }
+  if (cause.code === DAILY_QUEST_CREATE_LIMIT_CODE) {
+    return t('quest.errors.dailyCreateLimit');
+  }
   if (cause.status === 409) {
     return t('boss.activeMax');
   }
@@ -459,7 +473,7 @@ async function onConfirm(): Promise<void> {
 
       <template v-else>
         <p v-if="planFailed" class="text-secondary-foreground mb-4 text-[12.5px]">
-          {{ t('boss.planFailed') }}
+          {{ t(planLimit ? 'boss.planFailedLimit' : 'boss.planFailed') }}
         </p>
         <h3 class="mb-3 text-[13px] font-bold">{{ t('boss.previewTitle') }}</h3>
         <ul class="mb-3 flex flex-col gap-2">

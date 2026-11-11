@@ -8,6 +8,8 @@ import type {
 } from '@nest-vue/shared';
 import {
   calendarDaysBetween,
+  DAILY_AI_BUTTON_LIMIT_CODE,
+  DAILY_QUEST_CREATE_LIMIT_CODE,
   isCalendarDate,
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
@@ -55,6 +57,7 @@ const endsOn = ref(appCalendarDate());
 const pending = ref(false);
 const error = ref('');
 const recommendState = ref<'idle' | 'pending' | 'ready' | 'failed'>('idle');
+const recommendLimit = ref(false);
 const recommendReason = ref('');
 let recommendGeneration = 0;
 
@@ -124,6 +127,7 @@ watch(pending, (value) => {
 function clearRecommendation(): void {
   recommendGeneration += 1;
   recommendState.value = 'idle';
+  recommendLimit.value = false;
   recommendReason.value = '';
 }
 
@@ -168,6 +172,7 @@ async function onRecommend(): Promise<void> {
   }
   const generation = ++recommendGeneration;
   recommendState.value = 'pending';
+  recommendLimit.value = false;
   recommendReason.value = '';
   try {
     const result = await recommendDifficulty({
@@ -180,10 +185,11 @@ async function onRecommend(): Promise<void> {
     difficulty.value = result.difficulty;
     recommendReason.value = result.reason;
     recommendState.value = 'ready';
-  } catch {
+  } catch (cause) {
     if (generation !== recommendGeneration) {
       return;
     }
+    recommendLimit.value = cause instanceof ApiError && cause.code === DAILY_AI_BUTTON_LIMIT_CODE;
     recommendState.value = 'failed';
   }
 }
@@ -201,6 +207,9 @@ function toggleWeekday(day: QuestWeekday): void {
 function questErrorMessage(cause: unknown): string {
   if (!(cause instanceof ApiError) || cause.status === 401) {
     return '';
+  }
+  if (cause.code === DAILY_QUEST_CREATE_LIMIT_CODE) {
+    return t('quest.errors.dailyCreateLimit');
   }
   if (cause.message.includes('endsOn must be today')) {
     return t('quest.errors.endsOn');
@@ -364,8 +373,13 @@ async function onSubmit(): Promise<void> {
         v-else-if="recommendState === 'failed'"
         class="text-muted-foreground mb-4 flex items-center gap-2 text-[12.5px]"
       >
-        <span>{{ t('quest.recommendFailed') }}</span>
-        <button type="button" class="text-primary font-bold" @click="onRecommend">
+        <span>{{ t(recommendLimit ? 'quest.recommendLimit' : 'quest.recommendFailed') }}</span>
+        <button
+          v-if="!recommendLimit"
+          type="button"
+          class="text-primary font-bold"
+          @click="onRecommend"
+        >
           {{ t('quest.retry') }}
         </button>
       </p>

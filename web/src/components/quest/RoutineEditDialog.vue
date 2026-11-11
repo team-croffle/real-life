@@ -7,6 +7,7 @@ import type {
   Routine,
 } from '@nest-vue/shared';
 import {
+  DAILY_QUEST_CREATE_LIMIT_CODE,
   QUEST_CATEGORIES,
   QUEST_DIFFICULTIES,
   QUEST_TITLE_MAX,
@@ -111,6 +112,9 @@ function requestClose(): void {
 function editErrorMessage(cause: unknown): string {
   if (!(cause instanceof ApiError) || cause.status === 401) {
     return '';
+  }
+  if (cause.code === DAILY_QUEST_CREATE_LIMIT_CODE) {
+    return t('quest.errors.dailyCreateLimit');
   }
   return t('quest.errors.generic');
 }

@@ -7,11 +7,13 @@ const BASE_URL = apiBaseUrl();
 
 export class ApiError extends Error {
   readonly status: number;
+  readonly code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -57,7 +59,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       await logoutOnUnauthorized();
     }
 
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, body?.code);
   }
 
   if (response.status === 204) {
