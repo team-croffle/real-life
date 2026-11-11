@@ -103,6 +103,7 @@ types/                response types exchanged by the server and the web
 ```
 routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, shop, job, sign-up/sign-in/onboarding
 components/    a folder per page (home, quest, boss, wallet, shop, stats, job, settings, auth, character) and shared ui/
+  layouts/DueTodayAlerts.vue     Seoul today due and still open; bell count and list from GET /api/quests
   boss/BossRegisterDialog.vue    main-quest plan and confirm
   boss/BossResultDialog.vue      unseen clear or fail
   character/CharacterFigure.vue  one cat WebP per job; lethargy greys 70% and shortens 4% from the feet
@@ -114,7 +115,7 @@ components/    a folder per page (home, quest, boss, wallet, shop, stats, job, s
   shop/ShopItemCard.vue          one catalog or custom item
   stats/CharacterCard.vue        stats page character, job, title and XP
 lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange), display calculation (questReward), confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
-composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state). Completion opens the result first, then fills gold, XP and the battle log after the response
+composables/   useApi (the single entry for server calls), useQuestBoard (quest list, completion and check-in state), useDueTodayAlerts.ts (Seoul today due and still open, from GET /api/quests). Completion opens the result first, then fills gold, XP and the battle log after the response
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
 i18n/          Korean and English copy
