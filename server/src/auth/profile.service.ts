@@ -6,6 +6,7 @@ import {
   HttpException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -17,8 +18,8 @@ import { and, eq } from 'drizzle-orm';
 
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
-import { accounts, users } from '../database/schema';
-import { allocateTag } from './auth';
+import { accounts, type UserRow, users } from '../database/schema';
+import { allocateTag, isNicknameTagUniqueViolation, TAG_ATTEMPTS } from './auth';
 import { deleteUserAccount } from './delete-user-account';
 import { MailSendLimiter } from './mail-send-limiter';
 import { toUser } from './to-user';
@@ -47,13 +48,10 @@ export class ProfileService {
     const email = input.email.toLowerCase();
     const reservation = this.mailSendLimiter.tryReserve(email, ip);
     try {
-      await this.auth.api.signUpEmail({
-        body: {
-          email,
-          password: input.password,
-          name: input.nickname,
-          nickname: input.nickname,
-        } as never,
+      await this.signUpEmailWithTagRetry({
+        email,
+        password: input.password,
+        nickname: input.nickname,
       });
     } catch (error) {
       this.mailSendLimiter.release(reservation);
@@ -100,19 +98,10 @@ export class ProfileService {
       throw new BadRequestException('nickname must not be empty');
     }
 
-    const tag = nickname === userRow.nickname ? userRow.tag : await allocateTag(this.db, nickname);
-
-    const [updated] = await this.db
-      .update(users)
-      .set({
-        nickname,
-        name: nickname,
-        tag,
-        jobClass: input.jobClass,
-      })
-      .where(eq(users.id, userId))
-      .returning();
-
+    const updated = await this.saveOnboardingNickname(userId, userRow.nickname, userRow.tag, {
+      nickname,
+      jobClass: input.jobClass,
+    });
     if (!updated) {
       throw new UnauthorizedException();
     }
@@ -192,6 +181,72 @@ export class ProfileService {
       return null;
     }
     return payload.sub ?? null;
+  }
+
+  private async signUpEmailWithTagRetry(input: {
+    email: string;
+    password: string;
+    nickname: string;
+  }): Promise<void> {
+    let lastError: unknown;
+    /* oxlint-disable no-await-in-loop */
+    for (let attempt = 0; attempt < TAG_ATTEMPTS; attempt += 1) {
+      try {
+        await this.auth.api.signUpEmail({
+          body: {
+            email: input.email,
+            password: input.password,
+            name: input.nickname,
+            nickname: input.nickname,
+          } as never,
+        });
+        return;
+      } catch (error) {
+        lastError = error;
+        if (!isNicknameTagUniqueViolation(error)) {
+          throw error;
+        }
+      }
+    }
+    /* oxlint-enable no-await-in-loop */
+    throw lastError;
+  }
+
+  private async saveOnboardingNickname(
+    userId: string,
+    currentNickname: string,
+    currentTag: string,
+    input: { nickname: string; jobClass: JobClass },
+  ): Promise<UserRow> {
+    /* oxlint-disable no-await-in-loop */
+    for (let attempt = 0; attempt < TAG_ATTEMPTS; attempt += 1) {
+      const tag =
+        input.nickname === currentNickname && attempt === 0
+          ? currentTag
+          : await allocateTag(this.db, input.nickname);
+      try {
+        const [updated] = await this.db
+          .update(users)
+          .set({
+            nickname: input.nickname,
+            name: input.nickname,
+            tag,
+            jobClass: input.jobClass,
+          })
+          .where(eq(users.id, userId))
+          .returning();
+        if (!updated) {
+          throw new UnauthorizedException();
+        }
+        return updated;
+      } catch (error) {
+        if (!isNicknameTagUniqueViolation(error) || attempt === TAG_ATTEMPTS - 1) {
+          throw error;
+        }
+      }
+    }
+    /* oxlint-enable no-await-in-loop */
+    throw new InternalServerErrorException('Could not allocate nickname tag');
   }
 
   private async getUserRow(userId: string) {
