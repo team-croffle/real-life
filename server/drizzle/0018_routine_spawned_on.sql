@@ -1,1 +1,0 @@
-ALTER TABLE "routines" ADD COLUMN "spawned_on" date;
