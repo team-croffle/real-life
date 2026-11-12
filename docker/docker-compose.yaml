@@ -1,4 +1,4 @@
-name: nest-vue
+name: reallife
 
 services:
   postgres:
@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-nest_vue}
       TZ: ${TZ:-Asia/Seoul}
     volumes:
@@ -23,7 +23,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: runner
-    image: nest-vue-server:${IMAGE_TAG:-latest}
+    image: ghcr.io/team-croffle/reallife:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -32,22 +32,25 @@ services:
       NODE_ENV: production
       PORT: 3000
       TZ: ${TZ:-Asia/Seoul}
-      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
       DATABASE_URL: >-
-        postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-nest_vue}
-      # MinIO / S3 호환 스토리지 — 운영에서는 외부 MinIO 인스턴스를 가리킨다
-      S3_ENDPOINT: ${S3_ENDPOINT:?S3_ENDPOINT is required}
-      S3_REGION: ${S3_REGION:-us-east-1}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?S3_ACCESS_KEY_ID is required}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY is required}
-      S3_BUCKET: ${S3_BUCKET:-nest-vue}
-      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
-      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
-      # Gemini API
+        postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-nest_vue}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL is required}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:?SMTP_USER is required}
+      SMTP_PASS: ${SMTP_PASS:?SMTP_PASS is required}
+      MAIL_FROM: ${MAIL_FROM:-}
+      WEB_ORIGIN: ${WEB_ORIGIN:-}
+      TRUST_PROXY: ${TRUST_PROXY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       AI_TASKS_PER_MINUTE: ${AI_TASKS_PER_MINUTE:-12}
+      AI_DIRECT_CALLS_PER_MINUTE: ${AI_DIRECT_CALLS_PER_MINUTE:-3}
       AI_CALL_TIMEOUT_MS: ${AI_CALL_TIMEOUT_MS:-30000}
       AI_STALE_RUNNING_MS: ${AI_STALE_RUNNING_MS:-60000}
     ports:
