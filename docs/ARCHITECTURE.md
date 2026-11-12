@@ -2,33 +2,31 @@
 
 <p align="center"><a href="./ARCHITECTURE.ko.md">한국어</a></p>
 
-A web app where you register to-dos as quests and receive gold and XP when you complete them. A deadline quest is registered on its own. A routine writes one all-at-once quest, due that day, on each scheduled day. If that quest or another deadline quest passes its due date without completion, settlement deducts gold and XP.
+A web app where you register a to-do as a quest and receive gold and XP when you complete it. A deadline quest is registered on its own. A routine writes one all-at-once quest, due that day, on each scheduled day. If that quest or another deadline quest is not completed by its due date, settlement deducts gold and XP.
+
+Rules such as rewards, penalties and levels, and the amounts, are in the [README](../README.md). This document covers only structure and flows.
 
 ## Core design
 
-1. Penalties are settled for all missed days at once. The last settled date is stored, and settlement is called when the home page opens and right before a completion. The server also settles every user just after midnight in Seoul. Why: so that wallet and stats values are correct the same day even for users who do not open the app. Overlapping calls never apply the same penalty twice, because of the last settled date and a per-user lock.
-2. A completion commits settlement first, then starts the completion. They are separate transactions. Why: accumulated penalties must be applied first for the balance and XP to be right, and settlement should stay even if the completion fails.
-3. The gold floor is -30. Why: to keep debt from growing without end.
-4. XP is deducted only down to 0 within the current level, and the level never drops. Why: to avoid losing levels.
-5. Days are counted on the Seoul calendar. Why: to match the day the user actually lives.
-6. After a Google account is created, or after a session is created, the server checks: only when the user exists, the email is not verified yet, and a Google account is linked, it marks the email verified and clears the password of the email (credential) account. It does not check whether a password exists. Why: to stop someone who signed up first with an unverified email from later getting into that account.
-7. A wallet entry stores a kind, a gold amount and a ticket count. The cause is a quest id or a boss id. A purchase stores the reward name instead, with no quest or boss id. Deleting a quest clears the quest id. XP is not stored on the entry. Kinds include completion, penalty, post-hoc deduction, `boss_clear`, `boss_fail`, `boss_abandon` and `purchase`.
-8. Sign-in is Better Auth, and sessions are stored in the `session` table.
-9. Daily create and AI-button counts live on `user_daily_usage` (one row per user per app calendar day), not on progress. Why: registering would otherwise lock the same progress row as a completion.
-10. `TRUST_PROXY` is the number of proxies in front of the server. Empty leaves it off. Why: `true` would trust the leftmost `X-Forwarded-For` hop, which a client can set.
+1. Penalties settle missed days all at once. The last settled date is recorded, and settlement is called when the home screen opens and right before a completion. The server also settles every user just after midnight in the app time zone each day. Why: so that users who do not open the app are still settled that day, and the wallet and stats screens stay correct. Overlapping calls do not apply the same penalty twice, because of the last settled date and a per-user lock.
+2. A completion request commits settlement first, then starts the completion. The two are separate transactions. Why: accumulated penalties must be applied first for the balance and XP to be correct, and the settlement result should remain if the completion fails.
+3. Gold does not fall below a set floor. Why: to keep debt from piling up without end.
+4. XP is deducted only down to 0 of the current level, and the level does not drop. Why: to stop the level from falling.
+5. Days are counted on the app time zone calendar. The time zone lives in one place, `APP_TIME_ZONE`, and the server gets today's date with `appCalendarDate`. Why: to match the day the user experiences.
+6. Daily create and AI-button counts live on `user_daily_usage` (one row per user per day in the app time zone), not on progress. Why: so registration does not lock the same progress row as a completion.
 
-## System (development)
+## System (development environment)
 
 ![System](img/dev_env_architecture.png)
 
 ### Not shown in the diagram
 
-- The browser gets the Google ID token from Google directly and sends it to the server's `/api/auth`.
-- Email sign-in needs email verification.
-- In development, Vite's dev server proxies `/api` requests to the server.
-- The production Compose starts postgres and server; web is not in Compose.
-- The monster queue is a Postgres table, and the worker runs inside the server. The server calls the battle log and recommendations directly, without the queue.
-- `TRUST_PROXY` is a hop count for Express `trust proxy`. Empty leaves it off, so `req.ip` is the socket address.
+- Sign-in is better-auth, and the session is stored in the `session` table in the DB.
+- The browser gets the Google ID token from Google directly and sends it to the server `/api/auth`.
+- Email sign-in requires email verification.
+- During development, the Vite dev server proxies `/api` requests to the server.
+- Production Compose starts postgres and server. Web is not in Compose.
+- The monster queue is a Postgres table, and the worker runs inside the server. Battle logs and recommendations do not go through the queue. The server calls them directly.
 
 ## Code structure
 
@@ -36,277 +34,122 @@ A web app where you register to-dos as quests and receive gold and XP when you c
 
 ```
 auth/                           sign-up, sign-in (Better Auth), email verification, onboarding, account deletion
-  auth.ts                       Better Auth configuration. Session create is refused when the account is suspended
-  account-status.guard.ts       global guard that blocks app APIs for a suspended account
-  job-class.guard.ts            global guard that blocks app APIs for accounts without a job
-  mail-send-limiter.ts          reserve an email and IP slot before sending a verification mail; release it when sending fails
-admin/                          admin users, announcements, one reward event
-  admin.guard.ts                session role must be admin
-  admin-users.controller.ts     GET /api/admin/users, POST suspend/unsuspend, DELETE
-  admin-users.service.ts        list (email/nickname search, page size 20), suspend (clears sessions), unsuspend, delete (same cleanup as withdraw)
-  admin-announcements.controller.ts  GET/POST /api/admin/announcements, PATCH/DELETE /:id
-  announcements.controller.ts   GET /api/announcements for a signed-in user
-  announcements.service.ts      title and body, newest first. POST/PATCH run sanitize-html: keep h3, p, strong, ul, li, br; empty remaining text is 400; 2000 is the filtered HTML; <br> is stored as <br />
-  admin-reward-events.controller.ts  GET/PUT /api/admin/reward-events, POST /end
-  reward-events.controller.ts   GET /api/reward-events/current
-  reward-events.service.ts      one row; active multiplier for completion and list estimates
-quests/                         every quest rule
-  quests.service.ts             register a deadline quest. prepareForRead (the quest list and boss reads share it) settles, drops judged boss subroutines, then spawns. List items include bossTitle (the goal) and bossName (the boss monster name, or null). The list estimate includes the active event multiplier. Delete is free only for an untouched quest registered today
-  quests.controller.ts          POST/GET /api/quests, GET /api/quests/history, POST /api/quests/:id/monster, complete, check today, DELETE
-  dto/list-history-query.dto.ts page and size for quest history and boss history. size is 5, 10, 15 or 20, default 20
-  routines.controller.ts        GET/POST /api/routines, PATCH /api/routines/:id, POST /api/routines/:id/monster, pause, resume, DELETE
-  routines.service.ts           routine rules. A new title clears the monster and enqueues again. Updating, pausing, resuming or deleting a boss subroutine is 400
-  routine-spawn.service.ts      write today's quest once per routine
-  bosses.controller.ts          POST /api/bosses, GET /api/bosses, unseen, history, POST /api/bosses/:id/monster, seen, abandon
-  boss-plan.service.ts          confirm a plan into a boss, its deadline subquests and its routines, and list bosses still in progress (with subquests), unseen results and past bosses
-  boss-judgment.service.ts      judge due bosses inside settlement, abandon, mark a result seen, then drop judged subroutines before spawn
-  quest-completion.service.ts   completion: settle → check without a lock → battle log → lock and check again → update wallet, progress (XP and the category stat) and the quest row, cut boss HP by the difficulty score, then clear lethargy. Gold and XP use the active event multiplier
-  quest-penalty.service.ts      settle missed days. Lethargy when any quest due that day is still open
-  quest-settlement.scheduler.ts at 00:01 Seoul: settle (judgment is inside it), drop judged boss subroutines, then spawn
-  quest-crit.roller.ts          critical-hit roll. CRIT_FORCE is read only when NODE_ENV is development or test
-  quest-calendar.ts             app calendar-day helpers (`appCalendarDate`). Calendar-day functions are re-exported from shared. The zone is APP_TIME_ZONE (Asia/Seoul)
-  monster-view.ts               map a monster row and a task status to the list fields
-  monster-retry.service.ts      requeue a failed monster task for a quest, a routine or a boss, with the owner's current title (the boss goal). A quest a routine wrote retries the routine task
-wallet/                         balance, history, post-hoc deduction, purchase
-shop/                           catalog list, custom rewards, purchase
-  shop.controller.ts            GET /api/shop, POST/PATCH/DELETE /api/shop/rewards, POST /api/shop/purchases
-  shop.service.ts               catalog from shared constants; custom rows in user_rewards; purchase deducts gold only when the balance is enough
+  auth.ts                       Better Auth configuration
+admin/                          admin user management, announcements, reward events
+quests/                         every quest, routine and boss rule
+  quests.service.ts             register, list, delete
+  quest-completion.service.ts   completion
+  quest-penalty.service.ts      settle missed days
+  quest-settlement.scheduler.ts settle every user just after midnight each day
+  routine-spawn.service.ts      a routine writes today's quest
+  boss-plan.service.ts          confirm a boss and read it
+  boss-judgment.service.ts      boss judgment and abandon
+wallet/                         balance, history, post-hoc deduction
+shop/                           shop list, custom registration, purchase
 progress/                       level, XP, titles, streak, gacha tickets
-stats/                          stamina, intellect and sense stored on progress at completion
+stats/                          stamina, intellect, sense
 job-change/                     job change
-limits/                         per-person daily quest-create, boss-confirm and AI-button counts
-  daily-usage.ts                lock the day's row, then 429 or +1. AI buttons check the day before the per-minute window
-ai/                             monster, battle log, difficulty recommendation, quest plan. The current implementation is Gemini
-  ai.ts                         interface. It does not decide gold or XP
-  ai-call-limiter.ts            counts direct calls only (battle log, recommendation, quest plan). The queue worker is not counted. It lives in this server's memory, so each extra server adds another full limit
-  gemini-ai.ts                  Gemini client. Default model gemini-3.5-flash-lite. Gemini is given a deadline of at least 10 seconds. We cut a battle log at 3 seconds
-  difficulty.controller.ts      POST /api/ai/difficulty-recommendations
-  difficulty.service.ts         title and category in; count completed and missed in the last 14 Seoul days; then the daily AI-button cap (429); then the direct-call limit (503 if full, day not counted); then difficulty and one line of reason
-  dto/recommend-difficulty.dto.ts  title and category. Category is required
-  quest-plan.controller.ts      POST /api/ai/quest-plans
-  quest-plan.service.ts         goal and deadline in, subquests with server-counted times and HP out. Daily AI-button cap, then the direct-call limit, then AI
-  dto/suggest-quest-plan.dto.ts
-ai-queue/                       background monster tasks only
-  ai-queue.ts                   enqueue, requeue a failed task with a new payload, find by quest, routine or boss, dequeue, complete, fail
-  postgres-ai-queue.ts          Postgres queue. 12 per minute, retry, FOR UPDATE SKIP LOCKED
-  ai-queue.worker.ts            claims one task. A boss task uses the boss prompt. Any other task uses the monster prompt
+limits/                         per-person daily create and AI-button counts
+ai/                             AI interface and the current implementation (Gemini). Monsters, battle logs, difficulty recommendations, plan suggestions
+ai-queue/                       queue and worker for monster tasks made in the background
 database/schema/                Drizzle tables (one file per table)
-  user-daily-usage.ts           one row per user per app calendar day: questCreates, bossConfirms, aiButtonCalls
 common/filters/                 filter that turns exceptions into HTTP responses
 ```
 
 ### Shared (`shared/src/`)
 
 ```
-quest-completion.ts   reward table amounts, job, streak and event multipliers, final amount, level-up
+quest-completion.ts   reward amounts, multipliers, level-up
 quest-penalty.ts      penalty amounts, gold and XP floors
-account-status.ts     whether a suspend is still in force, and the ACCOUNT_SUSPENDED body
-constants/            reward table, penalty table, critical-hit odds, jobs and other constants
-  daily-limits.ts     10 creates, 1 boss, 20 AI buttons, and the 429 codes
-  admin.ts            suspend reason max, announcement lengths and allowed tags, event multiplier range, admin page size
-  monsters.ts         eight monster kinds, picture keys and list statuses
-  bosses.ts           eight boss kinds, picture keys, active cap of 3, placeholder reward 10 and penalty 5 per HP
-  shop.ts             five kinds (hobby, rest, food, outing, shopping), suggested prices per kind, catalog ids and placeholder prices, custom cap 20, price 1–99,999
-boss-hp.ts            HP for one subquest from a counted number of times and a difficulty score
-boss-reward.ts        80% clear line, clear reward and fail penalty, with no job, streak or event multiplier
-quest-calendar.ts     Seoul calendar-day helpers. The server re-exports them. The web uses them for day gaps; today is `appCalendarDate`
-types/                response types exchanged by the server and the web
-  quest.ts            quest list item: bossTitle is the goal, bossName is the boss monster name or null
-  difficulty-recommendation.ts
-  boss.ts           boss list item, including subquests on GET /api/bosses and boss plus bossStatus on unseen
-  routine.ts        routine list item
-  quest-plan.ts     suggested plan: subquests, times, HP
-  shop.ts           catalog and custom shop items
-  admin.ts          admin user list item, announcement, reward event
+boss-hp.ts            subquest HP
+boss-reward.ts        boss clear line, clear reward and fail penalty
+quest-calendar.ts     app calendar date calculation
+account-status.ts     whether a suspension is still in force
+constants/            reward table, penalty table, daily limits, monster and boss kinds, and other constants
+types/                response types the server and the web exchange
 ```
 
 ### Web (`web/src/`)
 
 ```
-routes/        pages (the file name is the URL): home, quests, bosses, stats, wallet, shop, job, notices, admin, sign-up/sign-in/onboarding
-components/    a folder per page (home, quest, boss, wallet, shop, stats, job, settings, auth, character, admin, notice) and shared ui/
-  layouts/AppShell.vue           app shell. Refreshes the current reward event on mount
-  layouts/AdminShell.vue         admin console shell. /admin; session role must be admin
-  layouts/DueTodayAlerts.vue     app calendar today due and still open; bell count and list from GET /api/quests
-  admin/AnnouncementEditor.vue   Tiptap: heading h3, bold, lists
-  notice/NoticeDialog.vue        announcement body through announcementHtml
-  boss/BossRegisterDialog.vue    main-quest plan and confirm
-  boss/BossResultDialog.vue      unseen clear or fail
-  character/CharacterFigure.vue  one cat WebP per job; lethargy greys 70% and shortens 4% from the feet
-  quest/MonsterImage.vue         /monsters/{imageKey}.svg or /bosses/{imageKey}.svg, then /fallback/unknown.svg
-  quest/MonsterViewDialog.vue    monster name, picture and description
-  quest/QuestHistoryPager.vue    numbered pages; size 5, 10, 15 or 20, default 20
-  shop/RewardFormDialog.vue      create or edit a custom reward
-  shop/ShopConfirmDialog.vue     confirm a purchase or a delete
-  shop/ShopItemCard.vue          one catalog or custom item
-  stats/CharacterCard.vue        stats page character, job, title and XP
-lib/           server calls (quests, bosses, unseenBosses, wallet, shop, home, stats, jobChange, announcements, admin, rewardEvents), display calculation (questReward), announcementHtml (DOMPurify with the shared allowlist), appDateTime (app-zone wall clock), appCalendarDate, formatAmount, confetti, sounds, saved settings, characterAppearance (job to /character/*.webp)
-composables/   useApi (the single entry for server calls; 403 ACCOUNT_SUSPENDED clears the session and goes to /login without the sessionExpired query), useQuestBoard (quest list, completion and check-in state; refreshes the current reward event after a completion), useCurrentRewardEvent.ts (GET /api/reward-events/current), useDueTodayAlerts.ts (app calendar today due and still open, from GET /api/quests), useVerificationResendWait.ts (60s after sign-up or a successful resend). Completion opens the result first, then fills gold, XP and the battle log after the response
+routes/        pages (the file name is the URL)
+components/    a folder per page and shared ui/; the app shell and the admin shell are layouts/
+lib/           server calls by feature, calculations for the screen
+composables/   useApi (the entry for server calls), useQuestBoard (quest list, completion and check state)
 stores/        sign-in state and account API calls (Pinia)
 auth/          Better Auth client
 i18n/          Korean and English copy
 ```
 
-Monster pictures live in `web/public/monsters` and `web/public/bosses`. A missing file uses `web/public/fallback/unknown.svg`. Character pictures live in `web/public/character` as transparent WebP.
+Monster, boss and character pictures live under `web/public/`.
 
 ### Rules the code keeps
 
-- Gold, XP and penalty amounts are computed only by functions in `shared`. The server pays with them; the web uses the same functions only to show estimates.
-- Controllers only take the request and call a service. Rules live in services.
-- Every server call from the web goes through `useApi`. Feature calls such as quests and wallet are collected in `lib/`; account APIs are called from `stores/auth.ts`.
-- When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_daily_usage, user_rewards, wallet, progress, bosses.
+- Gold, XP and penalty amounts are calculated only by functions in `shared`. The server pays those amounts, and the web uses the same functions only to show an estimate.
+- A controller only receives the request and calls a service. Rules live in the service.
+- Every server call from the web goes through `useApi`. Feature calls such as quests and the wallet are collected in `lib/`, and account APIs are called from `stores/auth.ts`.
+- When rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_daily_usage, user_rewards, wallet, progress, bosses. Delete and completion lock in the same order, so they do not wait on each other.
 
 ## Inside the server
 
-Main call relations:
+The main call relations are as follows.
 
-- A quest completion calls settlement, then adds gold to the wallet. A subquest also cuts the boss HP by the difficulty score. If a reward event is active, that multiplier is applied to the completion gold and XP.
-- Sign-in and app APIs are refused while the account is suspended. The body includes `ACCOUNT_SUSPENDED`, the end time and the reason. The web shows that on the sign-in form. An app-API 403 with that code clears the session and goes to `/login` without the sessionExpired query.
-- Settlement deducts gold for missed quests, then judges bosses whose due date is already past.
-- A job change adds no gold. It only resets level and XP to 1 and 0, and the job cannot change again until 7×24 hours after the last change.
-- A shop purchase deducts gold when the balance is enough. It does not go into debt. The entry kind is `purchase`, with the reward name at that time. There is no inventory.
-- Registering a deadline quest or a routine, changing a routine title, or confirming a boss counts a daily create on `user_daily_usage` before the monster queue. Over 10 is 429 `DAILY_QUEST_CREATE_LIMIT`. A second boss confirm the same day is 429 `DAILY_BOSS_CONFIRM_LIMIT`. Difficulty and plan suggestions count a daily AI button (20). The day is checked first; a full day is 429 `DAILY_AI_BUTTON_LIMIT` and does not take a per-minute slot. A full per-minute window is 503 and does not count the day.
+- Quest completion calls settlement, then adds gold and XP. A subquest also cuts the boss HP. If a reward event is on, that multiplier is applied to the completion gold and XP.
+- Settlement deducts gold and XP for missed quests, then judges bosses whose due date has passed.
+- The quest list and boss reads share `prepareForRead`. The order is settlement, deletion of subroutines whose boss judgment is done, then writing today's quests. The job just after midnight uses the same order.
+- A suspended account is refused at sign-in and on app APIs. When the web receives that response, it clears the session and sends the user to the sign-in screen.
+- A job change does not touch the wallet. It only rolls back the level and XP on progress.
+- A shop purchase deducts gold from the wallet and leaves a history entry. If the gold on hand is short, the purchase is refused.
+- Registration and boss confirmation count a daily create, and difficulty recommendations and plan suggestions count a daily AI-button use, on `user_daily_usage`. Over the limit, the call is refused.
 
 ## Routine spawn
 
-An active routine writes one quest on each scheduled day. The quest is an all-at-once deadline due that day. It copies the routine's category, title, difficulty, boss and monster. The routine stores that Seoul date, so the day is written once. Deleting the quest, or pausing and resuming the same day, does not write another.
-
-At 00:01 Seoul, for every user who has a job, and in `prepareForRead`, the order is settlement, then judgment, then removal of subroutines whose boss already has a result, then the write. The quest list and boss reads share `prepareForRead`. A subroutine whose boss due date is before today is not written. The write also runs when a routine is registered, when it is resumed, and inside the boss confirm transaction. Deleting a routine leaves the quests it wrote and their monsters.
+An active routine writes one quest on each scheduled day. That quest is an all-at-once deadline due that day. It copies the routine's category, title, difficulty, boss and monster. The routine records the date it wrote, so that day is written only once. Deleting that quest, or turning the routine off and on again the same day, does not write it again.
 
 ## Monster task flow
 
-Registering a deadline quest enqueues one monster task for that quest. Registering a routine enqueues one for that routine. Confirming a boss enqueues one for the boss, one for each deadline subquest and one for each subroutine. The task stores exactly one of those ids, and that id is unique. A quest's payload kinds are the eight from `shared/src/constants/monsters.ts`. A routine uses the same eight. A boss uses the eight boss kinds. The response does not wait. If the enqueue fails, the quest, routine or boss stays.
+<a href="img/monster_task_flow.png"><img src="img/monster_task_flow.png" alt="Monster task flow" width="500"></a>
 
-The worker claims one task and calls the AI interface. A boss task uses the boss prompt. A quest or routine task uses the monster prompt. The model picks a kind and writes a name and a description. It does not set gold or XP. On success the result is inserted into `monsters`, and the quest, routine or boss stores that id. A routine's result is also stored on the quests it wrote that do not have one yet. The task is then deleted. On failure the task stays `failed` and no monster row is written. The title stays as registered. Only a failed task can be queued again, and only by the user. Requeue writes the owner's current title (the boss goal) into the payload. `POST /api/quests/:id/monster`, `POST /api/routines/:id/monster` and `POST /api/bosses/:id/monster` answer 204 when that task is `failed`, 409 otherwise, and 404 when the id is missing or belongs to someone else. A quest a routine wrote retries the routine's task.
+Registering a deadline quest, a routine or a boss enqueues a monster task. The response does not wait for the task. If the enqueue fails, the quest, routine or boss stays.
 
-The list reads the monster row and any task still in the queue. It maps them to `monsterStatus` and `monster`:
+The worker picks up one task and calls the AI interface. The model picks a kind and writes a name and a description. It does not set gold or XP. On success the result is inserted into `monsters`, the quest, routine or boss stores that id, and the task is deleted. On failure it retries up to three times. If it still fails, the task stays failed and there is no monster row.
 
-- A monster row with a known kind, a name and a description: `ready`. For a quest or a routine, `monster.kind` is one of slime, bat, goblin, wolf, orc, skeleton, golem and dragon. For a boss it is one of the eight boss kinds. `imageKey` is that kind. `name` and `description` come from the row.
-- No monster row, and the task is `pending` or `running`: `generating`, and `monster` is null.
-- No monster row, and the task is `failed`: `failed`, and `monster` is null.
-- No monster row and no task: both are null.
-
-A routine response is `generating` and `monster` is null while its task is `pending` or `running`, even when a monster row is still stored. `PATCH /api/routines/:id` that changes the title sets `monster_id` to null, then enqueues a monster task for the new title. The response does not wait. If that enqueue fails, the routine stays with `monster_id` empty. A title that did not change leaves the monster as it is.
+Only a failed task can be enqueued again, and only by the user. The title used then is the current title, not the title at registration. The list reads the monster row and any task still in the queue together, and distinguishes ready, generating and failed.
 
 ## Difficulty recommendation
 
-`POST /api/ai/difficulty-recommendations` takes a title and a category. Category is required. An empty title is 400. The server then counts this user's quests in that category over the last 14 Seoul days, today included: `completedOn` in that window, and missed rows whose `completedOn` is empty and whose `endsOn` is in that window through yesterday. Next it checks the daily AI-button cap (20 together with plan suggestions). If the day is full it answers 429 `DAILY_AI_BUTTON_LIMIT` and does not take a per-minute slot. Then it checks the direct-call limit. If that limit is full it answers 503, does not count the day, and does not call AI. Then it calls the AI interface with the title, the category and those two counts. The model returns a difficulty and one line of reason. It does not set an amount. Any later failure is also 503.
+The server counts that user's recent completions and misses and sends them to the AI interface with the title and the category. The model returns only a difficulty and one line of reason. It does not set an amount.
 
 ## Boss plan flow
 
-`POST /api/ai/quest-plans` calls the AI interface directly. It uses the daily AI-button cap first, then the direct-call limit. The model returns subquests and does not set times or HP. The server counts both with `bossQuestHp` in `shared`. A deadline before today in Seoul, or after the boss deadline, is dropped. If none remain, the call answers 503 and stores nothing.
+<a href="img/boss_flow.png"><img src="img/boss_flow.png" alt="Boss flow" width="500"></a>
 
-`POST /api/bosses` locks the user, then inserts the boss, the deadline subquests and the subroutines in one transaction. The boss is its own row. HP is stored on that row and counted again from the request. A deadline subquest stores the boss id. A subroutine stores it on the routine. There are at most 10 of them. Today's scheduled subroutines write their quest in that same transaction. A deadline that ends after the boss, or HP below 1, is 400 and writes nothing. A fourth boss still in progress is 409. Confirming counts as 1 of the day's 10 creates and as that day's one boss. A second confirm the same day is 429 `DAILY_BOSS_CONFIRM_LIMIT`. If the transaction fails, nothing is created. Updating, pausing, resuming or deleting a subroutine is 400.
+A plan suggestion calls the AI interface directly. The model suggests only subquests and does not set the count or the HP. The server counts both with `bossQuestHp` in `shared`.
 
-After that commit, one task is enqueued for the boss. The task kind stays `monster`. The payload kinds are the eight boss kinds from `shared/src/constants/bosses.ts`: minotaur, hydra, cerberus, kraken, chimera, vampire, giant and abyss_lord. Each deadline subquest and each subroutine gets its own task with the monster kinds. If an enqueue fails, the boss, the subquests and the subroutines stay. `GET /api/bosses` returns only bosses still in progress. It reads the monster row and any task still in the queue, checking boss kinds. The name comes from the boss prompt. A failed result leaves the title as the goal. Each boss has `subquests`, one row per item put in at confirm (at most 10). A routine row has `done` (completed spawned quests), `missed` (spawned, not completed, due before today in Seoul) and `remaining` (scheduled days from the confirm day through the boss due date, minus scheduled days through yesterday, minus 1 when today's spawned quest was completed or deleted). A deadline row has `status` `open`, `done` or `missed`. Each row has `expectedGold` and `expectedXp`, the same calculation as `GET /api/quests`; a routine is one spawned day quest. Order is remaining, then done, then missed; within a group, confirm order. `latestLog` is a counter whose `missedOn` is yesterday in Seoul, when one exists. Otherwise it is the later date, and on the same day the counter wins over a cut. `counteredToday` is true when `missedOn` is yesterday in Seoul. `GET /api/bosses/unseen` items include `boss` (only when ready) and `bossStatus`.
+Confirmation inserts the boss, the deadline subquests and the subroutines in one transaction. HP is not taken from the request. The server counts it again. If the transaction fails, nothing is created.
+
+Monster tasks are enqueued after the commit. If an enqueue fails, the boss and its sub-items stay.
 
 ## Boss judgment
 
-Judgment runs at the end of settlement, after the missed days are applied and before that transaction commits. Settlement runs at 00:01 Seoul, when the home page opens, right before a completion, and on `POST /api/quest-penalties/settle`. A boss whose due date is yesterday or earlier, and whose result is still empty, is judged once. Dealt HP of 80% or more of max HP is `cleared`. Anything less is `failed`. The boss row stays, and the result is stored on it. `result_seen_at` is when the result was opened. A clear or a failure leaves it empty. An abandon fills it in the same write as the result. `xp_change` is the XP applied on that judgment. A clear stores the XP granted, and a failure or an abandon stores the XP actually taken off, stopped at 0 inside the current level. Wallet entries do not record XP, so it stays on the boss row.
+This is the judgment part of the boss plan flow diagram. Judgment runs at the end of settlement, after the missed days are applied and before that transaction commits. A boss whose due date has passed and whose result is still empty is judged once. If the HP cut is 80% or more of max HP, it is a clear. Otherwise it is a failure. The boss row is not deleted. The result is stored on that row.
 
-Clear gold and XP are the dealt HP times 10. Clear tickets are 1, plus 1 for every 40 dealt HP, and they stop at 5. A level-up from that XP adds its own tickets on the same wallet entry. The entry kind is `boss_clear`, with the boss id and no quest id. Clear XP is also added to the boss category's stat. Failure gold and XP are the HP still short of that 80% line times 5. The entry kind is `boss_fail`. Abandon uses the same penalty, and the kind is `boss_abandon`. The job multiplier, the streak multiplier and the event multiplier are not applied. 10 and 5 are placeholders, before balance. Gold still stops at -30 and XP at 0 within the current level. A clear can raise the level. A failure only lowers XP inside the current level.
-
-`POST /api/bosses/:id/abandon` answers 200. It leaves the boss row and sets the result to `abandoned`. It deletes the subroutines and the subquests that are not finished. A boss that already has a result is 409. A missing id, or another user's boss, is 404.
-
-After settlement commits, the 00:01 job and `prepareForRead` delete subroutines whose boss already has a result, then spawn. They do not delete the subquests. A subroutine whose boss due date is before today is not spawned.
+Abandoning writes the result immediately, without waiting for judgment, and deletes the subroutines and the unfinished subquests.
 
 ## Quest completion flow
 
 <a href="img/quest_complete_flow.png"><img src="img/quest_complete_flow.png" alt="Quest completion flow" width="500"></a>
 
+Settlement is committed first. If the completion fails, the settlement stays.
+
 ### Battle log
 
 <a href="img/battle_log_flow.png"><img src="img/battle_log_flow.png" alt="Battle log" width="500"></a>
 
-This diagram expands 'make the battle log' in the completion flow.
-
-- The quest is checked once without a lock. When there is a note, the direct-call limit is checked and then the battle log is written, with a 3 second cut. The quest is locked and checked again, and the log is saved on the quest row, with the completion date, gold, XP and note. The battle log is made outside the lock.
-
-### Worth noting
-
-- Settlement is committed first. If the completion fails, settlement stays.
-- A quest a routine wrote is all at once and due that day, so it gets the full daily amount. A steady deadline quest gets the check-in ratio. A same-day deadline quest, and a deadline done all at once, gets the full daily amount with no ratio.
-- Only steady deadline quests whose creation day differs from the due date collect check-ins through `POST /api/quests/:id/day-marks`. A deadline done all at once cannot check today.
-- For a steady deadline quest, a gap of 1 day or more with no check-ins pays 0 gold and XP. A deadline done all at once pays the full daily amount whether or not there are check-ins. The completion record stays, and that deadline quest can no longer be deleted.
-- Completing any quest clears lethargy. The completion XP is also added to that category's stat on progress. Exercise and daily life go to stamina, study and work to intellect, creative and mind to sense.
-- Completing a subquest cuts the boss HP by the difficulty score: easy 1, normal 2, hard 3. HP stops at 0. A boss that already has a result is not cut.
-
-### Failures
-
-The filter answers with the exception's status code as it is.
-
-| Condition                              | Status |
-| -------------------------------------- | ------ |
-| The note is longer than 500 characters | 400    |
-| Completed before the creation day      | 400    |
-| Outside the deadline period            | 400    |
-| No job at the settlement step          | 403    |
-| No job at the reward step              | 403    |
-| The quest id is malformed              | 404    |
-| Not the user's quest                   | 404    |
-| The quest was already completed        | 409    |
-
-### Reward calculation
-
-A quest a routine wrote is due the day it was written and its pace is all at once, so it pays the full daily amount.
-
-A steady deadline quest uses the gap between its creation day and the completion day. 0 is the daily table, 1 to 7 is the weekly table, 8 or more is the long-term table. A deadline done all at once uses the daily table and a ratio of 1, so the result's checked days and elapsed days are both 1.
-
-For a steady deadline quest, a gap of 1 or more counts both ends as elapsed days. Check-ins never exceed that count. The reward is the table amount × check-ins / elapsed days. A deadline done all at once pays the full daily amount whether or not there are check-ins.
-
-A multiplier applies by job and the category's stat. Exercise and daily life are stamina, study and work are intellect, creative and mind are sense.
-
-With a streak of 3 days or more, the streak multiplier also applies to gold and XP: `1–2` days is 1, `3–6` is 1.1, `7–29` is 1.2, `30` or more is 1.5. Deadline quests are included. The streak goes up the moment the day's first completion is made, and that completion already uses the new count.
-
-With a note, 10% is added to that result. Without one, nothing is added.
-
-Gold can get a critical hit. Each completion has a 10% chance; a hit is ×2 nine times out of ten and ×3 one time in ten — 9% and 1% overall. XP is not affected. No roll happens when the balance just before completion is below 0. The job multiplier, streak multiplier, note, event multiplier and critical hit are all multiplied, then rounded once at the end. The event multiplier is 1 when no event is running. Penalties and boss clear, fail and abandon amounts do not use it.
-
-The completion response's `applied` holds the base amount, check-ins and elapsed days, job multiplier, streak multiplier, note bonus, event multiplier and critical multiplier used in the calculation.
-
-### XP and levels
-
-| Current level | XP to the next level             |
-| ------------- | -------------------------------- |
-| 1–10          | 100                              |
-| 11–30         | 200                              |
-| 31–49         | 400                              |
-| 50            | no more levels; level XP stays 0 |
-
-Every level gained adds one gacha ticket. Reaching level 10, 20, 30, 40 or 50 gives a title.
-
-## Deleting a quest
-
-`DELETE /api/quests/:id` locks the quest first, then the user, the wallet and progress. A completion locks the quest before the user, so the same order keeps the two from waiting on each other.
-
-A completed quest, or one whose due date is before today in Seoul, is rejected with 409.
-
-Deletion is free when the quest was created today, has no check-in today, was not written by a routine, and is not a boss subquest. Otherwise the gold and XP are the same as a miss. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty for the gap from the creation day to the due date. All at once stays on the daily column. Gold stops at -30 and XP stops at 0 in the current level. `GET /api/quests` returns those floored amounts as `abandonGold` and `abandonXp`. They are 0 when the deletion is free or not allowed. The delete confirmation shows that gold and XP. The wallet history kind is `penalty`. Deleting does not turn lethargy on. The quest row is then deleted.
+This diagram expands 'battle log' in the completion flow. It checks first without a lock, makes the battle log, then locks and checks again. The AI call is outside the lock, so it does not block other requests while it waits.
 
 ## Penalty settlement flow
 
 <a href="img/penalty_flow.png"><img src="img/penalty_flow.png" alt="Penalty settlement flow" width="500"></a>
 
-Yesterday is the day before today on the Seoul calendar. If the last settled date is yesterday or later, nothing is settled. Otherwise every day from the next day up to yesterday is checked one by one. Today is never settled.
-
-### Worth noting
-
-- Gold and XP are deducted for quests still open whose due date falls on a settled day. A quest a routine wrote uses the daily penalty. Any other quest uses the deadline penalty. A boss is not a quest, so it is not charged. Its subquests are. Lethargy turns on when any of those quests was missed.
-- A day with no missed quest leaves the status effect as it is. If that day had no completion, only the streak goes to 0.
-- The streak goes up only on a first completion; settlement only resets past days with no completion to 0.
-- Today is never settled.
-- A missed quest does not change the level. A boss clear in this same settlement can raise it, and that XP is added to the boss category's stat.
-- A deadline quest not completed by its due date is charged once, at the first settlement after the due date. Completed quests are not charged.
-
-### Rules
-
-| Rule                   | Value                                                                                                                                                                                                                                                                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Easy penalty           | 5 gold, 5 XP                                                                                                                                                                                                                                                                                                                                         |
-| Normal penalty         | 10 gold, 10 XP                                                                                                                                                                                                                                                                                                                                       |
-| Hard penalty           | 20 gold, 20 XP                                                                                                                                                                                                                                                                                                                                       |
-| Gold floor             | -30, three times the easy daily gold of 10. Any deduction beyond it is dropped                                                                                                                                                                                                                                                                       |
-| XP floor               | 0 within the current level. The level number never drops                                                                                                                                                                                                                                                                                             |
-| Streak                 | Goes up by 1 on the day's first completion. Past days with no completion become 0 at settlement. Settlement never raises it                                                                                                                                                                                                                          |
-| Lethargy               | Becomes `lethargy` when any quest due that day is still open. A day with no missed quest leaves the status effect as it is. Settlement does not clear it                                                                                                                                                                                             |
-| Deadline quest penalty | A steady deadline is chosen by the gap from creation to due date: 0 days is easy 5 · normal 10 · hard 20, `1–7` days is 10 · 20 · 40, 8 or more is 15 · 30 · 60. All at once uses the daily column however long the gap is. Same number for gold and XP. A missed deadline turns lethargy on. Streak still follows whether that day had a completion |
+Yesterday is the day before today on the app calendar. If the last settled date is yesterday or later, nothing is settled. If it is earlier, each day from the next day through yesterday is checked. Today is not settled.

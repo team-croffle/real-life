@@ -247,7 +247,7 @@ pnpm dev:web
 
 ## More
 
-- Design and flows (completion, settlement, reward calculation): [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
+- Design and flows (completion, settlement, monster tasks, bosses): [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
 - Progress by version: [`ROADMAP.md`](./ROADMAP.md)
 - Server details (environment variables, Drizzle, API list): [`server/README.md`](./server/README.md)
 - Client details (routing, i18n, styles): [`web/README.md`](./web/README.md)
