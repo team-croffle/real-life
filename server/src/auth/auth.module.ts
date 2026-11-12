@@ -19,18 +19,18 @@ import { ProfileService } from './profile.service';
       disableGlobalAuthGuard: true,
       inject: [DRIZZLE, ConfigService],
       useFactory: (db: DrizzleDb, config: ConfigService) => {
-        const corsOrigin = config.get<string>('CORS_ORIGIN', 'http://localhost:5173');
+        const corsOrigin = valueOrDevDefault(config, 'CORS_ORIGIN', 'http://localhost:5173');
         const webOrigin = (config.get<string>('WEB_ORIGIN') ?? corsOrigin).replace(/\/$/, '');
         return {
           auth: createAuth(db, {
             secret: config.getOrThrow<string>('BETTER_AUTH_SECRET'),
-            baseURL: config.get<string>('BETTER_AUTH_URL', 'http://localhost:3000'),
+            baseURL: valueOrDevDefault(config, 'BETTER_AUTH_URL', 'http://localhost:3000'),
             trustedOrigins: [corsOrigin, webOrigin],
             webOrigin,
             googleClientId: config.get<string>('GOOGLE_CLIENT_ID', ''),
             googleClientSecret: config.get<string>('GOOGLE_CLIENT_SECRET', ''),
-            smtpUser: config.get<string>('SMTP_USER', ''),
-            smtpPass: config.get<string>('SMTP_PASS', ''),
+            smtpUser: valueOrDevDefault(config, 'SMTP_USER', ''),
+            smtpPass: valueOrDevDefault(config, 'SMTP_PASS', ''),
             smtpHost: config.get<string>('SMTP_HOST', 'smtp.gmail.com'),
             smtpPort: config.get<string>('SMTP_PORT', '587'),
             mailFrom: config.get<string>('MAIL_FROM', ''),
@@ -50,3 +50,11 @@ import { ProfileService } from './profile.service';
   exports: [ProfileService],
 })
 export class AuthModule {}
+
+function valueOrDevDefault(config: ConfigService, key: string, devDefault: string): string {
+  const value = config.get<string>(key)?.trim() ?? '';
+  if (config.get<string>('NODE_ENV') === 'production' && value === '') {
+    throw new Error(`${key} is required when NODE_ENV=production`);
+  }
+  return value || devDefault;
+}
