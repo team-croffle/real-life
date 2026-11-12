@@ -20,14 +20,14 @@ Scripts at the root: `pnpm dev` (`dev:server`, `dev:web`), `pnpm build`, `pnpm t
 Reading order for a new task — stop once you know enough, and do not search the code to learn what the project is:
 
 1. [README.md](./README.md): what the app does and its rules
-2. [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): how completion, settlement and reward calculation flow through the server
+2. [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): how the code is divided and how completion, settlement, monster tasks and bosses flow through the server
 3. `.ai/AGENTS.md` (local instructions), the roadmap, and the spec section the task points to. If `.ai/AGENTS.md` does not exist, tell the user
 4. The code the task touches
 
 ## 2. Architecture Rules
 
 - Gold, XP and penalties come only from the calculation in `shared`. The server computes what is paid; the web uses the same functions only to show estimates. AI never decides an amount.
-- Dates are Seoul calendar dates (`Asia/Seoul`), not the server's local time.
+- Dates are calendar dates in the app time zone (`APP_TIME_ZONE`, currently `Asia/Seoul`), not the server's local time.
 - Settlement can run any number of times with the same result. A completion commits settlement first, then completes in its own transaction.
 - When several rows of one user change together, lock them in this order: ai_tasks, routines, quests, user, user_daily_usage, user_rewards, wallet, progress, bosses.
 - Types and constants used by both sides live in `shared`. Do not copy them into `server` or `web`.
