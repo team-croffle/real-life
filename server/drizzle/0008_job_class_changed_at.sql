@@ -1,1 +1,0 @@
-ALTER TABLE "users" ADD COLUMN "job_class_changed_at" timestamp with time zone;

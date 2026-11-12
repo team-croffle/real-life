@@ -1,1 +1,0 @@
-ALTER TABLE "quest_completions" ADD COLUMN "battle_log" text;
