@@ -20,7 +20,10 @@ import { ProfileService } from './profile.service';
       inject: [DRIZZLE, ConfigService],
       useFactory: (db: DrizzleDb, config: ConfigService) => {
         const corsOrigin = valueOrDevDefault(config, 'CORS_ORIGIN', 'http://localhost:5173');
-        const webOrigin = (config.get<string>('WEB_ORIGIN') ?? corsOrigin).replace(/\/$/, '');
+        const webOrigin = (config.get<string>('WEB_ORIGIN')?.trim() || corsOrigin).replace(
+          /\/$/,
+          '',
+        );
         return {
           auth: createAuth(db, {
             secret: config.getOrThrow<string>('BETTER_AUTH_SECRET'),
