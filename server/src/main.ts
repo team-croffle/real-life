@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { valueOrDevDefault } from './common/value-or-dev-default';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -43,11 +44,3 @@ async function bootstrap(): Promise<void> {
 }
 
 void bootstrap();
-
-function valueOrDevDefault(config: ConfigService, key: string, devDefault: string): string {
-  const value = config.get<string>(key)?.trim() ?? '';
-  if (config.get<string>('NODE_ENV') === 'production' && value === '') {
-    throw new Error(`${key} is required when NODE_ENV=production`);
-  }
-  return value || devDefault;
-}

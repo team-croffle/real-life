@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 
+import { valueOrDevDefault } from '../common/value-or-dev-default';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
 import { AccountStatusGuard } from './account-status.guard';
@@ -53,11 +54,3 @@ import { ProfileService } from './profile.service';
   exports: [ProfileService],
 })
 export class AuthModule {}
-
-function valueOrDevDefault(config: ConfigService, key: string, devDefault: string): string {
-  const value = config.get<string>(key)?.trim() ?? '';
-  if (config.get<string>('NODE_ENV') === 'production' && value === '') {
-    throw new Error(`${key} is required when NODE_ENV=production`);
-  }
-  return value || devDefault;
-}
