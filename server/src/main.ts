@@ -13,11 +13,12 @@ async function bootstrap(): Promise<void> {
     bodyParser: false,
   });
   const config = app.get(ConfigService);
+  const corsOrigin = valueOrDevDefault(config, 'CORS_ORIGIN', 'http://localhost:5173');
 
   app.setGlobalPrefix(API_PREFIX);
   app.enableShutdownHooks();
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
+    origin: corsOrigin,
     credentials: true,
   });
   app.useGlobalPipes(
@@ -42,3 +43,11 @@ async function bootstrap(): Promise<void> {
 }
 
 void bootstrap();
+
+function valueOrDevDefault(config: ConfigService, key: string, devDefault: string): string {
+  const value = config.get<string>(key)?.trim() ?? '';
+  if (config.get<string>('NODE_ENV') === 'production' && value === '') {
+    throw new Error(`${key} is required when NODE_ENV=production`);
+  }
+  return value || devDefault;
+}
