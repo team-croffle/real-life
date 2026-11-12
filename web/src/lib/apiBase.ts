@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+import { API_PREFIX } from '@nest-vue/shared';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `/${API_PREFIX}`;
 
 export function apiBaseUrl(): string {
   return API_BASE_URL;

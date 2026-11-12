@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 
-import { accountSuspendedBody, isAccountSuspended } from '@nest-vue/shared';
+import { accountSuspendedBody, API_PREFIX, isAccountSuspended } from '@nest-vue/shared';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
@@ -142,7 +142,7 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
 
   return betterAuth({
     baseURL: config.baseURL,
-    basePath: '/api/auth',
+    basePath: `/${API_PREFIX}/auth`,
     secret: config.secret,
     trustedOrigins: config.trustedOrigins,
     disabledPaths: ['/sign-up/email', '/sign-up/social'],

@@ -45,7 +45,7 @@ export interface BossAppearance {
   description: string;
 }
 
-/** POST /api/bosses/:id/abandon. 골드는 적용된 차감액의 부호를 가진다. */
+/** POST /api/v1/bosses/:id/abandon. 골드는 적용된 차감액의 부호를 가진다. */
 export interface AbandonedBoss {
   id: string;
   result: Extract<BossResult, 'abandoned'>;
@@ -55,7 +55,7 @@ export interface AbandonedBoss {
   balance: number;
 }
 
-/** GET /api/bosses/history. 처치·실패·포기. 제목은 목표 문구다. */
+/** GET /api/v1/bosses/history. 처치·실패·포기. 제목은 목표 문구다. */
 export interface PastBoss {
   id: string;
   result: BossResult;
@@ -71,7 +71,7 @@ export interface PastBoss {
   boss: BossAppearance | null;
 }
 
-/** GET /api/bosses/unseen. 처치·실패이고 아직 결과 화면을 안 본 보스. */
+/** GET /api/v1/bosses/unseen. 처치·실패이고 아직 결과 화면을 안 본 보스. */
 export interface UnseenBossResult {
   id: string;
   result: 'cleared' | 'failed';
@@ -118,7 +118,7 @@ export interface BossLatestCounter {
   on: string;
 }
 
-/** GET /api/bosses. 판정 전만. 제목은 목표 문구이고, 이름은 ready일 때만 있다. */
+/** GET /api/v1/bosses. 판정 전만. 제목은 목표 문구이고, 이름은 ready일 때만 있다. */
 export interface BossSummary {
   id: string;
   category: QuestCategory;
@@ -135,7 +135,7 @@ export interface BossSummary {
   subquests: BossSubquest[];
 }
 
-/** POST /api/bosses. 체력은 확정 요청에 없고 서버가 저장한 값이다. */
+/** POST /api/v1/bosses. 체력은 확정 요청에 없고 서버가 저장한 값이다. */
 export interface ConfirmedBoss {
   id: string;
   category: QuestCategory;
