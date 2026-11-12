@@ -126,7 +126,7 @@ The server counts that user's recent completions and misses and sends them to th
 
 A plan suggestion calls the AI interface directly. The model suggests only subquests and does not set the count or the HP. The server counts both with `bossQuestHp` in `shared`.
 
-Confirmation inserts the boss, the deadline subquests and the subroutines in one transaction. HP is not taken from the request. The server counts it again. If the transaction fails, nothing is created.
+Confirmation inserts the boss, the deadline subquests and the subroutines in one transaction. The request carries no HP. The server counts HP from the subquests in the request. If the transaction fails, nothing is created.
 
 Monster tasks are enqueued after the commit. If an enqueue fails, the boss and its sub-items stay.
 
@@ -146,7 +146,7 @@ Settlement is committed first. If the completion fails, the settlement stays.
 
 <a href="img/battle_log_flow.png"><img src="img/battle_log_flow.png" alt="Battle log" width="500"></a>
 
-This diagram expands 'battle log' in the completion flow. It checks first without a lock, makes the battle log, then locks and checks again. The AI call is outside the lock, so it does not block other requests while it waits.
+This diagram expands 'battle log' in the completion flow. It checks first without a lock, so a request that will be refused does not call the AI. Then it makes the battle log, locks, and checks again, because the state can change while it waits for the AI.
 
 ## Penalty settlement flow
 
