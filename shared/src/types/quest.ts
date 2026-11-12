@@ -25,7 +25,7 @@ export interface QuestMonster {
   description: string;
 }
 
-/** GET /api/quests와 GET /api/quests/history. 골드·경험치는 수행 내용 없이 오늘 완료한다고 본 지급액이다. */
+/** GET /api/v1/quests와 GET /api/v1/quests/history. 골드·경험치는 수행 내용 없이 오늘 완료한다고 본 지급액이다. */
 export interface QuestListItem {
   id: string;
   category: QuestCategory;

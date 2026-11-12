@@ -6,7 +6,7 @@ import type {
   QuestWeekday,
 } from '../constants/quests';
 
-/** POST /api/ai/quest-plans. times와 hp는 서버가 계산한다. */
+/** POST /api/v1/ai/quest-plans. times와 hp는 서버가 계산한다. */
 export interface QuestPlanQuest {
   title: string;
   category: QuestCategory;
