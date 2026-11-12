@@ -13,7 +13,7 @@ Update the public documents for the current branch after testing, then commit th
   - Stack: a package now used in code moves out of Planned.
   - Project structure: a new folder under `server/src/`, `web/src/` or `shared/src/` is listed.
   - Rules: a change a user can notice (numbers, conditions, order) is written. Screen layout is not.
-- `docs/ARCHITECTURE.md`: Code structure lists new folders and files; a new or changed server flow is described.
+- `docs/ARCHITECTURE.md`: Code structure lists a new folder, not individual files. A flow section changes only when the order of steps or the connection between parts changes. Do not add amounts, status codes, response fields or game rules; those belong in README or the code.
 - `server/README.md`: the API table and environment variables match the code.
 - Open items in `.ai/known-issues/open.md` that name this branch for a document.
 

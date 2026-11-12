@@ -6,7 +6,7 @@ Plan the work for the current branch, then stop. Do not write code or change fil
 2. `.ai/roadmap/README.md` → the current version file → the checklist line with this branch name. If no line has it, stop and tell the user.
 3. Read the spec file that line points to (`.ai/specs/README.md` maps chapters to files). Read only the sections the line names.
 4. Read the area of `.ai/known-issues/open.md` this work touches. Note open issues whose proposed branch is this one; they are part of the work.
-5. Use `docs/ARCHITECTURE.md` "Code structure" to pick the files to open, and open only those. Read `.ai/decisions/<topic>.md` only if the work touches that topic. Do not search the repository or read `git log` to learn the project; if the documents do not answer something, say what was missing.
+5. Use `docs/ARCHITECTURE.md` "Code structure" to pick the folders this work touches. List the files in those folders, then open only the files you need. Read `.ai/decisions/<topic>.md` only if the work touches that topic. Do not search the repository or read `git log` to learn the project; if the documents do not answer something, say what was missing.
 
 ## 2. Write the plan
 
