@@ -26,6 +26,7 @@ export * from './types/quest-plan';
 export * from './types/quest-completion';
 export * from './types/quest-penalty';
 export * from './types/auth';
+export * from './types/health';
 export * from './types/job-change';
 export * from './types/progress';
 export * from './types/quest';
