@@ -22,9 +22,9 @@ Rules such as rewards, penalties and levels, and the amounts, are in the [README
 ### Not shown in the diagram
 
 - Sign-in is better-auth, and the session is stored in the `session` table in the DB.
-- The browser gets the Google ID token from Google directly and sends it to the server `/api/auth`.
+- The browser gets the Google ID token from Google directly and sends it to the server `/api/v1/auth`.
 - Email sign-in requires email verification.
-- During development, the Vite dev server proxies `/api` requests to the server.
+- During development, the Vite dev server proxies `/api/v1` requests to the server.
 - Production Compose starts postgres and server. Web is not in Compose.
 - The monster queue is a Postgres table, and the worker runs inside the server. Battle logs and recommendations do not go through the queue. The server calls them directly.
 
@@ -35,6 +35,7 @@ Rules such as rewards, penalties and levels, and the amounts, are in the [README
 ```
 auth/                           sign-up, sign-in (Better Auth), email verification, onboarding, account deletion
   auth.ts                       Better Auth configuration
+health/                         liveness and database check
 admin/                          admin user management, announcements, reward events
 quests/                         every quest, routine and boss rule
   quests.service.ts             register, list, delete
