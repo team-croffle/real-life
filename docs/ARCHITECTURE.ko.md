@@ -20,9 +20,9 @@
 ### 그림에서 안 보이는 점
 
 - 로그인은 better-auth이고 세션은 DB의 session 테이블에 저장된다.
-- 구글 id 토큰은 브라우저가 구글에서 직접 받아 서버 `/api/auth`로 보낸다.
+- 구글 id 토큰은 브라우저가 구글에서 직접 받아 서버 `/api/v1/auth`로 보낸다.
 - 이메일 로그인은 메일 인증이 필요하다.
-- 개발 중 `/api` 요청은 Vite 개발 서버가 서버로 프록시한다.
+- 개발 중 `/api/v1` 요청은 Vite 개발 서버가 서버로 프록시한다.
 - 배포용 Compose는 postgres와 server를 올리고 web은 Compose에 없다.
 - 몬스터 큐는 Postgres 테이블이고, 워커는 서버 안에서 돈다. 전투 기록과 추천은 큐를 거치지 않고 서버가 바로 부른다.
 
@@ -33,6 +33,7 @@
 ```
 auth/                           가입, 로그인 (Better Auth), 이메일 인증, 온보딩, 계정 삭제
   auth.ts                       Better Auth 설정
+health/                         살아 있는지와 DB 확인
 admin/                          관리자 사용자 관리, 공지, 보상 이벤트
 quests/                         퀘스트, 루틴, 보스 규칙 전부
   quests.service.ts             등록, 목록, 삭제

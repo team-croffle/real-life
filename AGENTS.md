@@ -8,12 +8,12 @@ Reply to the user in Korean. Commit message bodies and PR text are also written 
 
 The repository is one pnpm workspace with three parts:
 
-| Part           | Location  | Stack and role                                                                                          |
-| -------------- | --------- | ------------------------------------------------------------------------------------------------------- |
-| Web            | `web/`    | Vue 3, Vite, Pinia, vue-i18n, Tailwind CSS v4. Screens (in development `/api` is proxied to the server) |
-| Server         | `server/` | NestJS, Drizzle, PostgreSQL, Better Auth. API: auth, quests, wallet, progress, stats, job change        |
-| Shared         | `shared/` | Types, constants and the reward/penalty calculation, used by both the server and the web                |
-| Infrastructure | `docker/` | Compose (postgres, server)                                                                              |
+| Part           | Location  | Stack and role                                                                                             |
+| -------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
+| Web            | `web/`    | Vue 3, Vite, Pinia, vue-i18n, Tailwind CSS v4. Screens (in development `/api/v1` is proxied to the server) |
+| Server         | `server/` | NestJS, Drizzle, PostgreSQL, Better Auth. API: auth, quests, wallet, progress, stats, job change           |
+| Shared         | `shared/` | Types, constants and the reward/penalty calculation, used by both the server and the web                   |
+| Infrastructure | `docker/` | Compose (postgres, server)                                                                                 |
 
 Scripts at the root: `pnpm dev` (`dev:server`, `dev:web`), `pnpm build`, `pnpm typecheck`, `pnpm lint` (`lint:fix`), `pnpm format` (`format:check`).
 
