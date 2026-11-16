@@ -173,7 +173,7 @@
 
 ## 기술 스택
 
-- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API(`@google/genai`, AI 도우미), sanitize-html
+- **서버**: NestJS 12, Drizzle ORM(PostgreSQL), Better Auth, `@nestjs/schedule`, Resend(HTTP API), Gemini API(`@google/genai`, AI 도우미), sanitize-html
 - **웹**: Vue 3, Vite 8, Vue Router 5(파일 기반 라우팅), Pinia, vue-i18n, Tailwind CSS v4, `@lucide/vue`, canvas-confetti, Howler, Tiptap, DOMPurify
 - **공용**: TypeScript. `shared` 워크스페이스에 타입, 상수, 보상 계산, 서울 달력 계산을 두고 서버와 웹이 같이 쓴다
 - **툴링**: pnpm workspace, oxlint, oxfmt, husky + lint-staged, Docker Compose
@@ -211,6 +211,8 @@ real-life/
 ├── shared/                # 서버와 웹이 같이 쓰는 타입, 상수, 보상·패널티 계산, 서울 달력 계산
 │   └── src/
 ├── docker/                # Dockerfile, Compose (개발, 배포)
+├── wrangler.jsonc         # Cloudflare Worker 설정
+├── worker/                # Cloudflare Worker: web/dist를 화면 파일로 주고 /api 요청을 API 호스트로 넘긴다
 └── docs/                  # 아키텍처 문서와 그림
 ```
 

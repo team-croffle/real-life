@@ -173,7 +173,7 @@ Settings are saved in this browser, not in the account.
 
 ## Stack
 
-- **Server**: NestJS 12, Drizzle ORM (PostgreSQL), Better Auth, `@nestjs/schedule`, nodemailer, Gemini API (`@google/genai`, AI assistant), sanitize-html
+- **Server**: NestJS 12, Drizzle ORM (PostgreSQL), Better Auth, `@nestjs/schedule`, Resend (HTTP API), Gemini API (`@google/genai`, AI assistant), sanitize-html
 - **Web**: Vue 3, Vite 8, Vue Router 5 (file-based routing), Pinia, vue-i18n, Tailwind CSS v4, `@lucide/vue`, canvas-confetti, Howler, Tiptap, DOMPurify
 - **Shared**: TypeScript. The `shared` workspace holds types, constants, the reward calculation and Seoul calendar helpers used by both the server and the web
 - **Tooling**: pnpm workspace, oxlint, oxfmt, husky + lint-staged, Docker Compose
@@ -211,6 +211,8 @@ real-life/
 ├── shared/                # types, constants, reward/penalty calculation and Seoul calendar helpers shared by server and web
 │   └── src/
 ├── docker/                # Dockerfile, Compose (dev, prod)
+├── wrangler.jsonc         # Cloudflare Worker config
+├── worker/                # Cloudflare Worker: serves web/dist as page files and forwards /api to the API host
 └── docs/                  # architecture document and diagrams
 ```
 
