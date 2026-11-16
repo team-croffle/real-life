@@ -23,29 +23,26 @@ pnpm docker:dev
 
 아래 값을 `server/.env` 에 채운다. 새 변수를 추가하면 `.env.example` 을 같은 커밋에서 맞춘다.
 
-| 변수                   | 필수 | 기본값                  | 설명                                                                                                 |
-| ---------------------- | ---- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | O    | -                       | `postgresql://user:pass@host:5432/db`                                                                |
-| `PORT`                 | X    | `3000`                  | HTTP 포트                                                                                            |
-| `CORS_ORIGIN`          | X    | `http://localhost:5173` | 허용 오리진. credentials 쿠키라 `*` 불가. `NODE_ENV=production`이면 비워 두면 서버가 켜지지 않는다   |
-| `DATABASE_POOL_MAX`    | X    | `10`                    | pg 커넥션 풀 최대 크기                                                                               |
-| `NODE_ENV`             | X    | -                       | `development` / `production`                                                                         |
-| `BETTER_AUTH_SECRET`   | O    | -                       | 세션 서명 키. 32자 이상                                                                              |
-| `BETTER_AUTH_URL`      | X    | `http://localhost:3000` | 서버 origin. Better Auth baseURL. `NODE_ENV=production`이면 비워 두면 서버가 켜지지 않는다           |
-| `GOOGLE_CLIENT_ID`     | X    | -                       | 없으면 Google 로그인은 비활성                                                                        |
-| `GOOGLE_CLIENT_SECRET` | X    | -                       | OAuth 코드 교환용. ID 토큰 로그인에는 비워 둔다                                                      |
-| `SMTP_HOST`            | X    | `smtp.gmail.com`        | Gmail SMTP 호스트                                                                                    |
-| `SMTP_PORT`            | X    | `587`                   | `587`은 STARTTLS, `465`는 SSL                                                                        |
-| `SMTP_USER`            | X    | -                       | Gmail 주소. 비밀번호 가입 메일 발송. `NODE_ENV=production`이면 비워 두면 서버가 켜지지 않는다        |
-| `SMTP_PASS`            | X    | -                       | Gmail **앱 비밀번호** (계정 비밀번호 아님). `NODE_ENV=production`이면 비워 두면 서버가 켜지지 않는다 |
-| `MAIL_FROM`            | X    | `SMTP_USER`             | From 헤더. 비우면 SMTP_USER                                                                          |
-| `WEB_ORIGIN`           | X    | `CORS_ORIGIN`           | 인증 메일 링크 베이스 (`/verify-email?token=`). 비어 있으면 `CORS_ORIGIN`을 쓴다                     |
-| `TRUST_PROXY`          | X    | -                       | 앞에 둔 프록시 개수. 양의 정수만 켠다. 비우면 끔                                                     |
-| `CRIT_FORCE`           | X    | -                       | 검증용. `double`/`triple`/`none`. `development`/`test`가 아니면 무시                                 |
+| 변수                   | 필수 | 기본값                             | 설명                                                                                                                           |
+| ---------------------- | ---- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`         | O    | -                                  | `postgresql://user:pass@host:5432/db`                                                                                          |
+| `PORT`                 | X    | `3000`                             | HTTP 포트                                                                                                                      |
+| `CORS_ORIGIN`          | X    | `http://localhost:5173`            | 허용 오리진. credentials 쿠키라 `*` 불가. `NODE_ENV=production`이면 비워 두면 서버가 켜지지 않는다                             |
+| `DATABASE_POOL_MAX`    | X    | `10`                               | pg 커넥션 풀 최대 크기                                                                                                         |
+| `NODE_ENV`             | X    | -                                  | `development` / `production`                                                                                                   |
+| `BETTER_AUTH_SECRET`   | O    | -                                  | 세션 서명 키. 32자 이상                                                                                                        |
+| `BETTER_AUTH_URL`      | X    | `http://localhost:3000`            | 서버 origin. Better Auth baseURL. `NODE_ENV=production`이면 비워 두면 서버가 켜지지 않는다                                     |
+| `GOOGLE_CLIENT_ID`     | X    | -                                  | 없으면 Google 로그인은 비활성                                                                                                  |
+| `GOOGLE_CLIENT_SECRET` | X    | -                                  | OAuth 코드 교환용. ID 토큰 로그인에는 비워 둔다                                                                                |
+| `RESEND_API_KEY`       | X    | -                                  | Resend API 키. 비밀번호 가입 메일 발송. `NODE_ENV=production`이면 비워 두면 서버가 켜지지 않는다. 개발에서 비면 가입은 503이다 |
+| `MAIL_FROM`            | X    | `RealLife <onboarding@resend.dev>` | From 헤더. 비우면 기본값. Resend 도메인을 인증하기 전에는 계정 주인 주소로만 보내진다                                          |
+| `WEB_ORIGIN`           | X    | `CORS_ORIGIN`                      | 인증 메일 링크 베이스 (`/verify-email?token=`). 비어 있으면 `CORS_ORIGIN`을 쓴다                                               |
+| `TRUST_PROXY`          | X    | -                                  | 앞에 둔 프록시 개수. 양의 정수만 켠다. 비우면 끔                                                                               |
+| `CRIT_FORCE`           | X    | -                                  | 검증용. `double`/`triple`/`none`. `development`/`test`가 아니면 무시                                                           |
 
 세션은 Better Auth httpOnly 쿠키다. 웹은 `credentials: 'include'`로 쿠키를 실어 보낸다. 가드는 세션이 살아 있는지 본다. 정지된 계정은 세션이 생기지 않고, 이미 있는 세션으로 앱 API를 부르면 403이다. 본문에 `code` `ACCOUNT_SUSPENDED`, `suspendedUntil`, `suspendReason`이 있다.
 
-Gmail SMTP: Google 계정에서 2단계 인증을 켠 뒤 [앱 비밀번호](https://myaccount.google.com/apppasswords)를 발급한다. 16자리를 공백 없이 `SMTP_PASS`에 넣고 `SMTP_USER`에 그 Gmail을 넣는다. SMTP가 없으면 이메일 가입은 503이다. SMTP가 있는데 발송만 실패하면 가입은 되고 재발송하면 된다.
+인증 메일은 Resend HTTP API로 보낸다. `RESEND_API_KEY`가 없으면 이메일 가입은 503이다. Resend 도메인을 인증하기 전에는 계정 주인 주소로만 보내진다.
 
 인증 메일은 같은 이메일 60초 1회, 같은 IP 10분 10회다. 보내기 전에 자리를 잡고, 보내기에 실패하면 돌려준다. 없는 이메일·이미 인증된 이메일 재발송은 메일이 안 나가도 자리를 유지한다. `TRUST_PROXY`는 앞에 둔 프록시 개수다. 비우면 끄므로 `req.ip`는 소켓 주소다.
 
@@ -88,10 +85,7 @@ BETTER_AUTH_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-SMTP_USER=
-SMTP_PASS=
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
+RESEND_API_KEY=
 MAIL_FROM=
 WEB_ORIGIN=http://localhost:5173
 TRUST_PROXY=
@@ -112,6 +106,8 @@ pnpm db:migrate    # 마이그레이션 적용
 pnpm db:push       # 마이그레이션 파일 없이 스키마 직접 반영 (로컬 전용)
 pnpm db:studio     # Drizzle Studio
 ```
+
+서버가 켜질 때 listen 전에 작업 디렉터리의 `drizzle/`를 적용한다. 실패하면 서버는 켜지지 않는다. `pnpm db:migrate`로 같은 폴더를 미리 적용할 수도 있다.
 
 스키마는 `src/database/schema/` 에 두고 `src/database/schema/index.ts` 에서 재-export 한다.
 `DatabaseModule` 은 전역 모듈이며 `DRIZZLE` 토큰으로 `DrizzleDb` 를 주입한다.

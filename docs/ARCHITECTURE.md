@@ -102,6 +102,7 @@ The main call relations are as follows.
 - A job change does not touch the wallet. It only rolls back the level and XP on progress.
 - A shop purchase deducts gold from the wallet and leaves a history entry. If the gold on hand is short, the purchase is refused.
 - Registration and boss confirmation count a daily create, and difficulty recommendations and plan suggestions count a daily AI-button use, on `user_daily_usage`. Over the limit, the call is refused.
+- The server applies migrations before it starts listening.
 
 ## Routine spawn
 
