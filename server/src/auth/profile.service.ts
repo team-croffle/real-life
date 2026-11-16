@@ -41,7 +41,7 @@ export class ProfileService {
     },
     ip: string | undefined,
   ): Promise<RegisterResult> {
-    if (!this.config.get<string>('SMTP_USER') || !this.config.get<string>('SMTP_PASS')) {
+    if (!this.config.get<string>('RESEND_API_KEY')) {
       throw new ServiceUnavailableException('Email sending is not configured');
     }
 

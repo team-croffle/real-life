@@ -5,10 +5,15 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
 import { and, eq } from 'drizzle-orm';
-import { createTransport } from 'nodemailer';
 
 import type { DrizzleDb } from '../database/database.module';
 import { accounts, sessions, users, verifications } from '../database/schema';
+
+export const EMAIL_VERIFICATION_EXPIRES_IN = 60 * 60 * 24;
+const EMAIL_VERIFICATION_EXPIRES_HOURS = EMAIL_VERIFICATION_EXPIRES_IN / (60 * 60);
+const MAIL_FROM_DEFAULT = 'RealLife <onboarding@resend.dev>';
+const VERIFY_BUTTON_BACKGROUND = '#2a7561';
+const VERIFY_BUTTON_COLOR = '#ffffff';
 
 export const TAG_ATTEMPTS = 8;
 export const NICKNAME_TAG_UNIQUE = 'users_nickname_tag_unique';
@@ -57,10 +62,7 @@ export type AuthConfig = {
   webOrigin: string;
   googleClientId: string;
   googleClientSecret: string;
-  smtpUser: string;
-  smtpPass: string;
-  smtpHost: string;
-  smtpPort: string;
+  resendApiKey: string;
   mailFrom: string;
 };
 
@@ -116,25 +118,46 @@ export async function allocateTag(db: DrizzleDb, nickname: string): Promise<stri
 }
 
 async function sendMail(config: AuthConfig, to: string, verifyUrl: string): Promise<void> {
-  if (!config.smtpUser || !config.smtpPass) {
+  if (!config.resendApiKey) {
     throw new Error('Email sending is not configured');
   }
 
-  const port = Number(config.smtpPort || '587');
-  const transport = createTransport({
-    host: config.smtpHost || 'smtp.gmail.com',
-    port,
-    secure: port === 465,
-    auth: { user: config.smtpUser, pass: config.smtpPass },
-  });
+  const subject = '[RealLife] 이메일 인증을 완료해 주세요';
+  const text = [
+    'RealLife에 가입해 주셔서 고마워요.',
+    '아래 버튼을 눌러 이메일 인증을 마치면 바로 시작할 수 있어요.',
+    '',
+    verifyUrl,
+    '',
+    `링크는 ${EMAIL_VERIFICATION_EXPIRES_HOURS}시간 동안 쓸 수 있어요.`,
+    '가입한 적이 없다면 이 메일은 무시해도 괜찮아요.',
+  ].join('\n');
+  const html = [
+    '<p>RealLife에 가입해 주셔서 고마워요.</p>',
+    '<p>아래 버튼을 눌러 이메일 인증을 마치면 바로 시작할 수 있어요.</p>',
+    `<p><a href="${verifyUrl}" style="display:inline-block;padding:12px 20px;background:${VERIFY_BUTTON_BACKGROUND};color:${VERIFY_BUTTON_COLOR};text-decoration:none;border-radius:8px;">이메일 인증하기</a></p>`,
+    `<p>링크는 ${EMAIL_VERIFICATION_EXPIRES_HOURS}시간 동안 쓸 수 있어요.</p>`,
+    '<p>가입한 적이 없다면 이 메일은 무시해도 괜찮아요.</p>',
+  ].join('');
 
-  await transport.sendMail({
-    from: config.mailFrom || config.smtpUser,
-    to,
-    subject: '이메일 인증',
-    text: `아래 링크를 열어 가입을 완료하세요.\n${verifyUrl}`,
-    html: `<p>아래 링크를 열어 가입을 완료하세요.</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: config.mailFrom.trim() || MAIL_FROM_DEFAULT,
+      to,
+      subject,
+      text,
+      html,
+    }),
   });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Resend email failed (${response.status}): ${detail}`);
+  }
 }
 
 export function createAuth(db: DrizzleDb, config: AuthConfig) {
@@ -220,7 +243,7 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
     emailVerification: {
       sendOnSignUp: true,
       autoSignInAfterVerification: true,
-      expiresIn: 60 * 60 * 24,
+      expiresIn: EMAIL_VERIFICATION_EXPIRES_IN,
       sendVerificationEmail: async ({ user, token }) => {
         const verifyUrl = `${config.webOrigin.replace(/\/$/, '')}/verify-email?token=${encodeURIComponent(token)}`;
         await sendMail(config, user.email, verifyUrl);
