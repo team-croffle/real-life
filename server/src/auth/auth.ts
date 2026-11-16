@@ -12,6 +12,7 @@ import { accounts, sessions, users, verifications } from '../database/schema';
 export const EMAIL_VERIFICATION_EXPIRES_IN = 60 * 60 * 24;
 const EMAIL_VERIFICATION_EXPIRES_HOURS = EMAIL_VERIFICATION_EXPIRES_IN / (60 * 60);
 const MAIL_FROM_DEFAULT = 'RealLife <onboarding@resend.dev>';
+const RESEND_REQUEST_TIMEOUT_MS = 10_000;
 const VERIFY_BUTTON_BACKGROUND = '#2a7561';
 const VERIFY_BUTTON_COLOR = '#ffffff';
 
@@ -153,6 +154,7 @@ async function sendMail(config: AuthConfig, to: string, verifyUrl: string): Prom
       text,
       html,
     }),
+    signal: AbortSignal.timeout(RESEND_REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) {
     const detail = await response.text();
