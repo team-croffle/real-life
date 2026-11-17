@@ -237,16 +237,15 @@ pnpm dev:web
 
 ## Scripts
 
-| Command                                                     | Description                        |
-| ----------------------------------------------------------- | ---------------------------------- |
-| `pnpm dev`                                                  | run server + web dev servers       |
-| `pnpm build`                                                | production build of server + web   |
-| `pnpm typecheck`                                            | typecheck every workspace          |
-| `pnpm lint` / `pnpm lint:fix`                               | oxlint                             |
-| `pnpm format` / `pnpm format:check`                         | oxfmt                              |
-| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle migrations                 |
-| `pnpm docker:dev` / `docker:dev:down`                       | dev Docker Compose                 |
-| `pnpm docker:prod`                                          | build and start production Compose |
+| Command                                                     | Description                      |
+| ----------------------------------------------------------- | -------------------------------- |
+| `pnpm dev`                                                  | run server + web dev servers     |
+| `pnpm build`                                                | production build of server + web |
+| `pnpm typecheck`                                            | typecheck every workspace        |
+| `pnpm lint` / `pnpm lint:fix`                               | oxlint                           |
+| `pnpm format` / `pnpm format:check`                         | oxfmt                            |
+| `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` | Drizzle migrations               |
+| `pnpm docker:dev` / `docker:dev:down`                       | dev Docker Compose               |
 
 ## More
 

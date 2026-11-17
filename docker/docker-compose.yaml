@@ -19,10 +19,6 @@ services:
     networks: [nest-vue]
 
   server:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: runner
     image: ghcr.io/team-croffle/reallife:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:

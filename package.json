@@ -19,7 +19,6 @@
     "db:studio": "pnpm --filter @nest-vue/server db:studio",
     "docker:dev": "docker compose -f docker/docker-compose.dev.yaml up -d",
     "docker:dev:down": "docker compose -f docker/docker-compose.dev.yaml down",
-    "docker:prod": "docker compose -f docker/docker-compose.yaml up -d --build",
     "prepare": "husky"
   },
   "devDependencies": {
