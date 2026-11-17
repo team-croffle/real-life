@@ -87,6 +87,7 @@
 - [x] 한도 안내(429 code 세 개)·시간대 이름(웹 seoul* 함수)·재발송 남은 시간·lucide-vue-next 폐기 경고·금액 천 단위 쉼표·기존 이메일 가입 문구 정리
 - [x] 배포 준비: 마이그레이션 합치기, /api/v1, health, 운영 환경 변수, compose, 릴리즈 워크플로
 - [x] 배포 설정: 기동 시 마이그레이션, Cloudflare Worker, Resend 메일
+- [x] 배포 클라이언트 IP: TRUST_PROXY IP/대역, Worker 전용 헤더와 공유 비밀
 
 ## v0.5.1 진행 상황
 
