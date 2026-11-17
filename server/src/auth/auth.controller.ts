@@ -14,6 +14,7 @@ import { AuthGuard, Session } from '@thallesp/nestjs-better-auth';
 import type { UserSession } from '@thallesp/nestjs-better-auth';
 import type { Request } from 'express';
 
+import { getRequestClientIp } from '../common/client-ip';
 import { AllowWithoutJob } from './allow-without-job';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -27,13 +28,13 @@ export class AuthController {
 
   @Post('register')
   register(@Body() dto: RegisterDto, @Req() req: Request): Promise<RegisterResult> {
-    return this.profiles.register(dto, req.ip);
+    return this.profiles.register(dto, getRequestClientIp(req));
   }
 
   @Post('resend-verification')
   @HttpCode(HttpStatus.NO_CONTENT)
   async resendVerification(@Body() dto: ResendVerificationDto, @Req() req: Request): Promise<void> {
-    await this.profiles.resendVerification(dto.email, req.ip);
+    await this.profiles.resendVerification(dto.email, getRequestClientIp(req));
   }
 
   @Get('me')

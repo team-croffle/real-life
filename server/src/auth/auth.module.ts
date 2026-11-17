@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule as BetterAuthModule } from '@thallesp/nestjs-better-auth';
 
+import { parseTrustedProxies } from '../common/trusted-proxies';
 import { valueOrDevDefault } from '../common/value-or-dev-default';
 import { DRIZZLE } from '../database/database.constants';
 import type { DrizzleDb } from '../database/database.module';
@@ -35,6 +36,7 @@ import { ProfileService } from './profile.service';
             googleClientSecret: config.get<string>('GOOGLE_CLIENT_SECRET', ''),
             resendApiKey: valueOrDevDefault(config, 'RESEND_API_KEY', ''),
             mailFrom: config.get<string>('MAIL_FROM', ''),
+            trustedProxies: parseTrustedProxies(config.get<string>('TRUST_PROXY', '')),
           }),
           disableTrustedOriginsCors: true,
         };

@@ -6,6 +6,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
 import { and, eq } from 'drizzle-orm';
 
+import { CONNECTING_IP_HEADER } from '../common/client-ip';
 import type { DrizzleDb } from '../database/database.module';
 import { accounts, sessions, users, verifications } from '../database/schema';
 
@@ -65,6 +66,7 @@ export type AuthConfig = {
   googleClientSecret: string;
   resendApiKey: string;
   mailFrom: string;
+  trustedProxies: string[];
 };
 
 function sanitizeNickname(value: string): string {
@@ -185,6 +187,10 @@ export function createAuth(db: DrizzleDb, config: AuthConfig) {
       database: {
         // uuid면 라이브러리가 id를 만들지 않고 DB 기본값에 맡긴다.
         generateId: 'uuid',
+      },
+      ipAddress: {
+        ipAddressHeaders: [CONNECTING_IP_HEADER, 'x-forwarded-for'],
+        ...(config.trustedProxies.length > 0 ? { trustedProxies: config.trustedProxies } : {}),
       },
     },
     user: {
