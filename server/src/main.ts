@@ -7,6 +7,7 @@ import type { Pool } from 'pg';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { parseTrustedProxies } from './common/trusted-proxies';
 import { valueOrDevDefault } from './common/value-or-dev-default';
 import { PG_POOL } from './database/database.constants';
 import { applyMigrations } from './database/migrate';
@@ -34,10 +35,9 @@ async function bootstrap(): Promise<void> {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const trustProxy = config.get<string>('TRUST_PROXY', '').trim();
-  const proxyHops = Number.parseInt(trustProxy, 10);
-  if (/^\d+$/.test(trustProxy) && proxyHops > 0) {
-    app.getHttpAdapter().getInstance().set('trust proxy', proxyHops);
+  const trustedProxies = parseTrustedProxies(config.get<string>('TRUST_PROXY', ''));
+  if (trustedProxies.length > 0) {
+    app.getHttpAdapter().getInstance().set('trust proxy', trustedProxies);
   }
 
   const port = config.get<number>('PORT', 3000);

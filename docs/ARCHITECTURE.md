@@ -26,6 +26,7 @@ Rules such as rewards, penalties and levels, and the amounts, are in the [README
 - Email sign-in requires email verification.
 - During development, the Vite dev server proxies `/api/v1` requests to the server.
 - Production Compose starts postgres and server. Web is not in Compose.
+- In production the Cloudflare Worker serves the web files and forwards `/api` to the API host. It copies the visitor connecting IP into a header that only the Worker and the API can authenticate. The API uses that IP when the shared secret matches; otherwise it uses the reverse-proxy addresses in `TRUST_PROXY`.
 - The monster queue is a Postgres table, and the worker runs inside the server. Battle logs and recommendations do not go through the queue. The server calls them directly.
 
 ## Code structure

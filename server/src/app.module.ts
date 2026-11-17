@@ -6,6 +6,7 @@ import { AdminModule } from './admin/admin.module';
 import { AiQueueModule } from './ai-queue/ai-queue.module';
 import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
+import { ClientIpModule } from './common/client-ip.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { JobChangeModule } from './job-change/job-change.module';
@@ -28,6 +29,7 @@ import { WalletModule } from './wallet/wallet.module';
     HealthModule,
     AiModule,
     AiQueueModule,
+    ClientIpModule,
     AuthModule,
     AdminModule,
     QuestsModule,

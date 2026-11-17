@@ -24,6 +24,7 @@
 - 이메일 로그인은 메일 인증이 필요하다.
 - 개발 중 `/api/v1` 요청은 Vite 개발 서버가 서버로 프록시한다.
 - 배포용 Compose는 postgres와 server를 올리고 web은 Compose에 없다.
+- 운영에서 Cloudflare Worker는 웹 파일을 주고 `/api`를 API 호스트로 넘긴다. 방문자의 연결 IP를 Worker와 API만 확인할 수 있는 헤더에 복사한다. 비밀 값이 맞으면 API는 그 IP를 쓰고, 아니면 `TRUST_PROXY`에 적은 리버스 프록시 주소를 기준으로 한다.
 - 몬스터 큐는 Postgres 테이블이고, 워커는 서버 안에서 돈다. 전투 기록과 추천은 큐를 거치지 않고 서버가 바로 부른다.
 
 ## 코드 구조
