@@ -29,6 +29,7 @@ import { WalletModule } from './wallet/wallet.module';
     HealthModule,
     AiModule,
     AiQueueModule,
+    // AuthModule보다 위. 둘 다 configure에서 httpAdapter.use를 쓰므로 순서가 바뀌면 Better Auth가 정리 전 연결 IP 헤더를 믿는다.
     ClientIpModule,
     AuthModule,
     AdminModule,
